@@ -1,0 +1,100 @@
+cargo-features = ["per-package-target"]
+
+[package]
+name = "ledger-mob-core"
+description = "MobileCoin hardware wallet engine"
+repository = "https://github.com/mobilecoinofficial/ledger-mob.git"
+version = "0.7.0"
+edition = "2021"
+license = "GPL-3.0"
+publish = false
+
+default-target = "x86_64-unknown-linux-gnu"
+
+[features]
+mlsag = [ "mc-crypto-ring-signature" ]
+memo = [ "mc-crypto-memo-mac" ]
+summary = [ "alloc", "mc-transaction-summary", "ledger-mob-apdu/alloc" ]
+ident = []
+
+log = [ "dep:log" ]
+alloc = [
+    "mc-transaction-types/alloc",
+    "mc-crypto-digestible/alloc",
+    "mc-transaction-summary",
+]
+serde = [ "mc-core/serde", "heapless/serde" ]
+noinline = []
+
+std = [
+    "thiserror",
+    "ledger-apdu/std",
+]
+default = [
+    "mc-crypto-dalek/default",
+    "mlsag",
+    "memo",
+    "summary",
+    "ident",
+    "std",
+    "log",
+]
+
+[dependencies]
+aes = { version = "0.7.5", default_features = false }
+num_enum = { version = "0.5.7", default_features = false }
+bitflags = "1.3.2"
+byteorder = { version = "1.4.3", default_features = false }
+zeroize = { version = "1.5", default_features = false }
+log = { version = "0.4.17", default_features = false, optional = true }
+heapless = { version = "0.7.16", default_features = false }
+hkdf = { version = "0.12.3", default_features = false }
+rand_core = { version = "0.6.4", default_features = false, features = [ "getrandom" ] }
+strum = { version = "0.24.1", default_features = false, features = [ "derive" ] }
+static_assertions = "1.1.0"
+encdec = { version = "0.8.0", default_features = false }
+thiserror = { version = "1.0.38", optional = true }
+emstr = { version = "0.2.0", default_features = false }
+
+x25519-dalek = { version = "2.0.0-pre.2", default_features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default_features = false, features = ["nightly"] }
+ed25519-dalek = { version = "2.0.0-pre.1", default_features = false, features = ["nightly"] }
+merlin = { version = "3.0.0", default_features = false }
+sha2 = { version = "0.10.6", default_features = false }
+
+ledger-apdu = { version = "0.10.0", default_features = false }
+ledger-mob-apdu = { path = "../apdu" }
+
+mc-core = { version = "4.0.0-pre0", default_features = false, features = [ "internals" ] }
+mc-crypto-dalek = { version = "4.0.0-pre0", default_features = false }
+mc-crypto-digestible = { version = "4.0.0-pre0", default_features = false }
+mc-crypto-keys = { version = "4.0.0-pre0", default_features = false }
+mc-crypto-hashes = { version = "4.0.0-pre0", default_features = false }
+
+mc-crypto-ring-signature = { version = "4.0.0-pre0", optional = true, default_features = false, features = [ "internals" ] }
+
+mc-crypto-memo-mac = { version = "4.0.0-pre0", optional = true, default_features = false }
+
+mc-transaction-types = { version = "4.0.0-pre0", default_features = false }
+mc-transaction-summary = { version = "4.0.0-pre0", optional = true, default_features = false, features = [ "alloc" ]}
+mc-util-from-random = { version = "4.0.0-pre0", default_features = false }
+
+
+# used by bulletproofs-og, no_cc feature required for cross compilation
+clear_on_drop = { version = "0.2", default-features = false, features = [ "no_cc" ] }
+
+[dev-dependencies]
+anyhow = "1.0.65"
+thiserror = "1.0.37"
+tiny-bip39 = "1.0"
+rand = "0.8.5"
+lazy_static = "1.4.0"
+log = "0.4.17"
+simplelog = { version = "0.12.0", default_features = false }
+slip10_ed25519 = { version = "0.1.3", default_features = false }
+tokio = { version = "1.20.1", features = [ "full" ] }
+async-trait = "0.1.57"
+
+mc-util-test-helper = { path = "../vendor/mob/util/test-helper", default_features = false }
+ledger-mob-tests = { path = "../tests", default_features = false }
+ledger-transport = { path = "../vendor/rs/ledger-transport" }
