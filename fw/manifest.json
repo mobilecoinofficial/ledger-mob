@@ -1,0 +1,18 @@
+{
+    "binary": "FW",
+    "dataSize": 0,
+    "derivationPath": {
+      "curves": [
+        "ed25519"
+      ],
+      "paths": [
+        "44'/866'",
+        "13'/"
+      ]
+    },
+    "flags": "FLAGS",
+    "icon": "mob14x14i.gif",
+    "name": "MobileCoin",
+    "targetId": "TARGET",
+    "version": "VERSION"
+}

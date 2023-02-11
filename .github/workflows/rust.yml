@@ -1,0 +1,475 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Run lints / checks
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: FranzDiebold/github-env-vars-action@v2.7.0
+
+    - name: Configure toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        target:  ${{ matrix.target }}
+        override: true
+        components: rustfmt, clippy, rust-src
+
+    - name: Set RUST_TARGET_PATH
+      run: echo "RUST_TARGET_PATH=${GITHUB_WORKSPACE}/fw/" >> $GITHUB_ENV
+
+    - name: Install cross toolchain, libraries
+      run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+
+    - name: Restore shared package cache from test-core
+      uses: actions/cache/restore@v3
+      with:
+        key: core
+        path: |
+          ~/.cargo
+          ./target
+
+    - name: Run lints
+      run: |
+        make lint
+
+
+  # Run core library tests
+  test-core:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: FranzDiebold/github-env-vars-action@v2.7.0
+      
+    - name: Configure toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        target:  ${{ matrix.target }}
+        override: true
+
+    - name: Configure caching 
+      uses: actions/cache@v3
+      with:
+        key: core-${{ github.run_id }}
+        restore-keys: core
+        path: |
+          ~/.cargo
+          ./target
+
+    - name: Run core tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: -p ledger-mob-core -p ledger-mob-apdu
+
+  # Build command line tooling
+  build-cli:
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            ext: .exe
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: FranzDiebold/github-env-vars-action@v2.7.0
+
+    - name: Export version tag
+      run: |
+        echo "VERSION=$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
+      
+    - name: Configure toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        target:  ${{ matrix.target }}
+        override: true
+    
+    - name: Configure caching 
+      uses: actions/cache@v3
+      with:
+        key: cli-${{ matrix.os }}-${{ matrix.target }}-${{ github.run_id }}
+        restore-keys: cli-${{ matrix.os }}-${{ matrix.target }}
+        path: |
+          ~/.cargo
+          ./target
+  
+    - name: Install libusb (brew)
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: brew install libusb
+    
+    - name: Install libusb (apt native)
+      if: ${{ matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu' }}
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+
+    - name: Cache vcpkg
+      if: ${{ matrix.os == 'windows-latest' }}
+      uses: actions/cache@v3
+      with:
+        key: ${{ matrix.os }}-${{ matrix.target }}-vcpkg
+        path: $VCPKG_DIRECTORY
+
+    - name: Install libusb (vcpkg)
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: |
+        vcpkg integrate install
+        vcpkg install libusb:x64-windows-static
+        echo "LIBUSB_DIR=$VCPKG_DIRECTORY/installed/x64-windows-static/" >> $GITHUB_ENV
+
+    - name: Build CLI
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --package ledger-mob --target ${{ matrix.target }} --release ${{ matrix.args }}
+
+    - name: Copy / Rename / Archive CLI
+      run: |
+        cp target/${{ matrix.target }}/release/ledger-mob-cli${{ matrix.ext }} ledger-mob-cli-${{ matrix.target }}-${{ env.VERSION }}${{ matrix.ext }}
+        tar cvf ledger-mob-cli-${{ matrix.target }}.tgz ledger-mob-cli-${{ matrix.target }}-${{ env.VERSION }}${{ matrix.ext }}
+
+    - name: Upload CLI artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ledger-mob-cli-${{ matrix.target }}
+        path: ledger-mob-cli-${{ matrix.target }}-${{ env.VERSION }}${{ matrix.ext }}
+
+    - name: Attach CLI artifacts to release
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ledger-mob-cli-${{ matrix.target }}.tgz
+        asset_name: ledger-mob-cli-${{ matrix.target }}.tgz
+        tag: ${{ github.ref }}
+        overwrite: true
+
+  # Build Firmware
+  build-fw:
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: nanox
+            target: thumbv6m-none-eabi
+            experimental: true
+          - platform: nanosplus
+            target: thumbv8m.main-none-eabi
+            experimental: false
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: FranzDiebold/github-env-vars-action@v2.7.0
+
+    - name: Export version tag
+      run: |
+        echo "VERSION=$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
+      
+    - name: Configure toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        target:  ${{ matrix.target }}
+        override: true
+        components: rust-src
+
+    - name: Install cross toolchain 
+      run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib
+
+    - name: Configure caching for FW build
+      uses: actions/cache@v3
+      with:
+        key: fw-${{ matrix.platform }}-${{ matrix.target }}-${{ github.run_id }}
+        restore-keys: fw-${{ matrix.platform }}-${{ matrix.target }}
+        path: |
+          ~/.cargo
+          ./fw/target
+
+    - name: Set RUST_TARGET_PATH
+      run: echo "RUST_TARGET_PATH=${GITHUB_WORKSPACE}/fw/" >> $GITHUB_ENV
+
+    - name: Force build.rs refresh (updates baked-in firmware version)
+      run: touch fw/build.rs
+
+    - name: Build FW
+      run: |
+        cd fw && cargo build --target ./${{ matrix.platform }}.json --release
+
+    - name: Convert / Rename binary artifacts
+      run: |
+        cp fw/target/${{ matrix.platform }}/release/ledger-mob-fw ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
+        arm-none-eabi-objcopy -O ihex fw/target/${{ matrix.platform }}/release/ledger-mob-fw ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
+        cp fw/target/${{ matrix.platform }}/release/app_${{ matrix.platform}}.json app_${{ matrix.platform }}.json
+
+    - name: Upload firmware binary artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ledger-mob-fw-${{ matrix.platform }}
+        path: |
+          ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
+          ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
+          app_${{ matrix.platform }}.json
+
+  # Build simulator tests
+  build-sim:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: FranzDiebold/github-env-vars-action@v2.7.0
+      
+    - name: Configure toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        target:  ${{ matrix.target }}
+        override: true
+    
+    - name: Configure caching 
+      uses: actions/cache@v3
+      with:
+        key: sim-${{ github.run_id }}
+        restore-keys: sim
+        path: |
+          ~/.cargo
+          ./target
+
+    - name: Install libusb / hidapi / libudev
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+
+    - name: Build library / simulator tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --tests --package ledger-mob
+
+  # Run simulator tests
+  test-sim:
+    runs-on: ubuntu-latest
+    needs: [ build-sim, build-fw ]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: nanox
+          - platform: nanosplus
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: FranzDiebold/github-env-vars-action@v2.7.0
+
+    - name: Setup environment
+      run: |
+        echo "VERSION=$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
+        echo "DRIVER_MODE=docker" >> $GITHUB_ENV
+        echo "MODEL=${{ matrix.platform }}" >> $GITHUB_ENV
+        echo "NANOAPP=$(pwd)/bin/ledger-mob-fw-${{ matrix.platform }}-$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
+
+    - name: Configure rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+    
+    - name: Restore cache from test build
+      uses: actions/cache/restore@v3
+      with:
+        key: sim
+        path: |
+          ~/.cargo
+          ./target
+
+    - name: Fetch speculos image
+      run: |
+        docker pull ghcr.io/ledgerhq/speculos:latest
+
+    - name: Fetch firmware artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: ledger-mob-fw-${{ matrix.platform }}
+        path: bin
+
+    - name: Run simulator tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path=lib/Cargo.toml --no-default-features --features=transport_tcp,summary,ident
+
+  # Package firmware for distribution
+  package-fw:
+    runs-on: ubuntu-latest
+    needs: build-fw
+
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: nanox
+          - platform: nanosplus
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: FranzDiebold/github-env-vars-action@v2.7.0
+
+    - name: Setup environment
+      run: |
+        echo "VERSION=$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
+
+    - name: Fetch firmware artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: ledger-mob-fw-${{ matrix.platform }}
+        path: bin
+
+    - name: Setup package files
+      run: |
+        cp bin/ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}* .
+        cp bin/app_${{ matrix.platform }}.json .
+        cp fw/assets/mob14x14i.gif .
+
+    - name: Build firmware archive
+      run: >        
+        tar cvf ledger-mob-fw-${{ matrix.platform }}.tgz 
+        ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex 
+        app_${{ matrix.platform }}.json 
+        mob14x14i.gif
+
+    - name: Upload firmware package artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ledger-mob-fw-${{ matrix.platform }}.tgz
+        path: ledger-mob-fw-${{ matrix.platform }}.tgz
+
+    - name: Attach firmware package to release
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ledger-mob-fw-${{ matrix.platform }}.tgz
+        asset_name: ledger-mob-fw-${{ matrix.platform }}.tgz
+        tag: ${{ github.ref }}
+        overwrite: true
+
+
+  docs:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pages: write
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Fetch rust tooling
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - name: Configure caching for doc build
+        uses: actions/cache@v3
+        with:
+          key: docs-${{ github.run_id }}
+          restore-keys: docs
+          path: |
+            ~/.cargo
+            ./target
+
+      - name: Install libusb / libudev
+        run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+
+      - name: Build documentation
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps
+
+      - name: Deploy to GitHub Pages
+        uses: crazy-max/ghaction-github-pages@v3
+        if: github.ref_name == 'main'
+        with:
+          target_branch: gh-pages
+          build_dir: target/doc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create Release
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: Release ${{ github.ref }}

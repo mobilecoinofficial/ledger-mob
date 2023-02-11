@@ -1,0 +1,10 @@
+**/target/
+**/Cargo.lock
+bin/
+*.json
+
+.vscode/
+.venv/
+.direv/
+.direnv/
+*.tgz

@@ -1,0 +1,63 @@
+cargo-features = ["per-package-target"]
+
+[workspace]
+
+members = [
+    "core",
+    "lib",
+    "sim",
+    "tests",
+]
+
+# NOTE: something breaks in target detection if fw is included
+# which _should_ be okay with [`per-packet-target`](https://doc.rust-lang.org/cargo/reference/unstable.html#per-package-target) but...
+# TODO: non-critical but, work out why
+exclude = [
+    "fw",
+    "vendor/mob",
+    "vendor/sdk",
+    "vendor/ui",
+    "vendor/rs/ledger-apdu",
+    "vendor/rs/ledger-transport",
+    "vendor/rs/ledger-transport-hid",
+    "vendor/rs/ledger-transport-tcp",
+    "vendor/rs/ledger-transport-zemu",
+]
+
+[patch.crates-io]
+
+# Fix issues with recent nightlies, bump curve25519-dalek version
+curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
+ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
+
+# Fix issues with recent nightlies, bump curve25519-dalek version
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "c1966b8743d320cd07a54191475e5c0f94b2ea30" }
+
+# Fork and rename to use "OG" dalek-cryptography with latest dependencies.
+#bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
+bulletproofs-og = { git = "https://github.com/ryankurte/bulletproofs.git", branch = "fix/curve25519-backend" }
+
+# Fork and rename to use "OG" dalek-cryptography.
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
+
+ledger-apdu = { path = "./vendor/rs/ledger-apdu" }
+ledger-transport = { path = "./vendor/rs/ledger-transport" }
+#ledger-zondax-generic = { path = "./vendor/rs/ledger-zondax-generic" }
+
+mc-core = { path = "./vendor/mob/core" }
+mc-crypto-dalek = { path ="./vendor/mob/crypto/dalek" }
+mc-crypto-digestible = { path ="./vendor/mob/crypto/digestible" }
+mc-crypto-hashes = { path ="./vendor/mob/crypto/hashes" }
+mc-crypto-keys = { path ="./vendor/mob/crypto/keys" }
+mc-crypto-memo-mac = { path ="./vendor/mob/crypto/memo-mac" }
+mc-crypto-ring-signature = { path ="./vendor/mob/crypto/ring-signature" }
+mc-crypto-ring-signature-signer = { path ="./vendor/mob/crypto/ring-signature/signer" }
+mc-transaction-core = { path = "./vendor/mob/transaction/core" }
+mc-transaction-extra = { path = "./vendor/mob/transaction/extra" }
+mc-transaction-types = { path = "./vendor/mob/transaction/types" }
+mc-transaction-signer = { path = "./vendor/mob/transaction/signer" }
+mc-transaction-summary = { path = "./vendor/mob/transaction/summary" }
+mc-util-from-random = { path = "./vendor/mob/util/from-random" }
+
+#prost = { path = "../prost" }
+#prost-derive = { path = "../prost/prost-derive" }
