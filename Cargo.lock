@@ -1781,11 +1781,11 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "base64 0.13.1",
+ "base64 0.21.0",
  "clap 4.1.4",
  "curve25519-dalek",
  "ed25519-dalek",
@@ -1830,7 +1830,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-apdu"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -1857,7 +1857,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-core"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "aes",
  "anyhow",
@@ -1906,7 +1906,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-tests"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "base64 0.21.0",
@@ -1954,7 +1954,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-sim"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "async-trait",
