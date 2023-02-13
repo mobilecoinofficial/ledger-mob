@@ -19,8 +19,12 @@ Supported Wallets:
 
 ## Usage
 
-This repository contains firmware and libraries for development and testing purposes.
-Users should install this via [ledger live](https://www.ledger.com/ledger-live) and use a supported wallet application for building and signing transactions.
+### Attention
+
+This repository contains unaudited firmware releases for development and testing purposes only, use with caution.
+
+End users should install signed and security-audited releases via [Ledger Live](https://www.ledger.com/ledger-live) for use with real funds, and use a supported wallet application for building and signing transactions.
+
 
 ### Installing pre-built binaries
 
