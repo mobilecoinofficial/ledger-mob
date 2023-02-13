@@ -2,7 +2,7 @@
 name = "ledger-mob"
 description = "MobileCoin Ledger Interface Library"
 repository = "https://github.com/mobilecoinofficial/ledger-mob.git"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 license = "Apache-2.0"
 publish = false
@@ -21,7 +21,7 @@ default = [ "cli", "prost", "summary", "ident", "transport_tcp", "transport_hid"
 [dependencies]
 async-trait = "0.1.57"
 anyhow = "1.0.58"
-base64 = "0.13.0"
+base64 = "0.21.0"
 clap = { version = "4.0.26", features = [ "derive" ] }
 ed25519-dalek = { version = "2.0.0-pre.1", default_features = false, features = ["nightly"] }
 

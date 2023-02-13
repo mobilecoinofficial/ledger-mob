@@ -1,5 +1,7 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
+use base64::prelude::{Engine as _, BASE64_STANDARD};
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct HexData<const N: usize = 32>(pub [u8; N]);
 
@@ -31,12 +33,12 @@ impl<const N: usize> std::string::ToString for HexData<N> {
 pub struct B64Data<const N: usize = 32>(pub [u8; N]);
 
 impl<const N: usize> std::str::FromStr for B64Data<N> {
-    type Err = base64::DecodeError;
+    type Err = base64::DecodeSliceError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut b = [0u8; N];
 
-        base64::decode_config_slice(s, base64::STANDARD, &mut b)?;
+        BASE64_STANDARD.decode_slice(s, &mut b)?;
 
         Ok(B64Data(b))
     }
