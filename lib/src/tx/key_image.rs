@@ -6,8 +6,9 @@ use log::debug;
 use ledger_mob_apdu::key_image::{KeyImageReq, KeyImageResp};
 use ledger_transport::Exchange;
 
-use mc_core::{keys::TxOutPublic, traits::KeyImageComputer};
+use mc_core::keys::TxOutPublic;
 use mc_crypto_ring_signature::KeyImage;
+use mc_transaction_signer::traits::KeyImageComputer;
 
 use crate::{Error, TransactionHandle};
 

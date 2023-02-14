@@ -17,7 +17,6 @@ dependencies = [
  "cfg-if",
  "cipher",
  "cpufeatures",
- "ctr",
  "opaque-debug",
 ]
 
@@ -65,9 +64,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "base64"
-version = "0.13.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
 
 [[package]]
 name = "bit_field"
@@ -280,15 +279,6 @@ checksum = "1bfb12502f3fc46cca1bb51ac28df9d618d813cdc3d2f25b9fe775a34af26bb3"
 dependencies = [
  "generic-array",
  "typenum",
-]
-
-[[package]]
-name = "ctr"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "049bb91fb4aaf0e3c7efa6cd5ef877dbbbd15b39dad06d9948de4ec8a75761ea"
-dependencies = [
- "cipher",
 ]
 
 [[package]]
@@ -582,12 +572,6 @@ dependencies = [
  "color_quant",
  "weezl",
 ]
-
-[[package]]
-name = "glob"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "half"
@@ -914,7 +898,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -929,35 +913,31 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "rand_core",
+ "serde",
  "subtle",
  "zeroize",
 ]
 
 [[package]]
 name = "mc-account-keys-types"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-core"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
- "aes",
- "anyhow",
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array",
- "glob",
  "hkdf",
  "mc-core-types",
  "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-memo-mac",
- "mc-crypto-ring-signature",
- "merlin",
  "sha2",
  "zeroize",
 ]
@@ -974,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-dalek"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -999,7 +979,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "cfg-if",
  "curve25519-dalek",
@@ -1013,7 +993,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1022,7 +1002,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
@@ -1031,7 +1011,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "blake2",
  "digest",
@@ -1040,7 +1020,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "base64",
  "curve25519-dalek",
@@ -1068,7 +1048,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "hmac",
  "mc-crypto-keys",
@@ -1077,7 +1057,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1097,7 +1077,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "mc-crypto-keys",
  "signature",
@@ -1124,7 +1104,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-types"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "crc",
  "displaydoc",
@@ -1142,21 +1122,21 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "generic-array",
 ]
 
 [[package]]
 name = "mc-util-vec-map"
-version = "4.0.0-pre0"
+version = "4.0.2"
 dependencies = [
  "displaydoc",
  "heapless",
@@ -1164,7 +1144,10 @@ dependencies = [
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "4.0.0-pre0"
+version = "4.0.2"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "memoffset"
