@@ -87,7 +87,7 @@ jobs:
       if: ${{ github.ref == 'refs/heads/main' }}
       uses: actions/cache/save@v3
       with:
-        key: core
+        key: core-${{ github.run_id }}
         path: |
           ~/.cargo
           ./target
@@ -168,7 +168,7 @@ jobs:
       if: ${{ github.ref == 'refs/heads/main' }}
       uses: actions/cache/save@v3
       with:
-        key: cli-${{ matrix.os }}-${{ matrix.target }}
+        key: cli-${{ matrix.os }}-${{ matrix.target }}-${{ github.run_id }}
         path: |
           ~/.cargo
           ./target
@@ -255,7 +255,7 @@ jobs:
       if: ${{ github.ref == 'refs/heads/main' }}
       uses: actions/cache/save@v3
       with:
-        key: fw-${{ matrix.platform }}-${{ matrix.target }}
+        key: fw-${{ matrix.platform }}-${{ matrix.target }}-${{ github.run_id }}
         path: |
           ~/.cargo
           ./fw/target
@@ -315,7 +315,7 @@ jobs:
       if: ${{ github.ref == 'refs/heads/main' }}
       uses: actions/cache/save@v3
       with:
-        key: sim
+        key: sim-${{ github.run_id }}
         path: |
           ~/.cargo
           ./target
