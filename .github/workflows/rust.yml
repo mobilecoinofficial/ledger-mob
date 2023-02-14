@@ -37,7 +37,7 @@ jobs:
     - name: Install cross toolchain, libraries
       run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev
 
-    - name: Restore shared package cache from test-core
+    - name: Restore core cache
       uses: actions/cache/restore@v3
       with:
         key: core
@@ -69,11 +69,10 @@ jobs:
         target:  ${{ matrix.target }}
         override: true
 
-    - name: Configure caching 
-      uses: actions/cache@v3
+    - name: Restore core cache
+      uses: actions/cache/restore@v3
       with:
-        key: core-${{ github.run_id }}
-        restore-keys: core
+        key: core
         path: |
           ~/.cargo
           ./target
@@ -83,6 +82,15 @@ jobs:
       with:
         command: test
         args: -p ledger-mob-core -p ledger-mob-apdu
+
+    - name: Update core cache
+      if: ${{ github.ref == 'refs/heads/main' }}
+      uses: actions/cache/save@v3
+      with:
+        key: core-${{ github.run_id }}
+        path: |
+          ~/.cargo
+          ./target
 
   # Build command line tooling
   build-cli:
@@ -120,11 +128,10 @@ jobs:
         target:  ${{ matrix.target }}
         override: true
     
-    - name: Configure caching 
-      uses: actions/cache@v3
+    - name: Restore ${{ matrix.target }} CLI cache
+      uses: actions/cache/restore@v3
       with:
-        key: cli-${{ matrix.os }}-${{ matrix.target }}-${{ github.run_id }}
-        restore-keys: cli-${{ matrix.os }}-${{ matrix.target }}
+        key: cli-${{ matrix.os }}-${{ matrix.target }}
         path: |
           ~/.cargo
           ./target
@@ -156,6 +163,15 @@ jobs:
       with:
         command: build
         args: --package ledger-mob --target ${{ matrix.target }} --release ${{ matrix.args }}
+
+    - name: Update ${{ matrix.target }} CLI cache
+      if: ${{ github.ref == 'refs/heads/main' }}
+      uses: actions/cache/save@v3
+      with:
+        key: cli-${{ matrix.os }}-${{ matrix.target }}-${{ github.run_id }}
+        path: |
+          ~/.cargo
+          ./target
 
     - name: Copy / Rename / Archive CLI
       run: |
@@ -217,11 +233,10 @@ jobs:
     - name: Install cross toolchain 
       run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib
 
-    - name: Configure caching for FW build
-      uses: actions/cache@v3
+    - name: Load ${{ matrix.platform }} FW cache
+      uses: actions/cache/restore@v3
       with:
-        key: fw-${{ matrix.platform }}-${{ matrix.target }}-${{ github.run_id }}
-        restore-keys: fw-${{ matrix.platform }}-${{ matrix.target }}
+        key: fw-${{ matrix.platform }}-${{ matrix.target }}
         path: |
           ~/.cargo
           ./fw/target
@@ -235,6 +250,15 @@ jobs:
     - name: Build FW
       run: |
         cd fw && cargo build --target ./${{ matrix.platform }}.json --release
+
+    - name: Update ${{ matrix.platform }} FW cache
+      if: ${{ github.ref == 'refs/heads/main' }}
+      uses: actions/cache/save@v3
+      with:
+        key: fw-${{ matrix.platform }}-${{ matrix.target }}-${{ github.run_id }}
+        path: |
+          ~/.cargo
+          ./fw/target
 
     - name: Convert / Rename binary artifacts
       run: |
@@ -270,11 +294,10 @@ jobs:
         target:  ${{ matrix.target }}
         override: true
     
-    - name: Configure caching 
-      uses: actions/cache@v3
+    - name: Load simulator cache
+      uses: actions/cache/restore@v3
       with:
-        key: sim-${{ github.run_id }}
-        restore-keys: sim
+        key: sim
         path: |
           ~/.cargo
           ./target
@@ -287,6 +310,15 @@ jobs:
       with:
         command: build
         args: --tests --package ledger-mob
+    
+    - name: Update simulator cache
+      if: ${{ github.ref == 'refs/heads/main' }}
+      uses: actions/cache/save@v3
+      with:
+        key: sim-${{ github.run_id }}
+        path: |
+          ~/.cargo
+          ./target
 
   # Run simulator tests
   test-sim:
@@ -428,11 +460,10 @@ jobs:
           toolchain: nightly
           override: true
 
-      - name: Configure caching for doc build
-        uses: actions/cache@v3
+      - name: Restore core cache
+        uses: actions/cache/restore@v3
         with:
-          key: docs-${{ github.run_id }}
-          restore-keys: docs
+          key: core
           path: |
             ~/.cargo
             ./target
