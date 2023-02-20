@@ -15,10 +15,10 @@ use mc_transaction_summary::{
     TransactionEntity, TxSummaryStreamingVerifierCtx, TxSummaryUnblindingReport,
 };
 use mc_transaction_types::{
-    amount::Amount,
-    masked_amount::MaskedAmount,
-    tx_summary::{TxInSummary, TxOutSummary},
-    unmasked_amount::UnmaskedAmount,
+    Amount,
+    MaskedAmount,
+    TxInSummary, TxOutSummary,
+    UnmaskedAmount,
     BlockVersion,
 };
 

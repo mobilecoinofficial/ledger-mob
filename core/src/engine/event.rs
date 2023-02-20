@@ -15,7 +15,7 @@ use mc_crypto_ring_signature::{CompressedCommitment, CurveScalar, ReducedTxOut, 
 
 #[cfg(feature = "summary")]
 use mc_transaction_types::{
-    amount::Amount, masked_amount::MaskedAmount, unmasked_amount::UnmaskedAmount,
+    Amount, MaskedAmount, UnmaskedAmount,
 };
 
 use ledger_apdu::{ApduError, ApduStatic};
