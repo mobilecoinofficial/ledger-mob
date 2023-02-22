@@ -68,7 +68,6 @@ futures = "*"
 
 bip32 = { version = "*", features = [ "bip39"] }
 tiny-bip39 = "1.0"
-tiny-hderive = "0.3.0"
 slip10_ed25519 = "0.1.3"
 simplelog = "*"
 
