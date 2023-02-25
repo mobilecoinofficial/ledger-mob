@@ -285,7 +285,7 @@ dependencies = [
 [[package]]
 name = "bulletproofs-og"
 version = "3.0.0-pre.1"
-source = "git+https://github.com/ryankurte/bulletproofs.git?branch=fix/curve25519-backend#e0870eb94e655ddafbeabf1cf72de873efe04411"
+source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e#65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e"
 dependencies = [
  "byteorder",
  "clear_on_drop",
@@ -293,6 +293,8 @@ dependencies = [
  "digest 0.10.6",
  "merlin",
  "rand_core 0.6.4",
+ "serde",
+ "serde_derive",
  "sha3",
  "subtle 2.4.1",
 ]
