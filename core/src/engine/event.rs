@@ -14,9 +14,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, CurveScalar, ReducedTxOut, Scalar};
 
 #[cfg(feature = "summary")]
-use mc_transaction_types::{
-    Amount, MaskedAmount, UnmaskedAmount,
-};
+use mc_transaction_types::{Amount, MaskedAmount, UnmaskedAmount};
 
 use ledger_apdu::{ApduError, ApduStatic};
 use ledger_mob_apdu::{prelude::*, tx::AddTxInFlags};

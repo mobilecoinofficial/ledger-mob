@@ -15,11 +15,7 @@ use mc_transaction_summary::{
     TransactionEntity, TxSummaryStreamingVerifierCtx, TxSummaryUnblindingReport,
 };
 use mc_transaction_types::{
-    Amount,
-    MaskedAmount,
-    TxInSummary, TxOutSummary,
-    UnmaskedAmount,
-    BlockVersion,
+    Amount, BlockVersion, MaskedAmount, TxInSummary, TxOutSummary, UnmaskedAmount,
 };
 
 use crate::apdu::tx::TxPrivateKey;
