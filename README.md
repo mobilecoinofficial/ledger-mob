@@ -28,7 +28,7 @@ End users should install signed and security-audited releases via [Ledger Live](
 
 ### Installing pre-built binaries
 
-Note that side-loading is only supported on `nanosplus` devices, and should only be used for development purposes.
+Note that side-loading is only supported on `nanosplus` devices with firmware version `1.1.0`, and should only be used for development purposes.
 
 - Download the latest nanosplus release [here](https://github.com/mobilecoinofficial/ledger-mob/releases/latest/download/ledger-mob-fw-nanosplus.tgz)
 - `tar -xvf ledger-mob-fw-nanosplus.tgz` to extract the firmware package
@@ -62,6 +62,11 @@ You will need [rust](https://rustup.rs/) (nightly), [docker](https://docs.docker
 - `apt install libusb-1.0-0-dev libhidapi-dev libudev-dev` for communication with physical ledger devices
 - `docker pull ghcr.io/ledgerhq/speculos` to fetch speculos docker image for integration tests
 
+On linux you will need to install the [udev rules](https://github.com/LedgerHQ/udev-rules)
+- `wget https://raw.githubusercontent.com/LedgerHQ/udev-rules/master/20-hw1.rules` to download the rules
+- `sudo cp 20-hw1.rules /etc/udev/rules.d/` to move the rules to the right place
+- `sudo udevadm control --reload-rules` to reload udev rules
+- replug the device
 
 **Optional:**
 - `pip3 install ledgerwallet` to install the [ledgerctl](https://github.com/LedgerHQ/ledgerctl) tool to side-load applications onto a physical nanosplus

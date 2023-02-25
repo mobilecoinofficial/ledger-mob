@@ -21,7 +21,7 @@ path = [
 flags = "0"
 icon = "mob16x16i.gif"
 icon_small = "mob14x14i.gif"
-#api_level = "1"
+api_level = "1"
 
 [features]
 applet = []
