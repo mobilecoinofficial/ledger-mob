@@ -21,7 +21,7 @@ use nanos_sdk::{
 use nanos_ui::layout::{Layout, Location, StringPlace};
 
 use ledger_mob_core::{
-    apdu,
+    apdu::{self, app_info::AppFlags},
     engine::{Engine, Error, Event, State},
 };
 
@@ -225,13 +225,11 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     }
 
     // Handle generic commands
-    if i == app_info::AppInfoReq::<10>::INS {
-        let i = app_info::AppInfoResp::new(
-            MOB_PROTO_VERSION,
-            APP_NAME,
-            APP_VERSION,
-            app_info::AppFlags::empty(),
-        );
+    if i == app_info::AppInfoReq::INS {
+        let mut flags = app_flags();
+        flags.set(AppFlags::UNLOCKED, engine.is_unlocked());
+
+        let i = app_info::AppInfoResp::new(MOB_PROTO_VERSION, APP_NAME, APP_VERSION, flags);
 
         match i.encode(&mut comm.apdu_buffer) {
             Ok(n) => {

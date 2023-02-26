@@ -19,14 +19,10 @@ use mc_transaction_signer::{
     Operations,
 };
 
-use ledger_mob::{tx::TxConfig, Connect, DeviceHandle, LedgerProvider};
+use ledger_mob::{
+    transport::GenericTransport, tx::TxConfig, Connect, DeviceHandle, Filter, LedgerProvider,
+};
 use ledger_mob_apdu::random::{RandomReq, RandomResp};
-
-#[cfg(feature = "transport_hid")]
-use ledger_mob::transport::TransportNativeHID;
-
-#[cfg(feature = "transport_tcp")]
-use ledger_mob::transport::{TcpOptions, TransportTcp};
 
 mod helpers;
 use helpers::*;
@@ -34,9 +30,13 @@ use helpers::*;
 /// Ledger command line utility
 #[derive(Clone, PartialEq, Debug, Parser)]
 struct Options {
-    /// Target for ledger connection
-    #[clap(long, value_enum)]
-    target: Target,
+    /// Supported transports for ledger discovery
+    #[clap(long, value_enum, default_value = "any")]
+    target: Filter,
+
+    /// Device index (where more than one device is available)
+    #[clap(long, default_value = "0")]
+    device_index: usize,
 
     /// Subcommand to execute
     #[clap(subcommand)]
@@ -47,20 +47,12 @@ struct Options {
     log_level: LevelFilter,
 }
 
-/// Target connection enumeration
-#[derive(Clone, PartialEq, Debug, clap::ValueEnum, strum::Display)]
-#[non_exhaustive]
-enum Target {
-    /// USB HID
-    Hid,
-    /// TCP (Speculos simulator)
-    Tcp,
-}
-
-/// Ledger MobileCoin Command Line Tool
 #[derive(Clone, PartialEq, Debug, Parser)]
 #[non_exhaustive]
 enum Actions {
+    /// List available devices
+    List,
+
     /// Fetch device info
     DeviceInfo,
 
@@ -136,38 +128,50 @@ async fn main() -> anyhow::Result<()> {
 
     debug!("Using transport: {:?}", args.target);
 
-    // Connect to transport and execute commands
-    match args.target {
-        #[cfg(feature = "transport_tcp")]
-        Target::Tcp => {
-            let opts = TcpOptions::default();
-            let t = Connect::<TransportTcp>::connect(&p, &opts).await?;
+    // List available devices
+    let devices = p.list_devices(args.target).await;
+    if devices.is_empty() {
+        return Err(anyhow::anyhow!("No devices found"));
+    }
 
-            execute(t, args.cmd).await?;
+    // Handle list command
+    if args.cmd == Actions::List {
+        info!("Devices:");
+        for (i, d) in devices.iter().enumerate() {
+            info!("  {}: {}", i, d);
         }
-        #[cfg(feature = "transport_hid")]
-        Target::Hid => {
-            let devices: Vec<_> = p.list_devices().collect();
 
-            if devices.is_empty() {
-                return Err(anyhow::anyhow!("No devices found"));
-            }
+        return Ok(());
+    }
 
-            debug!("Found devices: {:04x?}", devices);
+    // Select device by index
+    if args.device_index >= devices.len() {
+        return Err(anyhow::anyhow!(
+            "Invalid device index: {} (max: {})",
+            args.device_index,
+            devices.len() - 1
+        ));
+    }
 
-            let t = match Connect::<TransportNativeHID>::connect(&p, &devices[0]).await {
-                Ok(v) => v,
-                Err(e) => {
-                    error!("Failed to connect to device: {:04x?}", devices[0]);
-                    return Err(e.into());
-                }
-            };
+    debug!(
+        "Using device {}: {}",
+        args.device_index, devices[args.device_index]
+    );
 
-            execute(t, args.cmd).await?;
+    // Connect to device
+    let t = match Connect::<GenericTransport>::connect(&p, &devices[args.device_index]).await {
+        Ok(v) => v,
+        Err(e) => {
+            error!(
+                "Failed to connect to device: {:04x?}",
+                devices[args.device_index]
+            );
+            return Err(e.into());
         }
-        #[cfg(any(not(feature = "transport_hid"), not(feature = "transport_tcp")))]
-        _ => todo!("transport {} not available", args.target),
     };
+
+    // Execute command
+    execute(t, args.cmd).await?;
 
     Ok(())
 }
@@ -178,22 +182,13 @@ where
     T: Exchange<Error = E> + Sync + Send,
     E: Error + Sync + Send + 'static,
 {
-    use ledger_apdu::apdus::*;
-
     let mut buff = [0u8; 1024];
 
     debug!("Executing command: {:?}", cmd);
 
     match cmd {
-        Actions::DeviceInfo => {
-            let i = t
-                .exchange::<DeviceInfo>(DeviceInfoGet {}, &mut buff)
-                .await?;
-
-            info!("device info: {:#?}", i);
-        }
         Actions::AppInfo => {
-            let i = t.exchange::<AppInfo>(AppInfoGet {}, &mut buff).await?;
+            let i = t.app_info().await?;
 
             info!("app info: {:#?}", i);
         }
@@ -351,6 +346,7 @@ where
                 _ => (),
             }
         }
+        _ => unreachable!(),
     }
 
     Ok(())

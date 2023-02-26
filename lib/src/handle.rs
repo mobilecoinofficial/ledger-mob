@@ -13,8 +13,10 @@ use futures::executor::block_on;
 use log::debug;
 
 use ledger_mob_apdu::{
+    app_info::AppFlags,
     ident::{IdentGetReq, IdentResp, IdentSignReq},
     key_image::{KeyImageReq, KeyImageResp},
+    prelude::{AppInfoReq, AppInfoResp},
     state::TxState,
     subaddress_keys::{SubaddressKeyReq, SubaddressKeyResp},
     tx::{TxInfo, TxInfoReq},
@@ -56,7 +58,33 @@ impl<T: Exchange + Sync + Send> From<T> for DeviceHandle<T> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct AppInfo {
+    pub app_name: String,
+    pub app_version: String,
+    pub protocol_version: u8,
+    pub flags: AppFlags,
+}
+
 impl<T: Exchange + Sync + Send> DeviceHandle<T> {
+    /// Fetch ledger application info
+    pub async fn app_info(&self) -> Result<AppInfo, Error<<T as Exchange>::Error>> {
+        let mut buff = [0u8; 256];
+
+        debug!("Requesting app info");
+
+        let resp = self
+            .exchange::<AppInfoResp>(AppInfoReq {}, &mut buff)
+            .await?;
+
+        Ok(AppInfo {
+            app_name: resp.name.to_string(),
+            app_version: resp.version.to_string(),
+            protocol_version: resp.proto,
+            flags: resp.flags,
+        })
+    }
+
     /// Fetch root keys for the provided account index
     pub async fn account_keys(
         &self,
@@ -260,7 +288,7 @@ where
     }
 }
 
-/// Re-export [Exchange] trait for [DeviceHandle]
+/// Re-export [Exchange] trait for [DeviceHandle], including timeout function
 #[async_trait]
 impl<T: Exchange + Sync + Send> Exchange for DeviceHandle<T> {
     type Error = Error<<T as Exchange>::Error>;
