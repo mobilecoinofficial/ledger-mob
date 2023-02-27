@@ -121,5 +121,7 @@ clippy-fix:
 	cargo clippy --fix --allow-dirty -p ledger-mob -p ledger-mob-apdu -p ledger-mob-core -p ledger-mob-tests --no-deps -- -D warnings
 	cd fw && cargo clippy --fix --target nanosplus --allow-dirty -p ledger-mob-fw --no-deps -- -D warnings
 
+clean:
+	rm -rf target fw/target
 
-.PHONY: fw lib core nanosplus nanox fmt clippy
+.PHONY: fw lib core nanosplus nanox fmt clippy clean
