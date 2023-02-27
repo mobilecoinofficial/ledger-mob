@@ -1,9 +1,9 @@
 
 [target.nanosplus]
-runner = "speculos.py --model nanosp --display qt -k 1.0.3 --apdu-port 1237"
+runner = "speculos.py --model nanosp --display qt -a 1 --apdu-port 1237"
 
 [target.nanox]
-runner = "speculos.py --model nanox --display qt -k 2.0.2 --apdu-port 1237"
+runner = "speculos.py --model nanox --display qt -a 1 --apdu-port 1237"
 
 [build]
 target = "nanosplus"
