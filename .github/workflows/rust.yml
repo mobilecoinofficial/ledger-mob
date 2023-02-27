@@ -26,10 +26,8 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         target:  ${{ matrix.target }}
         override: true
-        components: rustfmt, clippy, rust-src
 
     - name: Set RUST_TARGET_PATH
       run: echo "RUST_TARGET_PATH=${GITHUB_WORKSPACE}/fw/" >> $GITHUB_ENV
@@ -65,7 +63,6 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         target:  ${{ matrix.target }}
         override: true
 
@@ -124,7 +121,6 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         target:  ${{ matrix.target }}
         override: true
     
@@ -225,10 +221,8 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         target:  ${{ matrix.target }}
         override: true
-        components: rust-src
 
     - name: Install cross toolchain 
       run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib
@@ -290,7 +284,6 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         target:  ${{ matrix.target }}
         override: true
     
@@ -350,7 +343,6 @@ jobs:
     - name: Configure rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
         override: true
     
     - name: Restore cache from test build
@@ -457,7 +449,6 @@ jobs:
       - name: Fetch rust tooling
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
           override: true
 
       - name: Restore core cache

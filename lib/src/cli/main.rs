@@ -57,6 +57,7 @@ enum Target {
     Tcp,
 }
 
+/// Ledger MobileCoin Command Line Tool
 #[derive(Clone, PartialEq, Debug, Parser)]
 #[non_exhaustive]
 enum Actions {
