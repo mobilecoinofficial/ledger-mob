@@ -68,6 +68,10 @@ pub struct Options {
     #[clap(long)]
     pub sdk: Option<String>,
 
+    /// API level override
+    #[clap(long)]
+    pub api_level: Option<String>,
+
     /// BIP39 seed for initialisation
     #[clap(long, env)]
     pub seed: Option<String>,
@@ -95,6 +99,7 @@ impl Default for Options {
             model: Model::NanoSP,
             display: Display::Headless,
             sdk: None,
+            api_level: None,
             seed: None,
             http_port: 5000,
             apdu_port: None,
@@ -124,6 +129,10 @@ impl Options {
 
         if let Some(sdk) = &self.sdk {
             args.push(format!("--sdk={sdk}"));
+        }
+
+        if let Some(api_level) = &self.api_level {
+            args.push(format!("--apiLevel={api_level}"));
         }
 
         if self.debug {

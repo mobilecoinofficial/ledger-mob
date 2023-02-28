@@ -12,17 +12,18 @@ use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 use mc_core::{
     account::{Account, RingCtAddress},
     keys::{SubaddressViewPublic, TxOutPublic},
-    memo::Memo,
     slip10::{wallet_path, Slip10Key},
     subaddress::Subaddress,
 };
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPublic};
 use mc_crypto_ring_signature::{onetime_keys::recover_onetime_private_key, KeyImage};
+pub use mc_transaction_types::{BlockVersion, TokenId};
+
+#[cfg(feature = "memo")]
+use mc_crypto_memo_mac::compute_category1_hmac;
 
 #[cfg(feature = "summary")]
 use mc_transaction_summary::TxSummaryUnblindingReport;
-
-pub use mc_transaction_types::{BlockVersion, TokenId};
 
 #[cfg(feature = "summary")]
 pub use mc_transaction_summary::TransactionEntity;
@@ -343,15 +344,17 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 // this has been deemed non-critical as signed memos are not
                 // _useable_ until included in a transaction.
 
-                // Sign memo
-                let r = self.sign_memo(
-                    n,
+                // Perform memo signing
+                let r = self.memo_sign(
                     *subaddress_index,
                     tx_public_key,
                     receiver_view_public,
                     kind,
                     payload,
                 )?;
+
+                // Update memo counter
+                self.state = State::BuildMemos(n + 1);
 
                 // Return HMAC
                 return Ok(r);
@@ -562,43 +565,39 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     }
 
     // Sign the provided memo, returning an `Output::MemoHmac` on success
-    fn sign_memo(
+    fn memo_sign(
         &mut self,
-        n: u8,
         subaddress_index: u64,
-        tx_public_key: &TxOutPublic,
+        tx_out_public_key: &TxOutPublic,
         receiver_view_public: &SubaddressViewPublic,
         kind: &[u8; 2],
         payload: &[u8; 48],
     ) -> Result<Output, Error> {
         // Fetch default subaddress
         let account = self.get_account(self.account_index);
-        let subaddr = account.subaddress(subaddress_index);
+        let sender_subaddr = account.subaddress(subaddress_index);
 
         // KX using sender default subaddress spend private and receiver subaddress view public
-        let sender_spend_private = subaddr.spend_private_key();
+        let sender_spend_private = sender_subaddr.spend_private_key().as_ref();
+        let shared_secret = sender_spend_private.key_exchange(receiver_view_public.as_ref());
 
         // TODO: check memo is supported type (no MEMO_TYPE_BYTES exported yet)
 
         // Build HMAC
-        let tx_out_public_key: &RistrettoPublic = tx_public_key.as_ref();
-        let hmac_value = Memo::hmac_sign(
-            tx_out_public_key,
-            sender_spend_private,
-            receiver_view_public,
+        let tx_out_public_key: &RistrettoPublic = tx_out_public_key.as_ref();
+        let hmac_value = compute_category1_hmac(
+            shared_secret.as_ref(),
+            &CompressedRistrettoPublic::from(tx_out_public_key),
             *kind,
             payload,
         );
-
-        // Update memo counter
-        self.state = State::BuildMemos(n + 1);
 
         // Return HMAC
         // TODO: useful to ensure hmac|memo correspondence? can't check this on client i think because we don't have the keys
         Ok(Output::MemoHmac {
             state: self.state,
             digest: self.digest.clone(),
-            hmac: hmac_value.0,
+            hmac: hmac_value,
         })
     }
 

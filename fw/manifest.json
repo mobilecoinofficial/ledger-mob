@@ -14,5 +14,6 @@
     "icon": "mob14x14i.gif",
     "name": "MobileCoin",
     "targetId": "TARGET",
-    "version": "VERSION"
+    "version": "VERSION",
+    "apiLevel": "1"
 }

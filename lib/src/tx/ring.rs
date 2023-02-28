@@ -12,7 +12,9 @@ use ledger_transport::Exchange;
 
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CurveScalar, RingMLSAG, Scalar};
-use mc_crypto_ring_signature_signer::{OneTimeKeyDeriveData, RingSigner, SignableInputRing};
+use mc_crypto_ring_signature_signer::{
+    OneTimeKeyDeriveData, RingSigner, SignableInputRing, SignerError,
+};
 
 use ledger_mob_apdu::{state::TxState, tx::*};
 
@@ -21,8 +23,6 @@ use crate::tx::check_state;
 use super::{Error, TransactionContext, TransactionHandle};
 
 impl<T: Exchange + Send + Sync> RingSigner for TransactionHandle<T> {
-    type Error = Error<<T as Exchange>::Error>;
-
     /// Execute ring signing operation on ledger hw
     fn sign(
         &self,
@@ -30,13 +30,18 @@ impl<T: Exchange + Send + Sync> RingSigner for TransactionHandle<T> {
         signable_ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
         _rng: &mut dyn CryptoRngCore,
-    ) -> Result<RingMLSAG, Self::Error> {
+    ) -> Result<RingMLSAG, SignerError> {
         // Wrap async to avoid hefty codebase changes
         tokio::task::block_in_place(|| {
             block_on(async {
                 let mut ctx = self.ctx.lock().await;
                 ctx.ring_sign(message, signable_ring, pseudo_output_blinding)
                     .await
+            })
+            .map_err(|e| {
+                // TODO: convert signer errors back from ledger error types
+                log::error!("Ring signer error: {:?}", e);
+                SignerError::Unknown
             })
         })
     }

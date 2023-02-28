@@ -26,7 +26,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2023-01-04
         target:  ${{ matrix.target }}
         override: true
         components: rustfmt, clippy, rust-src
@@ -65,7 +65,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2023-01-04
         target:  ${{ matrix.target }}
         override: true
 
@@ -124,7 +124,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2023-01-04
         target:  ${{ matrix.target }}
         override: true
     
@@ -225,7 +225,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2023-01-04
         target:  ${{ matrix.target }}
         override: true
         components: rust-src
@@ -290,7 +290,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2023-01-04
         target:  ${{ matrix.target }}
         override: true
     
@@ -350,7 +350,7 @@ jobs:
     - name: Configure rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2023-01-04
         override: true
     
     - name: Restore cache from test build
@@ -457,7 +457,7 @@ jobs:
       - name: Fetch rust tooling
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2023-01-04
           override: true
 
       - name: Restore core cache

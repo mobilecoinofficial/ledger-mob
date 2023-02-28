@@ -47,11 +47,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Trans
         apdu_port: Some(apdu_port),
         seed,
         model,
-        sdk: match model {
-            Model::NanoSP => Some("1.0.3".to_string()),
-            Model::NanoX => Some("2.0.2".to_string()),
-            _ => unimplemented!(),
-        },
+        api_level: Some("1".to_string()),
         //display: Display::Headless,
         ..Default::default()
     };

@@ -9,7 +9,6 @@ use ledger_transport::Exchange;
 use log::{debug, error, info, LevelFilter};
 use rand_core::OsRng;
 use serde::{de::DeserializeOwned, Serialize};
-use strum::Display;
 
 use mc_core::keys::TxOutPublic;
 use mc_crypto_keys::RistrettoPublic;
@@ -17,7 +16,7 @@ use mc_transaction_core::ring_ct::InputRing;
 use mc_transaction_core::tx::Tx;
 use mc_transaction_signer::{
     types::{TxSignReq, TxSignResp, TxoSynced},
-    Commands,
+    Operations,
 };
 
 use ledger_mob::{tx::TxConfig, Connect, DeviceHandle, LedgerProvider};
@@ -35,41 +34,30 @@ use helpers::*;
 /// Ledger command line utility
 #[derive(Clone, PartialEq, Debug, Parser)]
 struct Options {
-    /// Transport for ledger connection
+    /// Target for ledger connection
+    #[clap(long, value_enum)]
+    target: Target,
+
+    /// Subcommand to execute
     #[clap(subcommand)]
-    transport: Transport,
+    cmd: Actions,
 
     /// Enable verbose logging
     #[clap(long, default_value = "info")]
     log_level: LevelFilter,
 }
 
-#[derive(Clone, PartialEq, Debug, clap::ValueEnum)]
-enum Format {
-    Text,
-    Json,
-    Proto,
-}
-
-#[derive(Clone, PartialEq, Debug, Parser, Display)]
+/// Target connection enumeration
+#[derive(Clone, PartialEq, Debug, clap::ValueEnum, strum::Display)]
 #[non_exhaustive]
-enum Transport {
+enum Target {
     /// USB HID
-    Hid {
-        #[clap(subcommand)]
-        cmd: Actions,
-    },
-    /// Bluetooth Low Energy
-    Ble,
+    Hid,
     /// TCP (Speculos simulator)
-    Tcp {
-        //#[clap(flatten)]
-        //opts: TcpOptions,
-        #[clap(subcommand)]
-        cmd: Actions,
-    },
+    Tcp,
 }
 
+/// Ledger MobileCoin Command Line Tool
 #[derive(Clone, PartialEq, Debug, Parser)]
 #[non_exhaustive]
 enum Actions {
@@ -130,9 +118,9 @@ enum Actions {
         challenge: Option<HexData<32>>,
     },
 
-    // Implement shared signer commands
+    // Implement shared signer operations
     #[command(flatten)]
-    Signer(Commands),
+    Signer(Operations),
 }
 
 #[tokio::main]
@@ -146,19 +134,19 @@ async fn main() -> anyhow::Result<()> {
     // Connect to ledger device
     let p = LedgerProvider::new()?;
 
-    debug!("Using transport: {:?}", args.transport);
+    debug!("Using transport: {:?}", args.target);
 
     // Connect to transport and execute commands
-    match args.transport {
+    match args.target {
         #[cfg(feature = "transport_tcp")]
-        Transport::Tcp { cmd } => {
+        Target::Tcp => {
             let opts = TcpOptions::default();
             let t = Connect::<TransportTcp>::connect(&p, &opts).await?;
 
-            execute(t, cmd).await?;
+            execute(t, args.cmd).await?;
         }
         #[cfg(feature = "transport_hid")]
-        Transport::Hid { cmd } => {
+        Target::Hid => {
             let devices: Vec<_> = p.list_devices().collect();
 
             if devices.is_empty() {
@@ -175,9 +163,10 @@ async fn main() -> anyhow::Result<()> {
                 }
             };
 
-            execute(t, cmd).await?;
+            execute(t, args.cmd).await?;
         }
-        _ => todo!("transport {} not available", args.transport),
+        #[cfg(any(not(feature = "transport_hid"), not(feature = "transport_tcp")))]
+        _ => todo!("transport {} not available", args.target),
     };
 
     Ok(())
@@ -285,11 +274,13 @@ where
 
             // Handle signer operations
             match &c {
-                Commands::GetAccount { output, .. } => {
-                    Commands::get_account(&a, account_index, output)?
+                Operations::GetAccount { output, .. } => {
+                    Operations::get_account(&a, account_index, output)?
                 }
-                Commands::SyncTxos { input, output, .. } => Commands::sync_txos(&a, input, output)?,
-                Commands::SignTx { input, output, .. } => {
+                Operations::SyncTxos { input, output, .. } => {
+                    Operations::sync_txos(&a, input, output)?
+                }
+                Operations::SignTx { input, output, .. } => {
                     // Read in transaction file
                     debug!("Loading unsigned transaction from '{}'", input);
                     let req: TxSignReq = read_input(input).await?;

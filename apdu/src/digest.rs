@@ -10,7 +10,7 @@ use mc_core::{
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, ReducedTxOut, Scalar};
-use mc_transaction_types::unmasked_amount::UnmaskedAmount;
+use mc_transaction_types::UnmaskedAmount;
 
 use crate::tx::TxPrivateKey;
 

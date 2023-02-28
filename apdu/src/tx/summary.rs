@@ -10,9 +10,9 @@ use mc_core::{
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, CurveScalar, Scalar};
+use mc_transaction_types::{Amount, UnmaskedAmount};
 #[cfg(feature = "alloc")]
-use mc_transaction_types::masked_amount::{MaskedAmount, MaskedAmountV2};
-use mc_transaction_types::{amount::Amount, unmasked_amount::UnmaskedAmount};
+use mc_transaction_types::{MaskedAmount, MaskedAmountV2};
 
 use crate::{
     digest::{digest_tx_summary_add_output, digest_tx_summary_init},
