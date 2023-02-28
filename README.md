@@ -59,10 +59,13 @@ You will need [rust](https://rustup.rs/) (nightly), [docker](https://docs.docker
 - `rustup default nightly` to default to nightly toolchain
 - `rustup component add rust-src` to support out-of-tree targets
 - `docker pull ghcr.io/ledgerhq/speculos` to fetch speculos docker image for integration tests
-- `pip3 install ledgerwallet` to install the [ledgerctl](https://github.com/LedgerHQ/ledgerctl) tool to side-load applications onto a physical nanosplus
+- `ledgerctl` must be installed to side-load apps to the ledger, via git for `api_level` support
+  - `git clone https://github.com/LedgerHQ/ledgerctl` to fetch the latest development version
+  - `cd ledgerctl && pip3 install -e .` to install
+
 
 **Linux:**
-- `apt install make pkg-config clang gcc-multilib gcc-arm-none-eabi` to fetch build tools
+- `apt install make pkg-config clang gcc-multilib gcc-arm-none-eabi` to fetch build tools and toolchain
 - `apt install libusb-1.0-0-dev libhidapi-dev libudev-dev` for communication with physical ledger devices
 
 To talk to the device you will also need to install the [udev rules](https://github.com/LedgerHQ/udev-rules)
@@ -72,9 +75,11 @@ To talk to the device you will also need to install the [udev rules](https://git
 - replug the device
 
 **MacOS:**
-- `brew install gcc-arm-embedded` to fetch build tools
+- `brew install python3` to install python3
+- `pip3 install flit_core` for, some reason
+- `brew install --cask gcc-arm-embedded` to fetch toolchain
 
-You will also need to make sure your python path is set up correctly for `ledgerctl` and `speculos.py` to function.
+You will also need to make sure your python path is set up correctly for `ledgerctl` and `speculos.py` to function (add something like `export PATH="/usr/local/opt/python@3.11/bin:$PATH"` to your `.zshrc` or equivalent).
 
 **Optional:**
 - [speculos](https://speculos.ledger.com/) to run the local simulator
@@ -120,7 +125,7 @@ See `ledger-mob-tests --help` for more tests and configuration options.
 
 - `ledgerwallet.client.CommException: Exception : Invalid status 6512 (Unknown reason)` when loading app
   - your ledger device may be running old firmware, check your firmware version is `1.1.0` and update via ledger live if required
-  - your ledgerctl may not support the `api_level` flag, try updating with `pip3 install ledgerwallet` or check out the development branch from https://github.com/LedgerHQ/ledgerctl
+  - your ledgerctl may not support the `api_level` flag, try updating with `pip3 install ledgerwallet` or check out the development branch from https://github.com/LedgerHQ/ledgerctl and install with `pip3 install -e .`
 - MobileCoin app displays `RNG Unavailable`
   - your ledger device may be running old firmware, check your firmware version is `1.1.0` and update via ledger live if required
 
