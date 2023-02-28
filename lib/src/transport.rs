@@ -11,6 +11,7 @@ pub use ledger_transport_hid::TransportNativeHID;
 
 #[cfg(feature = "transport_tcp")]
 pub use ledger_transport_tcp::{TcpOptions, TransportTcp};
+use strum::Display;
 
 use crate::Error;
 
@@ -23,6 +24,8 @@ pub type TransportHidError = Error<ledger_transport_hid::LedgerHIDError>;
 pub type TransportTcpError = Error<ledger_transport_tcp::Error>;
 
 /// Generic ledger device (abstract over transport types)
+#[derive(Display)]
+#[non_exhaustive]
 pub enum GenericTransport {
     #[cfg(feature = "transport_hid")]
     Hid(TransportNativeHID),
@@ -32,6 +35,7 @@ pub enum GenericTransport {
 
 /// Generic transport error
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum GenericError {
     #[cfg(feature = "transport_hid")]
     #[error("HID transport error: {0}")]
@@ -73,6 +77,8 @@ impl Exchange for GenericTransport {
             Self::Hid(t) => t.exchange(req, buff).await?,
             #[cfg(feature = "transport_tcp")]
             Self::Tcp(t) => t.exchange(req, buff).await?,
+            #[cfg(not(all(feature = "transport_hid", feature = "transport_tcp")))]
+            _ => panic!("Transport {} unavailable", self),
         };
 
         Ok(r)

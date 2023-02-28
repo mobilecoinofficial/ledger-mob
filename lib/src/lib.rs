@@ -8,7 +8,7 @@
 // #![feature(async_fn_in_trait)]
 
 use async_trait::async_trait;
-use std::{convert::Infallible, fmt::Debug, net::SocketAddr};
+use std::{convert::Infallible, fmt::Debug};
 use transport::GenericError;
 
 pub use ledger_transport::Exchange;
@@ -98,7 +98,9 @@ impl LedgerProvider {
         if filter == Filter::Any || filter == Filter::Tcp {
             // Try connecting to default speculos port
             let o = TcpOptions::default();
-            if let Ok(_t) = tokio::net::TcpStream::connect(SocketAddr::new(o.addr, o.port)).await {
+            if let Ok(_t) =
+                tokio::net::TcpStream::connect(std::net::SocketAddr::new(o.addr, o.port)).await
+            {
                 // Return default port if connection succeeded
                 devices.push(LedgerInfo::Tcp(o));
             };
@@ -142,6 +144,8 @@ impl std::fmt::Display for LedgerInfo {
                     "Speculos", tcp_info.addr, tcp_info.port
                 )
             }
+            #[cfg(not(all(feature = "transport_hid", feature = "transport_tcp")))]
+            _ => panic!("Transport {} unavailable", self),
         }
     }
 }
@@ -159,6 +163,7 @@ pub trait Connect<T: Exchange> {
 }
 
 /// Generic connect implementation
+#[cfg(any(feature = "transport_hid", feature = "transport_tcp"))]
 #[async_trait]
 impl Connect<GenericTransport> for LedgerProvider {
     type Options = LedgerInfo;
