@@ -13,14 +13,14 @@ use ledger_mob_core::apdu::app_info::AppFlags;
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 pub const APP_VERSION: &str = env!("GIT_TAG");
 pub const BUILD_TIME: &str = env!("BUILD_TIME");
-pub const APP_FLAGS: AppFlags = app_flags();
 
-const fn app_flags() -> AppFlags {
+pub fn app_flags() -> AppFlags {
+    let mut f = AppFlags::empty();
+
     #[cfg(feature = "summary")]
-    return AppFlags::HAS_TX_SUMMARY;
+    f.set(AppFlags::HAS_TX_SUMMARY, true);
 
-    #[cfg(not(feature = "summary"))]
-    return AppFlags::empty();
+    f
 }
 
 /// Application timeout (exit after no user input)

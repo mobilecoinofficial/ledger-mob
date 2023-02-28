@@ -4,21 +4,21 @@
 
 use encdec::{Decode, DecodeOwned, Encode};
 
-use super::{ApduError, ApduStatic, Instruction};
+use super::{ApduError, ApduStatic, Instruction, MOB_APDU_CLA};
 
 /// Fetch application info APDU
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
-pub struct AppInfoReq<const CLA: u8 = 0x00> {}
+pub struct AppInfoReq {}
 
-impl<const CLA: u8> ApduStatic for AppInfoReq<CLA> {
+impl ApduStatic for AppInfoReq {
     /// Application Info command APDU is class `0xb0`
-    const CLA: u8 = 0xb0;
+    const CLA: u8 = MOB_APDU_CLA;
 
     /// Application Info GET APDU is instruction `0x00`
     const INS: u8 = Instruction::GetAppInfo as u8;
 }
 
-impl<const CLA: u8> Encode for AppInfoReq<CLA> {
+impl Encode for AppInfoReq {
     type Error = ApduError;
 
     fn encode_len(&self) -> Result<usize, Self::Error> {
@@ -30,7 +30,7 @@ impl<const CLA: u8> Encode for AppInfoReq<CLA> {
     }
 }
 
-impl<const CLA: u8> DecodeOwned for AppInfoReq<CLA> {
+impl DecodeOwned for AppInfoReq {
     type Output = Self;
 
     type Error = ApduError;
@@ -239,7 +239,7 @@ mod test {
 
     #[test]
     fn app_info_req_apdu() {
-        let apdu = AppInfoReq::<0x12>::default();
+        let apdu = AppInfoReq::default();
 
         let mut buff = [0u8; 128];
         encode_decode_apdu(&mut buff, &apdu);

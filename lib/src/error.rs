@@ -5,15 +5,11 @@ use std::fmt::Display;
 
 use ledger_mob_apdu::state::TxState;
 use mc_crypto_ring_signature_signer::SignerError;
+use tokio::time::error::Elapsed;
 
 /// Ledger MobileCoin API Error Type
 #[derive(Debug, thiserror::Error)]
 pub enum Error<E: Display + Debug> {
-    /// HID API Error
-    #[cfg(feature = "transport_hid")]
-    #[error("HID error {0}")]
-    Hid(hidapi::HidError),
-
     /// HID Init Error
     #[error("could not create HidApi instance")]
     HidInit,
@@ -65,5 +61,25 @@ impl<E: Display + Debug> From<Error<E>> for SignerError {
             Error::Ring(r) => r,
             _ => SignerError::Unknown,
         }
+    }
+}
+
+impl<E: Display + Debug> From<Elapsed> for Error<E> {
+    fn from(_: Elapsed) -> Self {
+        Error::RequestTimeout
+    }
+}
+
+#[cfg(feature = "transport_hid")]
+impl From<ledger_transport_hid::LedgerHIDError> for Error<anyhow::Error> {
+    fn from(e: ledger_transport_hid::LedgerHIDError) -> Self {
+        Error::Transport(anyhow::anyhow!("HID: {}", e))
+    }
+}
+
+#[cfg(feature = "transport_tcp")]
+impl From<ledger_transport_tcp::Error> for Error<anyhow::Error> {
+    fn from(e: ledger_transport_tcp::Error) -> Self {
+        Error::Transport(anyhow::anyhow!("TCP: {}", e))
     }
 }

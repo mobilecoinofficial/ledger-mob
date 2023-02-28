@@ -20,7 +20,7 @@ use ledger_mob_core::{
 };
 
 use super::{clear_screen, helpers::*, UiResult};
-use crate::consts::{APP_FLAGS, APP_VERSION, BUILD_TIME, MOB32X32};
+use crate::consts::{app_flags, APP_VERSION, BUILD_TIME, MOB32X32};
 
 #[derive(Copy, Clone, Debug, PartialEq, EnumCount)]
 pub enum MenuState {
@@ -126,7 +126,7 @@ impl UiMenu {
                 let state = engine.state();
                 let s = u16::from_be_bytes([state.state() as u8, state.value() as u8]);
 
-                let mut flags = APP_FLAGS;
+                let mut flags = app_flags();
 
                 if engine.is_unlocked() {
                     flags |= AppFlags::UNLOCKED;
