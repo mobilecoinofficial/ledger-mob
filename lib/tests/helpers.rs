@@ -86,7 +86,9 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Trans
     // Start simulator and wait for a moment for launch
     let d = match driver_mode {
         DriverMode::Local => GenericDriver::Local(LocalDriver::new()),
-        DriverMode::Docker => GenericDriver::Docker(DockerDriver::new().expect("Failed to setup docker driver")),
+        DriverMode::Docker => {
+            GenericDriver::Docker(DockerDriver::new().expect("Failed to setup docker driver"))
+        }
     };
 
     let s = d
