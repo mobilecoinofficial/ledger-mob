@@ -10,17 +10,16 @@ edition = "2021"
 license = "GPL-3.0"
 publish = false
 
-default-target = "nanosplus"
-
 [package.metadata.nanos]
+name = "MobileCoin"
 curve = [ "ed25519" ]
 path = [ 
     "44'/866'",
     "13'/",
 ]
 flags = "0"
-icon = "mob16x16i.gif"
-icon_small = "mob14x14i.gif"
+icon = "assets/mob16x16i.gif"
+icon_small = "assets/mob14x14i.gif"
 api_level = "1"
 
 [features]
