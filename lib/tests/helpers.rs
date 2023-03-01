@@ -86,7 +86,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Trans
     // Start simulator and wait for a moment for launch
     let d = match driver_mode {
         DriverMode::Local => GenericDriver::Local(LocalDriver::new()),
-        DriverMode::Docker => GenericDriver::Docker(DockerDriver::new().unwrap()),
+        DriverMode::Docker => GenericDriver::Docker(DockerDriver::new().expect("Failed to setup docker driver")),
     };
 
     let s = d
@@ -94,6 +94,9 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Trans
         .await
         .expect("Simulator launch failed");
 
+    // Wait for sim to start listening
+    // TODO: this needs to be a while for CI but is very quick locally...
+    // could be a retry loop instead of worst-case blocking?
     tokio::time::sleep(Duration::from_millis(3000)).await;
 
     // Setup ADPU connector
@@ -108,6 +111,16 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Trans
     let t = TransportTcp::new(adpu_opts)
         .await
         .expect("APDU connection failed");
+
+    // Press _something_ to dismiss `Review Pending` message
+    // TODO: remove this from reviewed code? feature gate perhaps?
+    {
+        s.button(Button::Right, Action::PressAndRelease)
+            .await
+            .expect("Failed to exit review pending");
+
+        tokio::time::sleep(Duration::from_millis(1000)).await;
+    }
 
     (d, s, t)
 }

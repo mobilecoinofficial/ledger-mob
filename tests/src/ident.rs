@@ -87,7 +87,7 @@ where
     let challenge: [u8; 32] = rand::random();
     let req = IdentSignReq::new(v.index, v.uri, &challenge);
 
-    let resp = t.exchange::<TxInfo>(req, &mut buff).await.unwrap();
+    let resp = t.exchange::<TxInfo>(req, &mut buff).await.expect("TxInfo APDU exchange failed");
 
     // Check pending state
     assert_eq!(resp.state, TxState::IdentPending, "expected ident pending");

@@ -28,11 +28,12 @@ mlsag = [ "ledger-mob-core/mlsag" ]
 memo = [ "ledger-mob-core/memo" ]
 ident = [ "ledger-mob-core/ident" ]
 summary = [ "alloc", "ledger-mob-core/summary" ]
+pre-release = []
 
 alloc = [ "embedded-alloc", "critical-section", "ledger-mob-core/alloc" ]
 noinline = [ "ledger-mob-core/noinline" ]
 
-default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
+default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline", "pre-release" ]
 
 [dependencies]
 nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk", branch = "master" }
