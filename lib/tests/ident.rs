@@ -16,10 +16,10 @@ async fn mob_ident() -> anyhow::Result<()> {
 
         ledger_mob_tests::ident::test(t, || approve_ident(&s), v)
             .await
-            .unwrap();
+            .expect("Test run failed");
 
         // Exit simulator
-        d.exit(s).await?;
+        d.exit(s).await.expect("Target exit failed");
     }
 
     Ok(())

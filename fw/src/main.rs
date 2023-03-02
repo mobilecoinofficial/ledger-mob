@@ -18,7 +18,10 @@ use nanos_sdk::{
     io::{self, Reply, SyscallError},
     random::LedgerRng,
 };
-use nanos_ui::layout::{Layout, Location, StringPlace};
+use nanos_ui::{
+    layout::{Layout, Location, StringPlace},
+    screen_util::screen_update,
+};
 
 use ledger_mob_core::{
     apdu::{self, app_info::AppFlags},
@@ -75,6 +78,27 @@ extern "C" fn sample_main() {
         ENGINE_CTX.write(Engine::new_with_rng(LedgerDriver {}, LedgerRng {}));
         &mut *ENGINE_CTX.as_mut_ptr()
     };
+
+    // Developer mode / pending review popup
+    // must be cleared with user interaction
+    #[cfg(feature = "pre-release")]
+    {
+        clear_screen();
+        "Pending Review".place(Location::Middle, Layout::Centered, false);
+        screen_update();
+
+        loop {
+            let evt = comm.next_event::<u8>();
+
+            match evt {
+                io::Event::Button(_btn) => break,
+                io::Event::Command(_cmd) => {
+                    comm.reply(SyscallError::Security);
+                }
+                _ => (),
+            }
+        }
+    }
 
     // Run platform tests prior to init
     platform_tests(&mut comm);
