@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["AppFlags","Application info flags"],["AppInfoReq","Fetch application info APDU"],["AppInfoResp","Application information response APDU"]]};

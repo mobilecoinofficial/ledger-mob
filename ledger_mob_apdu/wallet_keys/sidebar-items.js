@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["WalletKeyReq","Wallet key request APDU."],["WalletKeyResp","Wallet key response APDU"]]};

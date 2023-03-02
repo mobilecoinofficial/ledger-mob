@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":[["VECTORS",""]],"fn":[["test","Test identity requests"]],"struct":[["Vector","Test vector type for identity derivation and challenge signing"]]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["test","Start a transaction and sign a ring via [RingMLSAGParameters] object"]],"struct":[["RingMLSAGParameters","Copy 3 of RingMLSAGParameters… we should pull this out somewhere"]]};
