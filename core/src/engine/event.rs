@@ -164,6 +164,7 @@ where
 
 impl<'a> Event<'a> {
     /// Parse an incoming APDU to engine event
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn parse(ins: u8, buff: &'a [u8]) -> Result<Self, ApduError> {
         match ins {
             WalletKeyReq::INS => decode_event::<WalletKeyReq>(buff),

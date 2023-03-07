@@ -75,8 +75,9 @@ extern "C" fn sample_main() {
 
     // Bind engine context
     let engine = unsafe {
-        ENGINE_CTX.write(Engine::new_with_rng(LedgerDriver {}, LedgerRng {}));
-        &mut *ENGINE_CTX.as_mut_ptr()
+        let p = &mut *ENGINE_CTX.as_mut_ptr();
+        Engine::init(p, LedgerDriver {}, LedgerRng {});
+        p
     };
 
     // Developer mode / pending review popup
@@ -145,7 +146,7 @@ extern "C" fn sample_main() {
 }
 
 /// Handle button events, returning true if UI should be redrawn
-#[inline]
+#[cfg_attr(feature = "noinline", inline(never))]
 fn handle_btn<RNG: RngCore + CryptoRng>(
     engine: &mut Engine<LedgerDriver, RNG>,
     _comm: &mut io::Comm,
@@ -232,7 +233,8 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
 }
 
 /// Handle APDU commands, returning true if UI should be redrawn
-#[inline]
+//#[inline]
+#[cfg_attr(feature = "noinline", inline(never))]
 fn handle_apdu<RNG: RngCore + CryptoRng>(
     engine: &mut Engine<LedgerDriver, RNG>,
     comm: &mut io::Comm,
@@ -282,8 +284,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
     // WIP: user acknowledgement screens etc.
     // to be moved once i've worked out how to wire this best
-
-    match evt {
+    match &evt {
         Event::GetWalletKeys { .. }
         | Event::GetSubaddressKeys { .. }
         | Event::GetKeyImage { .. }
@@ -381,6 +382,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
 const APPROVE_KEY_REQ: &str = "Sync View Keys?";
 
+#[cfg_attr(feature = "noinline", inline(never))]
 fn platform_tests(comm: &mut io::Comm) {
     clear_screen();
 

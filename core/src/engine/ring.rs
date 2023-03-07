@@ -1,5 +1,7 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
+use core::ptr::addr_of_mut;
+
 use heapless::Vec;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
@@ -19,7 +21,7 @@ pub const RING_SIZE: usize = 11;
 pub const RESP_SIZE: usize = RING_SIZE * 2;
 
 /// Heapless based MlsagSignCtx
-pub type SignCtx = MlsagSignCtx<heapless::Vec<CurveScalar, RESP_SIZE>>;
+pub type SignCtx = MlsagSignCtx<&'static mut [CurveScalar]>;
 
 /// Ring signing states
 #[derive(Copy, Clone, PartialEq, Debug, EnumString, Display, EnumVariantNames, EnumIter)]
@@ -74,6 +76,8 @@ pub struct RingSigner {
 
     /// Counter for fetched responses (used for progress tracking)
     fetch_count: usize,
+
+    responses: [CurveScalar; RESP_SIZE],
 }
 
 /// Ring blindings container
@@ -106,6 +110,7 @@ impl RingSigner {
             blindings: None,
             ring_ctx: None,
             fetch_count: 0,
+            responses: [CurveScalar::from(Scalar::zero()); RESP_SIZE],
         })
     }
 
@@ -113,6 +118,7 @@ impl RingSigner {
     /// used by `Function::ring_sign_init`
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
     #[allow(clippy::too_many_arguments)]
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub(crate) unsafe fn init(
         p: *mut Self,
         ring_size: usize,
@@ -123,24 +129,28 @@ impl RingSigner {
         message: &[u8],
         token_id: u64,
     ) -> Result<(), Error> {
-        p.write(Self {
-            state: RingState::Init,
-            ring_size,
-            real_index,
-            root_view_private: root_view_private.clone(),
-            subaddress_spend_private: subaddress_spend_private.clone(),
-            onetime_private_key: None,
-            value,
-            message: Vec::from_slice(message).map_err(|_| Error::InvalidLength)?,
-            generator: generators(token_id),
-            blindings: None,
-            ring_ctx: None,
-            fetch_count: 0,
-        });
+        // Per-field init to avoid allocating a whole object just for setup
+        // (another stack use minimization hijink)
+        // TODO: get miri running over this
+        addr_of_mut!((*p).state).write(RingState::Init);
+        addr_of_mut!((*p).ring_size).write(ring_size);
+        addr_of_mut!((*p).real_index).write(real_index);
+        addr_of_mut!((*p).root_view_private).write(root_view_private.clone());
+        addr_of_mut!((*p).subaddress_spend_private).write(subaddress_spend_private.clone());
+        addr_of_mut!((*p).onetime_private_key).write(None);
+        addr_of_mut!((*p).value).write(value);
+        addr_of_mut!((*p).message)
+            .write(Vec::from_slice(message).map_err(|_| Error::InvalidLength)?);
+        addr_of_mut!((*p).generator).write(generators(token_id));
+        addr_of_mut!((*p).blindings).write(None);
+        addr_of_mut!((*p).ring_ctx).write(None);
+        addr_of_mut!((*p).fetch_count).write(0);
+
         Ok(())
     }
 
     /// Update RingSigner with the provided event
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn update(
         &mut self,
         evt: &Event<'_>,
@@ -274,6 +284,7 @@ impl RingSigner {
     }
 
     /// Internal helper to setup MLSAG
+    #[cfg_attr(feature = "noinline", inline(never))]
     fn ring_init(
         &mut self,
         real_txout: &ReducedTxOut,
@@ -326,8 +337,22 @@ impl RingSigner {
         };
 
         // Setup response storage, this _must_ be ring_size * 2 or init will fail
-        let mut responses = heapless::Vec::<_, RESP_SIZE>::new();
-        let _ = responses.resize(self.ring_size * 2, CurveScalar::from(Scalar::zero()));
+        // TODO: work out push storage of this up to the global context to avoid Big Stack Use
+        //let mut responses = heapless::Vec::<_, RESP_SIZE>::new();
+
+        // UNSAFE: transmute responses to a static lifetime... this is okay because we
+        // know this is already allocated and the [MlsagSignCtx] cannot exist for longer
+        // than the [RingSigner] containing it, though any other contact with responses
+        // will invalidate this...
+        //
+        // TODO: work out whether we can replace this with lifetimes (or, refactor
+        // [MlsagSignContext] to take the response array as an argument to each call,
+        // which we _might_ be able to enforce is in the correct state via a types)
+        let responses = unsafe {
+            core::mem::transmute::<&'_ mut [CurveScalar], &'static mut [CurveScalar]>(
+                &mut self.responses[..self.ring_size * 2],
+            )
+        };
 
         match MlsagSignCtx::init(&sign_params, rng, responses) {
             Ok(ctx) => self.ring_ctx = Some(ctx),
@@ -338,7 +363,8 @@ impl RingSigner {
     }
 
     /// Internal helper to update MLSAG
-    pub(crate) fn ring_update(&mut self, index: usize, tx_out: &ReducedTxOut) -> Result<(), Error> {
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn ring_update(&mut self, index: usize, tx_out: &ReducedTxOut) -> Result<(), Error> {
         // Check we have a signing context and blindings
         let ring_ctx = match self.ring_ctx.as_mut() {
             Some(v) => v,
@@ -380,6 +406,7 @@ impl RingSigner {
     }
 
     /// Internal helper to finalise MLSAG
+    #[cfg_attr(feature = "noinline", inline(never))]
     fn ring_finalise(&mut self) -> Result<(KeyImage, CurveScalar), Error> {
         let ring_ctx = match self.ring_ctx.as_mut() {
             Some(v) => v,
