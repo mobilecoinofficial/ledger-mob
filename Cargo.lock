@@ -2375,6 +2375,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
+ "mc-util-u64-ratio",
  "mc-util-zip-exact",
  "merlin",
  "prost",
@@ -2407,6 +2408,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
+ "mc-util-u64-ratio",
  "mc-util-vec-map",
  "mc-util-zip-exact",
  "prost",
@@ -2539,6 +2541,10 @@ dependencies = [
  "rand 0.8.5",
  "rand_hc 0.3.1",
 ]
+
+[[package]]
+name = "mc-util-u64-ratio"
+version = "4.0.2"
 
 [[package]]
 name = "mc-util-vec-map"

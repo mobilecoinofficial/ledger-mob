@@ -48,7 +48,7 @@ pub enum SummaryState {
 impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     /// Create a new summarizer instance
     pub fn new(
-        message: &[u8],
+        message: &[u8; 32],
         block_version: BlockVersion,
         num_outputs: usize,
         num_inputs: usize,
@@ -82,7 +82,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     #[cfg_attr(feature = "noinline", inline(never))]
     pub unsafe fn init(
         p: *mut Self,
-        message: &[u8],
+        message: &[u8; 32],
         block_version: BlockVersion,
         num_outputs: usize,
         num_inputs: usize,
