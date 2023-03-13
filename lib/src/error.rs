@@ -4,7 +4,7 @@ use core::fmt::Debug;
 use std::fmt::Display;
 
 use ledger_mob_apdu::state::TxState;
-use mc_crypto_ring_signature_signer::SignerError;
+use mc_crypto_ring_signature_signer::Error as SignerError;
 use tokio::time::error::Elapsed;
 
 /// Ledger MobileCoin API Error Type
