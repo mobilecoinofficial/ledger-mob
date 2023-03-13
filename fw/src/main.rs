@@ -254,7 +254,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         return false;
     }
 
-    // Handle generic commands
+    // Handle generic app info request
     if i == app_info::AppInfoReq::INS {
         let mut flags = app_flags();
         flags.set(AppFlags::UNLOCKED, engine.is_unlocked());
@@ -274,6 +274,13 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
         return false;
     }
+
+    // Ignore APDUs for other apps
+    if comm.apdu_buffer[0] != MOB_APDU_CLA {
+        comm.reply(SyscallError::Unspecified);
+        return false;
+    }
+    
 
     // Handle engine / transaction commands
 
