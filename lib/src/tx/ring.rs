@@ -13,7 +13,7 @@ use ledger_transport::Exchange;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CurveScalar, RingMLSAG, Scalar};
 use mc_crypto_ring_signature_signer::{
-    OneTimeKeyDeriveData, RingSigner, SignableInputRing, SignerError,
+    Error as SignerError, OneTimeKeyDeriveData, RingSigner, SignableInputRing,
 };
 
 use ledger_mob_apdu::{state::TxState, tx::*};

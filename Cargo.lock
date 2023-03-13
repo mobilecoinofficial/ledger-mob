@@ -2124,7 +2124,6 @@ dependencies = [
  "mc-crypto-dalek",
  "mc-crypto-hashes",
  "mc-crypto-keys",
- "prost",
  "serde",
  "sha2 0.10.6",
  "slip10_ed25519",
@@ -2138,7 +2137,6 @@ version = "2.0.0"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
- "prost",
  "serde",
  "subtle",
  "zeroize",
@@ -2546,7 +2544,7 @@ name = "mc-util-vec-map"
 version = "4.0.2"
 dependencies = [
  "displaydoc",
- "heapless 0.8.0",
+ "heapless 0.7.16",
 ]
 
 [[package]]
@@ -3309,9 +3307,9 @@ dependencies = [
 
 [[package]]
 name = "sentry"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ad137b9df78294b98cab1a650bef237cc6c950e82e5ce164655e674d07c5cc"
+checksum = "b5ce6d3512e2617c209ec1e86b0ca2fea06454cd34653c91092bf0f3ec41f8e3"
 dependencies = [
  "httpdate",
  "reqwest",
@@ -3330,9 +3328,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afe4800806552aab314129761d5d3b3d422284eca3de2ab59e9fd133636cbd3d"
+checksum = "0e7fe408d4d1f8de188a9309916e02e129cbe51ca19e55badea5a64899399b1a"
 dependencies = [
  "backtrace",
  "once_cell",
@@ -3342,9 +3340,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-contexts"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a42938426670f6e7974989cd1417837a96dd8bbb01567094f567d6acb360bf88"
+checksum = "5695096a059a89973ec541062d331ff4c9aeef9c2951416c894f0fff76340e7d"
 dependencies = [
  "hostname",
  "libc",
@@ -3356,9 +3354,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4df9b9d8de2658a1ecd4e45f7b06c80c5dd97b891bfbc7c501186189b7e9bbdf"
+checksum = "5b22828bfd118a7b660cf7a155002a494755c0424cebb7061e4743ecde9c7dbc"
 dependencies = [
  "once_cell",
  "rand 0.8.5",
@@ -3369,9 +3367,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-log"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7518096b31fa4075d1bbab79ad62da3258f6c67bafeb4a8b2b3f803695b9205e"
+checksum = "bfa3a3f4477e77541c26eb84d0e355729dfa35c74c682eb8678f146db5126013"
 dependencies = [
  "log",
  "sentry-core",
@@ -3379,9 +3377,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0af37b8500f273e511ebd6eb0d342ff7937d64ce3f134764b2b4653112d48cb4"
+checksum = "1f4ced2a7a8c14899d58eec402d946f69d5ed26a3fc363a7e8b1e5cb88473a01"
 dependencies = [
  "sentry-backtrace",
  "sentry-core",
@@ -3389,9 +3387,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-slog"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5911f195e34ee4723529ca67c4f00dba3e8acbccb9e5dfe90e1cd1ec1ff3e25"
+checksum = "051ce412f07e7d131194270d832cd72e112d4a175a310b4a7aa2ffb859f01d8c"
 dependencies = [
  "sentry-core",
  "serde_json",
@@ -3400,9 +3398,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.29.1"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccc95faa4078768a6bf8df45e2b894bbf372b3dbbfb364e9429c1c58ab7545c6"
+checksum = "360ee3270f7a4a1eee6c667f7d38360b995431598a73b740dfe420da548d9cc9"
 dependencies = [
  "debugid",
  "getrandom 0.2.8",
@@ -3417,9 +3415,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.152"
+version = "1.0.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb7d1f0d3021d347a83e556fc4683dea2ea09d87bccdf88ff5c12545d89d5efb"
+checksum = "71f2b4817415c6d4210bfe1c7bfcf4801b2d904cb4d0e1a8fdb651013c9e86b8"
 dependencies = [
  "serde_derive",
 ]
@@ -3445,9 +3443,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.152"
+version = "1.0.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af487d118eecd09402d70a5d72551860e788df87b464af30e5ea6a38c75c541e"
+checksum = "d071a94a3fac4aff69d023a7f411e33f40f3483f8c5190b1953822b6b76d7630"
 dependencies = [
  "proc-macro2",
  "quote",
