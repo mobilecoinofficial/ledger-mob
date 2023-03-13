@@ -64,6 +64,7 @@ impl Function {
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
     #[cfg(feature = "mlsag")]
     #[allow(clippy::too_many_arguments)]
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn ring_signer_init(
         &mut self,
         ring_size: usize,
@@ -132,6 +133,7 @@ impl Function {
     /// this uses out-pointer based init to avoid stack allocation
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
     #[cfg(feature = "summary")]
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn summarizer_init(
         &mut self,
         message: &[u8],
@@ -218,16 +220,16 @@ impl Function {
 
     /// Clear context, executing drop if required
     pub fn clear(&mut self) {
-        match core::mem::take(&mut self.inner) {
+        match &mut self.inner {
             #[cfg(feature = "mlsag")]
-            FunctionType::RingSign(mut s) => unsafe {
-                s.as_mut_ptr().drop_in_place();
+            FunctionType::RingSign(s) => unsafe {
+                s.assume_init_drop();
             },
             #[cfg(feature = "summary")]
-            FunctionType::Summarize(mut s) => unsafe {
-                s.as_mut_ptr().drop_in_place();
-            },
+            FunctionType::Summarize(s) => unsafe { s.assume_init_drop() },
             _ => (),
         }
+
+        self.inner = FunctionType::None;
     }
 }

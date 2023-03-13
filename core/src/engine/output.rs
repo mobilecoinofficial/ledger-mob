@@ -86,7 +86,8 @@ pub enum Output {
 }
 
 impl Output {
-    /// Encode an [`Output`] object to a response [APDU
+    /// Encode an [`Output`] object to a response [APDU]
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         match self.clone() {
             Output::None => Ok(0),

@@ -95,8 +95,11 @@ nanosplus-gdb:
 objdump:
 	arm-none-eabi-objdump fw/target/nanosplus/release/ledger-mob-fw --disassemble=sample_main -S | head -n 20
 
-wts:
-	whatthestack fw/target/nanosplus/release/ledger-mob-fw -n 15
+wts-nanosplus:
+	wts fw/target/nanosplus/release/ledger-mob-fw -n 15
+
+wts-nanox:
+	wts fw/target/nanox/release/ledger-mob-fw -n 15
 
 # Run linters
 lint: fmt clippy

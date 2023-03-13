@@ -5,6 +5,8 @@
 //! This handles [Event] inputs and returns [Output] responses to the caller,
 //! see [apdu][crate::apdu] for APDU protocol / encoding specifications.
 
+use core::ptr::addr_of_mut;
+
 use heapless::Vec;
 use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
@@ -149,6 +151,22 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             rng,
             drv,
         }
+    }
+
+    /// UNSAFE: Initialise an uninitialised engine instance
+    /// pointer, another adventure in stack frame reduction
+    /// TODO: add checks that init and new_with_rng match
+    pub unsafe fn init(p: *mut Self, drv: DRV, rng: RNG) {
+        addr_of_mut!((*p).state).write(State::Init);
+        addr_of_mut!((*p).unlocked).write(false);
+        addr_of_mut!((*p).message).write(Vec::new());
+        addr_of_mut!((*p).account_index).write(0);
+        addr_of_mut!((*p).digest).write(TxDigest::new());
+        addr_of_mut!((*p).num_rings).write(0);
+        addr_of_mut!((*p).function).write(Function::new());
+        addr_of_mut!((*p).ring_count).write(0);
+        addr_of_mut!((*p).rng).write(rng);
+        addr_of_mut!((*p).drv).write(drv);
     }
 
     /// Handle incoming transaction events
@@ -471,6 +489,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     }
 
     /// Fetch an [`Account`] instance for a given wallet index
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn get_account(&self, account_index: u32) -> Account {
         let path = wallet_path(account_index);
         let seed = self.drv.slip10_derive_ed25519(&path);
@@ -565,6 +584,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     }
 
     // Sign the provided memo, returning an `Output::MemoHmac` on success
+    #[cfg_attr(feature = "noinline", inline(never))]
     fn memo_sign(
         &mut self,
         subaddress_index: u64,
@@ -747,7 +767,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 public_key,
                 associated_to_input_rules,
             } => summarizer.add_output_summary(
-                masked_amount.clone(),
+                masked_amount.as_ref(),
                 target_key,
                 public_key,
                 *associated_to_input_rules,
@@ -758,8 +778,8 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 tx_private_key,
             } => summarizer.add_output_unblinding(
                 unmasked_amount,
-                address.clone(),
-                tx_private_key.clone(),
+                address.as_ref().map(|(h, p)| (h.clone(), p)),
+                tx_private_key.as_ref(),
             ),
             Event::TxSummaryAddInput {
                 pseudo_output_commitment,
