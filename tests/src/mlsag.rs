@@ -20,26 +20,26 @@ use mc_crypto_ring_signature::{
         create_tx_out_public_key, create_tx_out_target_key, recover_onetime_private_key,
         recover_public_subaddress_spend_key,
     },
-    CompressedCommitment, CurveScalar, Error, KeyImage, MlsagSignParams, PedersenGens,
+    CompressedCommitment, CurveScalar, KeyImage, MlsagSignParams, PedersenGens,
     ReducedTxOut, RingMLSAG, Scalar,
 };
 use mc_util_from_random::FromRandom;
 
 use ledger_transport::Exchange;
 
+use ledger_mob::Error;
 use ledger_mob_apdu::{state::TxState, tx::*};
 
 /// Start a transaction and sign a ring via [RingMLSAGParameters] object
-pub async fn test<T, F, E>(
+pub async fn test<T, F>(
     t: T,
     approve: impl Fn() -> F,
     mnemonic: Mnemonic,
     ring_size: usize,
 ) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E>,
+    T: Exchange<Error = Error>,
     F: Future<Output = ()>,
-    E: std::error::Error + Sync + Send + 'static,
 {
     let mut buff = [0u8; 256];
 

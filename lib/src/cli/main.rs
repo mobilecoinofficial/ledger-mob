@@ -2,25 +2,23 @@
 
 //! Command line utility for interacting with the Ledger MobileCoin NanoApp
 
-use std::{error::Error, path::Path};
+use std::{path::Path};
 
 use clap::Parser;
 use ledger_transport::Exchange;
 use log::{debug, error, info, LevelFilter};
-use rand_core::OsRng;
+use mc_transaction_extra::UnsignedTx;
 use serde::{de::DeserializeOwned, Serialize};
 
-use mc_core::keys::TxOutPublic;
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::ring_ct::InputRing;
-use mc_transaction_core::tx::Tx;
 use mc_transaction_signer::{
-    types::{TxSignReq, TxSignResp, TxoSynced},
+    types::{TxSignReq, TxSignResp, TxSignSecrets},
     Operations,
 };
 
 use ledger_mob::{
-    transport::GenericTransport, tx::TxConfig, Connect, DeviceHandle, Filter, LedgerProvider,
+    transport::GenericTransport, Connect, DeviceHandle, Filter, LedgerProvider,
+    Error,
 };
 use ledger_mob_apdu::random::{RandomReq, RandomResp};
 
@@ -52,9 +50,6 @@ struct Options {
 enum Actions {
     /// List available devices
     List,
-
-    /// Fetch device info
-    DeviceInfo,
 
     /// Fetch application info
     AppInfo,
@@ -171,7 +166,11 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Execute command
-    execute(t, args.cmd).await?;
+    if let Err(e) = execute(t, args.cmd).await {
+        error!("Failed to execute command: {}", e);
+        error!("(Please check you have the mobilecon app open and on the main screen)");
+        return Err(anyhow::anyhow!("command failed"));
+    }
 
     Ok(())
 }
@@ -180,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
 async fn execute<T, E>(t: DeviceHandle<T>, cmd: Actions) -> anyhow::Result<()>
 where
     T: Exchange<Error = E> + Sync + Send,
-    E: Error + Sync + Send + 'static,
+    Error: From<E>,
 {
     let mut buff = [0u8; 1024];
 
@@ -280,62 +279,29 @@ where
                     debug!("Loading unsigned transaction from '{}'", input);
                     let req: TxSignReq = read_input(input).await?;
 
-                    // Start device transaction
-                    debug!("Starting transaction");
-                    let signer = t
-                        .transaction(TxConfig {
-                            account_index,
-                            num_memos: 0,
-                            num_rings: req.rings.len(),
-                        })
-                        .await?;
+                    // Fetch unblinding data
+                    // TODO: remove this from mc-transaction-signer now we don't
+                    // need to support block version 2
+                    let tx_out_unblinding_data = match req.secrets {
+                        TxSignSecrets::OutputSecrets(_) => panic!("Block version >3 support only"),
+                        TxSignSecrets::TxOutUnblindingData(u) => u,
+                    };
 
-                    // TODO: sign any memos
+                    // Convert to unsigned TX
+                    let unsigned = UnsignedTx {
+                        tx_prefix: req.tx_prefix,
+                        rings: req.rings,
+                        tx_out_unblinding_data,
+                        block_version: req.block_version,
+                    };
 
-                    // Build the digest for ring signing
-                    // TODO: this will move when TxSummary is complete
-                    debug!("Building TX digest");
-                    let (signing_data, _summary, _unblinding, digest) =
-                        req.get_signing_data(&mut OsRng {}).unwrap();
-
-                    // Set the message
-                    debug!("Setting tx message");
-                    signer.set_message(&digest.0).await?;
-
-                    // Await user input
-                    debug!("Waiting for user confirmation");
-                    signer.await_approval(20).await?;
-
-                    // Execute signing (signs rings etc.)
-                    debug!("Executing signing operation");
-                    let signature = signing_data
-                        .sign(&req.rings, &signer, &mut OsRng {})
-                        .map_err(|e| anyhow::anyhow!("Ring signing error: {:?}", e))?;
-
-                    // Map key images to real inputs via public key
-                    let mut txos = vec![];
-                    for (i, r) in req.rings.iter().enumerate() {
-                        let tx_out_public_key = match r {
-                            InputRing::Signable(r) => r.members[r.real_input_index].public_key,
-                            InputRing::Presigned(_) => panic!("Pre-signed rings unsupported"),
-                        };
-
-                        txos.push(TxoSynced {
-                            tx_out_public_key: TxOutPublic::from(
-                                RistrettoPublic::try_from(&tx_out_public_key).unwrap(),
-                            ),
-                            key_image: signature.ring_signatures[i].key_image,
-                        });
-                    }
+                    // Sign transaction
+                    let (tx, txos) = t.transaction(account_index, 60, unsigned).await?;
 
                     // Build sign response
                     let resp = TxSignResp {
                         account_id: req.account_id,
-                        tx: Tx {
-                            prefix: req.tx_prefix.clone(),
-                            signature,
-                            fee_map_digest: vec![],
-                        },
+                        tx,
                         txos,
                     };
 

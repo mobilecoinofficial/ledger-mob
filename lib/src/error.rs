@@ -1,7 +1,6 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
 use core::fmt::Debug;
-use std::fmt::Display;
 
 use ledger_mob_apdu::state::TxState;
 use mc_crypto_ring_signature_signer::Error as SignerError;
@@ -9,14 +8,23 @@ use tokio::time::error::Elapsed;
 
 /// Ledger MobileCoin API Error Type
 #[derive(Debug, thiserror::Error)]
-pub enum Error<E: Display + Debug> {
+pub enum Error {
+    /// No device found
+    #[error("no device found")]
+    NoDevice,
+
     /// HID Init Error
     #[error("could not create HidApi instance")]
     HidInit,
 
     /// Ledger HID Error
+    #[cfg(feature = "transport_hid")]
     #[error("Transport error {0}")]
-    Transport(E),
+    Hid(#[from] hidapi::HidError),
+
+    /// Ledger IO Error
+    #[error("IO error {0}")]
+    Io(#[from] std::io::Error),
 
     /// Invalid transaction state
     #[error("Invalid transaction state (actual: {0}, expected: {1}")]
@@ -53,10 +61,35 @@ pub enum Error<E: Display + Debug> {
     /// Invalid key in response
     #[error("Invalid key object")]
     InvalidKey,
+
+    /// Invalid length
+    #[error("Invalid length")]
+    InvalidLength,
+
+    /// UTF8 encoding error
+    #[error("UTF8 encoding error")]
+    Utf8,
+
+    /// APDU error
+    #[error("APDU error")]
+    Apdu(#[from] ledger_apdu::ApduError),
+
+    /// Ring CT error
+    #[error("Ring CT error: {0}")]
+    RingCt(mc_transaction_core::ring_ct::Error),
+
+    /// Ring signer error
+    #[error("Ring signer error: {0}")]
+    RingSigner(mc_crypto_ring_signature::Error),
+
+    /// Unknown (TEMPORARY)
+    /// TODO: remove once ledger_transport_tcp is updated / fixed
+    #[error("Unknown error")]
+    Unknown,
 }
 
-impl<E: Display + Debug> From<Error<E>> for SignerError {
-    fn from(value: Error<E>) -> Self {
+impl From<Error> for SignerError {
+    fn from(value: Error) -> Self {
         match value {
             Error::Ring(r) => r,
             _ => SignerError::Unknown,
@@ -64,22 +97,20 @@ impl<E: Display + Debug> From<Error<E>> for SignerError {
     }
 }
 
-impl<E: Display + Debug> From<Elapsed> for Error<E> {
+impl From<Elapsed> for Error {
     fn from(_: Elapsed) -> Self {
         Error::RequestTimeout
     }
 }
 
-#[cfg(feature = "transport_hid")]
-impl From<ledger_transport_hid::LedgerHIDError> for Error<anyhow::Error> {
-    fn from(e: ledger_transport_hid::LedgerHIDError) -> Self {
-        Error::Transport(anyhow::anyhow!("HID: {}", e))
+impl From<mc_crypto_ring_signature::Error> for Error {
+    fn from(value: mc_crypto_ring_signature::Error) -> Self {
+        Error::RingSigner(value)
     }
 }
 
-#[cfg(feature = "transport_tcp")]
-impl From<ledger_transport_tcp::Error> for Error<anyhow::Error> {
-    fn from(e: ledger_transport_tcp::Error) -> Self {
-        Error::Transport(anyhow::anyhow!("TCP: {}", e))
+impl From<mc_transaction_core::ring_ct::Error> for Error {
+    fn from(value: mc_transaction_core::ring_ct::Error) -> Self {
+        Error::RingCt(value)
     }
 }

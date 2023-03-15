@@ -20,7 +20,7 @@ base64 = "0.21.0"
 hex = "0.4.3"
 strum = { version = "0.24.1", features = [ "derive" ] }
 anyhow = "1.0.59"
-clap = { version = "3.2.16", features = [ "derive", "env" ] }
+clap = { version = "4.1.4", features = [ "derive", "env" ] }
 tokio = { version = "1.20.1", features = [ "full" ] }
 ctor = "0.1.23"
 lazy_static = "1.4.0"

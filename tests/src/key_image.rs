@@ -2,8 +2,6 @@
 
 //! Key image tests
 
-use std::error::Error;
-
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use log::info;
 use mc_crypto_ring_signature::onetime_keys::{
@@ -22,13 +20,13 @@ use mc_util_from_random::FromRandom;
 
 use ledger_transport::Exchange;
 
-use ledger_mob::DeviceHandle;
+use ledger_mob::{DeviceHandle, Error};
 
 /// Test key image recovery via subaddress and tx_out_public_key
 pub async fn test<T, E>(t: T, mnemonic: Mnemonic) -> anyhow::Result<()>
 where
     T: Exchange<Error = E> + Send + Sync,
-    E: Error + Sync + Send + 'static,
+    Error: From<E>,
 {
     info!("using mnemonic: '{}'", mnemonic.phrase());
 

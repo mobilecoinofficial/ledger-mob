@@ -1888,7 +1888,7 @@ dependencies = [
  "anyhow",
  "base64 0.21.0",
  "bip32",
- "clap 3.2.23",
+ "clap 4.1.4",
  "ctor",
  "curve25519-dalek",
  "ed25519-dalek",
