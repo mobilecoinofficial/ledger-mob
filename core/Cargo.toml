@@ -21,7 +21,6 @@ log = [ "dep:log" ]
 alloc = [
     "mc-transaction-types/alloc",
     "mc-crypto-digestible/alloc",
-    "mc-transaction-summary",
     "ledger-mob-apdu/alloc",
 ]
 serde = [ "mc-core/serde", "heapless/serde" ]
@@ -77,7 +76,7 @@ mc-crypto-ring-signature = { version = "4.0.0", optional = true, default_feature
 mc-crypto-memo-mac = { version = "4.0.0", optional = true, default_features = false }
 
 mc-transaction-types = { version = "4.0.0", default_features = false }
-mc-transaction-summary = { version = "4.0.0", optional = true, default_features = false, features = [ "alloc" ]}
+mc-transaction-summary = { version = "4.0.0", default_features = false, optional = true }
 mc-util-from-random = { version = "4.0.0", default_features = false }
 
 

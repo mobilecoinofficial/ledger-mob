@@ -49,6 +49,15 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "atomic-polyfill"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3ff7eb3f316534d83a8a2c3d1674ace8a5a71198eba31e2e2b597833f699b28"
+dependencies = [
+ "critical-section",
+]
+
+[[package]]
+name = "atomic-polyfill"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d299f547288d6db8d5c3a2916f7b2f66134b15b8c1ac1c4357dd3b8752af7bb2"
@@ -579,6 +588,15 @@ dependencies = [
 
 [[package]]
 name = "hash32"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0c35f58762feb77d74ebe43bdbc3210f09be9fe6742234d573bacc26ed92b67"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
+name = "hash32"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
@@ -588,11 +606,24 @@ dependencies = [
 
 [[package]]
 name = "heapless"
+version = "0.7.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db04bc24a18b9ea980628ecf00e6c0264f3c1426dac36c00cb49b6fbad8b0743"
+dependencies = [
+ "atomic-polyfill 0.1.11",
+ "hash32 0.2.1",
+ "rustc_version",
+ "spin",
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "heapless"
 version = "0.8.0"
 source = "git+https://github.com/mobilecoinofficial/heapless?rev=2726f63bdc767d025f370d88341b1eb785178f2b#2726f63bdc767d025f370d88341b1eb785178f2b"
 dependencies = [
- "atomic-polyfill",
- "hash32",
+ "atomic-polyfill 1.0.1",
+ "hash32 0.3.1",
  "rustc_version",
  "spin",
  "stable_deref_trait",
@@ -762,7 +793,7 @@ dependencies = [
  "byteorder",
  "curve25519-dalek",
  "encdec",
- "heapless",
+ "heapless 0.8.0",
  "ledger-apdu",
  "mc-core",
  "mc-crypto-dalek",
@@ -790,7 +821,7 @@ dependencies = [
  "ed25519-dalek",
  "emstr",
  "encdec",
- "heapless",
+ "heapless 0.8.0",
  "hkdf",
  "ledger-apdu",
  "ledger-mob-apdu",
@@ -944,7 +975,6 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array",
- "mc-crypto-dalek",
  "mc-crypto-digestible-derive",
  "merlin",
  "x25519-dalek",
@@ -1047,7 +1077,6 @@ dependencies = [
  "mc-transaction-types",
  "mc-util-vec-map",
  "mc-util-zip-exact",
- "serde",
  "subtle",
  "zeroize",
 ]
@@ -1089,7 +1118,7 @@ name = "mc-util-vec-map"
 version = "4.0.2"
 dependencies = [
  "displaydoc",
- "heapless",
+ "heapless 0.7.16",
 ]
 
 [[package]]
