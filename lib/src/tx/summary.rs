@@ -13,8 +13,7 @@ use ledger_transport::Exchange;
 use super::{check_state, TransactionHandle};
 use crate::Error;
 
-impl<T: Exchange<Error=Error> + Send + Sync> TransactionHandle<T>
-{
+impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
     /// Load tx summary for signing operation, alternative to `set_message` for block versions > 3
     pub async fn set_tx_summary(
         &self,

@@ -2,7 +2,7 @@
 
 //! Command line utility for interacting with the Ledger MobileCoin NanoApp
 
-use std::{path::Path};
+use std::path::Path;
 
 use clap::Parser;
 use ledger_transport::Exchange;
@@ -17,8 +17,7 @@ use mc_transaction_signer::{
 };
 
 use ledger_mob::{
-    transport::GenericTransport, Connect, DeviceHandle, Filter, LedgerProvider,
-    Error,
+    transport::GenericTransport, Connect, DeviceHandle, Error, Filter, LedgerProvider,
 };
 use ledger_mob_apdu::random::{RandomReq, RandomResp};
 

@@ -16,8 +16,7 @@ use crate::{Error, TransactionHandle};
 // `Output` type that impls Future, but, it raises some Big Lifetime Problems
 // that i haven't been able to work out in a reasonable manner
 
-impl<T: Exchange<Error=Error> + Send + Sync> Subaddress for TransactionHandle<T>
-{
+impl<T: Exchange<Error = Error> + Send + Sync> Subaddress for TransactionHandle<T> {
     type Output = Result<ViewSubaddress, Error>;
 
     /// Fetch view subaddress by subaddress index,
@@ -27,16 +26,12 @@ impl<T: Exchange<Error=Error> + Send + Sync> Subaddress for TransactionHandle<T>
     }
 }
 
-impl<T: Exchange<Error=Error> + Send + Sync> TransactionHandle<T>
-{
+impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
     /// Asynchronously fetch a view subaddress by subaddress index,
     /// inheriting the account index from the transaction context.
     ///
     /// See [Subaddress] trait for public (blocking) API
-    pub async fn view_subaddress(
-        &self,
-        index: u64,
-    ) -> Result<ViewSubaddress, Error> {
+    pub async fn view_subaddress(&self, index: u64) -> Result<ViewSubaddress, Error> {
         debug!("Fetching view subaddress keys for index: {}", index);
 
         let ctx = self.ctx.lock().await;

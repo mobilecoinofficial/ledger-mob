@@ -7,10 +7,10 @@ use ledger_apdu::{ApduBase, ApduCmd};
 use ledger_transport::Exchange;
 
 #[cfg(feature = "transport_hid")]
-pub use ledger_transport_hid::{TransportNativeHID, LedgerHIDError};
+pub use ledger_transport_hid::{LedgerHIDError, TransportNativeHID};
 
 #[cfg(feature = "transport_tcp")]
-pub use ledger_transport_tcp::{TcpOptions, TransportTcp, Error as LedgerTcpError};
+pub use ledger_transport_tcp::{Error as LedgerTcpError, TcpOptions, TransportTcp};
 use strum::Display;
 
 use crate::Error;

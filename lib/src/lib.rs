@@ -7,7 +7,7 @@
 // see https://github.com/rust-lang/rust/issues/91611
 // #![feature(async_fn_in_trait)]
 
-use std::{fmt::Debug};
+use std::fmt::Debug;
 
 pub use ledger_transport::Exchange;
 
@@ -156,10 +156,7 @@ pub trait Connect<T: Exchange> {
     type Options: Debug;
 
     /// Connect to the specified device
-    async fn connect(
-        &self,
-        opts: &Self::Options,
-    ) -> Result<DeviceHandle<T>, Error>;
+    async fn connect(&self, opts: &Self::Options) -> Result<DeviceHandle<T>, Error>;
 }
 
 /// Generic connect implementation
@@ -168,10 +165,7 @@ pub trait Connect<T: Exchange> {
 impl Connect<GenericTransport> for LedgerProvider {
     type Options = LedgerInfo;
 
-    async fn connect(
-        &self,
-        opts: &Self::Options,
-    ) -> Result<DeviceHandle<GenericTransport>, Error> {
+    async fn connect(&self, opts: &Self::Options) -> Result<DeviceHandle<GenericTransport>, Error> {
         let t = match opts {
             #[cfg(feature = "transport_hid")]
             LedgerInfo::Hid(hid_info) => {
@@ -230,13 +224,9 @@ impl Connect<TransportNativeHID> for LedgerProvider {
 impl Connect<TransportTcp> for LedgerProvider {
     type Options = ledger_transport_tcp::TcpOptions;
 
-    async fn connect(
-        &self,
-        opts: &Self::Options,
-    ) -> Result<DeviceHandle<TransportTcp>, Error> {
+    async fn connect(&self, opts: &Self::Options) -> Result<DeviceHandle<TransportTcp>, Error> {
         // Connect to device
-        let t = TransportTcp::new(opts.clone())
-            .await?;
+        let t = TransportTcp::new(opts.clone()).await?;
 
         // Create handle
         let d = DeviceHandle::from(t);

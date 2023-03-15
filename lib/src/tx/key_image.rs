@@ -14,7 +14,7 @@ use crate::{Error, TransactionHandle};
 
 use super::TransactionContext;
 
-impl<T: Exchange<Error=Error> + Send + Sync> KeyImageComputer for TransactionHandle<T> {
+impl<T: Exchange<Error = Error> + Send + Sync> KeyImageComputer for TransactionHandle<T> {
     type Error = Error;
 
     /// Compute key image for a given subaddress and tx_out_public_key
@@ -32,8 +32,7 @@ impl<T: Exchange<Error=Error> + Send + Sync> KeyImageComputer for TransactionHan
     }
 }
 
-impl<T: Exchange<Error=Error> + Send + Sync> TransactionContext<T>
-{
+impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
     /// Asynchronously compute key image for a given subaddress and
     /// tx_out_public_key.
     ///

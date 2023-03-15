@@ -4,7 +4,7 @@ use log::{debug, LevelFilter};
 use portpicker::pick_unused_port;
 use simplelog::SimpleLogger;
 
-use ledger_mob::transport::{TcpOptions, TransportTcp, GenericTransport};
+use ledger_mob::transport::{GenericTransport, TcpOptions, TransportTcp};
 use ledger_sim::*;
 
 // Setup speculos instance and TCP connector with an optional seed

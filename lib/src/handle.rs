@@ -22,10 +22,16 @@ use ledger_mob_apdu::{
     tx::{TxInfo, TxInfoReq},
     wallet_keys::{WalletKeyReq, WalletKeyResp},
 };
-use mc_core::{account::{ViewAccount, ViewSubaddress}, keys::TxOutPublic};
-use mc_transaction_core::{tx::Tx, ring_ct::InputRing};
+use mc_core::{
+    account::{ViewAccount, ViewSubaddress},
+    keys::TxOutPublic,
+};
+use mc_transaction_core::{ring_ct::InputRing, tx::Tx};
 use mc_transaction_extra::UnsignedTx;
-use mc_transaction_signer::{traits::{KeyImageComputer, ViewAccountProvider}, types::{TxoSynced}};
+use mc_transaction_signer::{
+    traits::{KeyImageComputer, ViewAccountProvider},
+    types::TxoSynced,
+};
 
 use ledger_apdu::{ApduBase, ApduCmd};
 use ledger_transport::Exchange;
@@ -69,7 +75,7 @@ pub struct AppInfo {
     pub flags: AppFlags,
 }
 
-impl<T: Exchange + Sync + Send> DeviceHandle<T> 
+impl<T: Exchange + Sync + Send> DeviceHandle<T>
 where
     Error: From<<T as Exchange>::Error>,
 {
@@ -92,10 +98,7 @@ where
     }
 
     /// Fetch root keys for the provided account index
-    pub async fn account_keys(
-        &self,
-        account_index: u32,
-    ) -> Result<ViewAccount, Error> {
+    pub async fn account_keys(&self, account_index: u32) -> Result<ViewAccount, Error> {
         let mut buff = [0u8; 256];
 
         debug!("Requesting root keys for account: {}", account_index);
@@ -160,7 +163,12 @@ where
     }
 
     /// Sign an unsigned transaction object using the device
-    pub async fn transaction(&self, account_index: u32, approval_timeout_s: u32, unsigned: UnsignedTx) -> Result<(Tx, Vec<TxoSynced>), Error> {
+    pub async fn transaction(
+        &self,
+        account_index: u32,
+        approval_timeout_s: u32,
+        unsigned: UnsignedTx,
+    ) -> Result<(Tx, Vec<TxoSynced>), Error> {
         // Start device transaction
         debug!("Starting transaction");
         let signer = TransactionHandle::new(
@@ -170,7 +178,8 @@ where
                 num_rings: unsigned.rings.len(),
             },
             self,
-        ).await?;
+        )
+        .await?;
 
         // TODO: sign memos (this requires a restructure of UnsignedTx)
 
@@ -195,8 +204,7 @@ where
 
         // Sign rings
         debug!("Executing signing operation");
-        let signature = signing_data
-            .sign(&unsigned.rings, &signer, &mut OsRng {})?;
+        let signature = signing_data.sign(&unsigned.rings, &signer, &mut OsRng {})?;
 
         debug!("Signing complete");
 
@@ -217,7 +225,7 @@ where
         }
 
         // Buld transaction object
-        let tx = Tx{
+        let tx = Tx {
             prefix: unsigned.tx_prefix.clone(),
             signature,
             // TODO: where should this come from?
@@ -308,10 +316,7 @@ where
                     subaddress_index,
                     tx_out_public_key.clone(),
                 );
-                let resp = self
-                    .t
-                    .exchange::<KeyImageResp>(req, &mut buff)
-                    .await?;
+                let resp = self.t.exchange::<KeyImageResp>(req, &mut buff).await?;
 
                 Ok(resp.key_image)
             })
@@ -333,10 +338,7 @@ where
                 debug!("Requesting root keys for account: {}", self.account_index);
 
                 let req = WalletKeyReq::new(self.account_index);
-                let resp = self
-                    .t
-                    .exchange::<WalletKeyResp>(req, &mut buff)
-                    .await?;
+                let resp = self.t.exchange::<WalletKeyResp>(req, &mut buff).await?;
 
                 Ok(ViewAccount::new(resp.view_private, resp.spend_public))
             })
@@ -346,7 +348,7 @@ where
 
 /// Re-export [Exchange] trait for [DeviceHandle], including timeout function
 #[async_trait]
-impl<T: Exchange + Sync + Send> Exchange for DeviceHandle<T> 
+impl<T: Exchange + Sync + Send> Exchange for DeviceHandle<T>
 where
     Error: From<<T as Exchange>::Error>,
 {

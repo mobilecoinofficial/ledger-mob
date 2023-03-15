@@ -16,7 +16,7 @@ use mc_transaction_signer::traits::MemoHmacSigner;
 
 use super::{check_digest, check_state, Error, TransactionContext, TransactionHandle};
 
-impl<T: Exchange<Error=Error> + Send + Sync> MemoHmacSigner for TransactionHandle<T>{
+impl<T: Exchange<Error = Error> + Send + Sync> MemoHmacSigner for TransactionHandle<T> {
     type Error = Error;
 
     /// Compute the HMAC signature for the provided memo and target address
@@ -44,7 +44,7 @@ impl<T: Exchange<Error=Error> + Send + Sync> MemoHmacSigner for TransactionHandl
     }
 }
 
-impl<T: Exchange<Error=Error> + Send + Sync> TransactionContext<T> {
+impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
     /// Asynchronously compute the HMAC signature for the provided memo
     /// and target address.
     ///
