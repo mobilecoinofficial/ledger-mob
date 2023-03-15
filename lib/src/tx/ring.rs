@@ -22,7 +22,8 @@ use crate::tx::check_state;
 
 use super::{Error, TransactionContext, TransactionHandle};
 
-impl<T: Exchange + Send + Sync> RingSigner for TransactionHandle<T> {
+impl<T: Exchange<Error=Error> + Send + Sync> RingSigner for TransactionHandle<T> 
+{
     /// Execute ring signing operation on ledger hw
     fn sign(
         &self,
@@ -47,7 +48,8 @@ impl<T: Exchange + Send + Sync> RingSigner for TransactionHandle<T> {
     }
 }
 
-impl<T: Exchange + Send + Sync> TransactionContext<T> {
+impl<T: Exchange<Error=Error> + Send + Sync> TransactionContext<T> 
+{
     /// Asynchronously execute a ring signing operation on ledger hardware.
     ///  
     /// See [RingSigner] trait for public / blocking API
@@ -57,7 +59,7 @@ impl<T: Exchange + Send + Sync> TransactionContext<T> {
         _message: &[u8],
         signable_ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
-    ) -> Result<RingMLSAG, Error<<T as Exchange>::Error>> {
+    ) -> Result<RingMLSAG, Error> {
         let mut buff = [0u8; 256];
 
         let ring_size = signable_ring.members.len();

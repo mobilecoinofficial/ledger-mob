@@ -18,3 +18,5 @@ pub mod memo;
 pub mod transaction;
 
 pub mod ident;
+
+pub use ledger_mob::Error;

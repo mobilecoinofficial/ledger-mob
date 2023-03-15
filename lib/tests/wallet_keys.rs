@@ -1,6 +1,6 @@
 use bip39::{Language, Mnemonic, Seed};
 use curve25519_dalek::scalar::Scalar;
-use ledger_transport_tcp::TransportTcp;
+use ledger_mob::transport::GenericTransport;
 use log::info;
 use serde::{Deserialize, Serialize};
 
@@ -91,7 +91,7 @@ async fn mob_mnemonic_derive_partial() -> anyhow::Result<()> {
     mob_mnemonic_derive(&TEST_WALLETS[..4]).await
 }
 
-async fn get_account_keys(t: &TransportTcp, index: u32) -> anyhow::Result<WalletKeyResp> {
+async fn get_account_keys(t: &GenericTransport, index: u32) -> anyhow::Result<WalletKeyResp> {
     let mut buff = [0u8; 256];
 
     let r = t

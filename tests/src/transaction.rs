@@ -1,7 +1,5 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-use std::error::Error;
-
 use bip39::Mnemonic;
 use log::{debug, error, info, trace};
 use mc_core::{account::Account, slip10::Slip10KeyGenerator};
@@ -15,7 +13,7 @@ use mc_transaction_signer::types::{TxSignReq, TxSignResp};
 
 use ledger_transport::Exchange;
 
-use ledger_mob::{tx::TxConfig, DeviceHandle};
+use ledger_mob::{tx::{TxConfig, TransactionHandle}, DeviceHandle, Error};
 
 pub struct TransactionExpectation<'a> {
     pub mnemonic: &'a str,
@@ -61,15 +59,14 @@ impl<T: AsRef<[u8]>> core::fmt::Display for HexFmt<T> {
     }
 }
 
-pub async fn test<'a, T, F, E>(
+pub async fn test<'a, T, F>(
     t: T,
     approve: impl Fn() -> F,
     tx: &TransactionExpectation<'a>,
 ) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E> + Send + Sync,
+    T: Exchange<Error = Error> + Send + Sync,
     F: Future<Output = ()>,
-    E: Error + Sync + Send + 'static,
 {
     // Load account and unsigned transaction
     let account = tx.account();
@@ -83,12 +80,12 @@ where
     info!("Starting transaction");
 
     // Initialise transaction
-    let signer = d
-        .transaction(TxConfig {
+    let signer = TransactionHandle::new(
+        TxConfig {
             account_index: 0,
             num_memos: 0,
             num_rings: req.rings.len(),
-        })
+        }, &d)
         .await?;
 
     // Build the digest for ring signing

@@ -2,8 +2,6 @@
 
 //! Subaddress key tests
 
-use std::error::Error;
-
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use log::info;
 use std::future::Future;
@@ -16,7 +14,7 @@ use mc_core::{
 
 use ledger_transport::Exchange;
 
-use ledger_mob::DeviceHandle;
+use ledger_mob::{DeviceHandle, Error};
 
 /// Generate and fetch subaddress keys for the provided mnemonic
 pub async fn test<T, F, E>(
@@ -28,7 +26,7 @@ pub async fn test<T, F, E>(
 where
     T: Exchange<Error = E> + Send + Sync,
     F: Future<Output = ()>,
-    E: Error + Sync + Send + 'static,
+    Error: From<E>,
 {
     info!("using mnemonic: '{}'", mnemonic.phrase());
 
