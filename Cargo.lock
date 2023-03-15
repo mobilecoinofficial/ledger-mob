@@ -1766,6 +1766,7 @@ dependencies = [
  "clap 4.1.4",
  "curve25519-dalek",
  "ed25519-dalek",
+ "encdec 0.6.2",
  "futures",
  "hex",
  "hidapi",

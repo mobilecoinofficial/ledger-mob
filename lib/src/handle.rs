@@ -99,12 +99,12 @@ where
 
     /// Fetch root keys for the provided account index
     pub async fn account_keys(&self, account_index: u32) -> Result<ViewAccount, Error> {
-        let mut buff = [0u8; 256];
+        let (mut buff_a, mut buff_b) = ([0u8; 256], [0u8; 256]);
 
         debug!("Requesting root keys for account: {}", account_index);
 
         let req = WalletKeyReq::new(account_index);
-        let resp = self.exchange::<WalletKeyResp>(req, &mut buff).await?;
+        let resp = self.retry::<WalletKeyResp>(req, &mut buff_a, &mut buff_b).await?;
 
         Ok(ViewAccount::new(resp.view_private, resp.spend_public))
     }
@@ -115,7 +115,7 @@ where
         account_index: u32,
         subaddress_index: u64,
     ) -> Result<ViewSubaddress, Error> {
-        let mut buff = [0u8; 256];
+        let (mut buff_a, mut buff_b) = ([0u8; 256], [0u8; 256]);
 
         debug!(
             "Requesting subaddress keys for account: {}, subaddress: {}",
@@ -123,7 +123,7 @@ where
         );
 
         let req = SubaddressKeyReq::new(account_index, subaddress_index);
-        let resp = self.exchange::<SubaddressKeyResp>(req, &mut buff).await?;
+        let resp = self.retry::<SubaddressKeyResp>(req, &mut buff_a, &mut buff_b).await?;
 
         Ok(ViewSubaddress {
             view_private: resp.view_private,
@@ -138,7 +138,7 @@ where
         subaddress_index: u64,
         tx_public_key: RistrettoPublic,
     ) -> Result<KeyImage, Error> {
-        let mut buff = [0u8; 256];
+        let (mut buff_a, mut buff_b) = ([0u8; 256], [0u8; 256]);
 
         debug!(
             "Resolving key image for account: {}, subaddress: {}, tx_public_key: {}",
@@ -146,7 +146,7 @@ where
         );
 
         let req = KeyImageReq::new(account_index, subaddress_index, tx_public_key.into());
-        let resp = self.exchange::<KeyImageResp>(req, &mut buff).await?;
+        let resp = self.retry::<KeyImageResp>(req, &mut buff_a, &mut buff_b).await?;
 
         Ok(resp.key_image)
     }
@@ -161,6 +161,40 @@ where
             t: self,
         }
     }
+
+    /// Helper to retry for requests requiring user approval
+    // TODO: fix apdu lifetimes so we don't need multiple buffers here / can return immediate errors
+    async fn retry<'a, ANS: ApduBase<'a>>(
+        &self,
+        req: impl ApduCmd<'_> + Clone,
+        buff_a: &'a mut [u8],
+        buff_b: &'a mut [u8],
+    ) -> Result<ANS, Error> {
+        // First request, may succeed or require approval
+        match self.exchange::<ANS>(req.clone(), buff_a).await {
+            Ok(v) => return Ok(v),
+            Err(_) => (),
+        };
+        
+        // Poll on app unlock state
+        for i in 0..self.user_timeout_s {
+            let info = self.app_info().await?;
+            match info.flags.contains(AppFlags::UNLOCKED) {
+                true => break,
+                false if i == self.user_timeout_s - 1 => return Err(Error::UserTimeout),
+                false => {
+                    debug!("Waiting for user approval: {}s", i);
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+            }
+        }
+
+        // Re-issue request
+        let resp = self.exchange::<ANS>(req.clone(), buff_b).await?;
+
+        Ok(resp)
+    }
+
 
     /// Sign an unsigned transaction object using the device
     pub async fn transaction(
@@ -272,7 +306,6 @@ where
         // Fetch identity response
 
         let resp = self.exchange::<IdentResp>(IdentGetReq, &mut buff).await?;
-
         let public_key = PublicKey::from_bytes(&resp.public_key).map_err(|_| Error::InvalidKey)?;
 
         Ok((public_key, resp.signature))
