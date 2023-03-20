@@ -104,7 +104,9 @@ where
         debug!("Requesting root keys for account: {}", account_index);
 
         let req = WalletKeyReq::new(account_index);
-        let resp = self.retry::<WalletKeyResp>(req, &mut buff_a, &mut buff_b).await?;
+        let resp = self
+            .retry::<WalletKeyResp>(req, &mut buff_a, &mut buff_b)
+            .await?;
 
         Ok(ViewAccount::new(resp.view_private, resp.spend_public))
     }
@@ -123,7 +125,9 @@ where
         );
 
         let req = SubaddressKeyReq::new(account_index, subaddress_index);
-        let resp = self.retry::<SubaddressKeyResp>(req, &mut buff_a, &mut buff_b).await?;
+        let resp = self
+            .retry::<SubaddressKeyResp>(req, &mut buff_a, &mut buff_b)
+            .await?;
 
         Ok(ViewSubaddress {
             view_private: resp.view_private,
@@ -146,7 +150,9 @@ where
         );
 
         let req = KeyImageReq::new(account_index, subaddress_index, tx_public_key.into());
-        let resp = self.retry::<KeyImageResp>(req, &mut buff_a, &mut buff_b).await?;
+        let resp = self
+            .retry::<KeyImageResp>(req, &mut buff_a, &mut buff_b)
+            .await?;
 
         Ok(resp.key_image)
     }
@@ -171,11 +177,10 @@ where
         buff_b: &'a mut [u8],
     ) -> Result<ANS, Error> {
         // First request, may succeed or require approval
-        match self.exchange::<ANS>(req.clone(), buff_a).await {
-            Ok(v) => return Ok(v),
-            Err(_) => (),
+        if let Ok(v) = self.exchange::<ANS>(req.clone(), buff_a).await {
+            return Ok(v);
         };
-        
+
         // Poll on app unlock state
         for i in 0..self.user_timeout_s {
             let info = self.app_info().await?;
@@ -194,7 +199,6 @@ where
 
         Ok(resp)
     }
-
 
     /// Sign an unsigned transaction object using the device
     pub async fn transaction(

@@ -20,8 +20,8 @@ use mc_crypto_ring_signature::{
         create_tx_out_public_key, create_tx_out_target_key, recover_onetime_private_key,
         recover_public_subaddress_spend_key,
     },
-    CompressedCommitment, CurveScalar, KeyImage, MlsagSignParams, PedersenGens,
-    ReducedTxOut, RingMLSAG, Scalar,
+    CompressedCommitment, CurveScalar, KeyImage, MlsagSignParams, PedersenGens, ReducedTxOut,
+    RingMLSAG, Scalar,
 };
 use mc_util_from_random::FromRandom;
 

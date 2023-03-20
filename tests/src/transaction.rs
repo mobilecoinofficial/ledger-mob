@@ -13,7 +13,10 @@ use mc_transaction_signer::types::{TxSignReq, TxSignResp};
 
 use ledger_transport::Exchange;
 
-use ledger_mob::{tx::{TxConfig, TransactionHandle}, DeviceHandle, Error};
+use ledger_mob::{
+    tx::{TransactionHandle, TxConfig},
+    DeviceHandle, Error,
+};
 
 pub struct TransactionExpectation<'a> {
     pub mnemonic: &'a str,
@@ -85,8 +88,10 @@ where
             account_index: 0,
             num_memos: 0,
             num_rings: req.rings.len(),
-        }, &d)
-        .await?;
+        },
+        &d,
+    )
+    .await?;
 
     // Build the digest for ring signing
     debug!("Fetching signing data");

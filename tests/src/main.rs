@@ -1,15 +1,14 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-use clap::{Parser};
-use log::{debug, info, LevelFilter, error};
+use clap::Parser;
+use log::{debug, error, info, LevelFilter};
 use strum::{Display, EnumString, EnumVariantNames};
 
 use ledger_transport::Exchange;
 
-use mc_core::slip10::{Language, Mnemonic};
-use ledger_mob::{Error, LedgerProvider, Filter, transport::GenericTransport, Connect};
+use ledger_mob::{transport::GenericTransport, Connect, Error, Filter, LedgerProvider};
 use ledger_mob_tests::transaction::TransactionExpectation;
-
+use mc_core::slip10::{Language, Mnemonic};
 
 /// Test CLI arguments
 #[derive(Clone, Debug, Parser)]
