@@ -246,6 +246,9 @@ where
 
         debug!("Signing complete");
 
+        // Signal completion to app
+        signer.complete().await?;
+
         // Map key images to real inputs via public key
         let mut txos = vec![];
         for (i, r) in unsigned.rings.iter().enumerate() {
