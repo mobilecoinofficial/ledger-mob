@@ -40,8 +40,8 @@ pub enum TxSummaryApproverState {
     Init,
     Op(usize),
     Fee,
-    Deny,
     Allow,
+    Deny,
 }
 
 impl TxSummaryApprover {
@@ -71,17 +71,16 @@ impl TxSummaryApprover {
 
             // Fee information
             (Fee, LeftButtonRelease) => self.state = Op(self.op_count - 1),
-            (Fee, RightButtonRelease) => self.state = Deny,
-
-            // Deny page
-            (Deny, LeftButtonRelease) => self.state = Fee,
-            (Deny, BothButtonsRelease) => return UiResult::Exit(false),
-            (Deny, RightButtonRelease) => self.state = Allow,
+            (Fee, RightButtonRelease) => self.state = Allow,
 
             // Approve page
-            (Allow, LeftButtonRelease) => self.state = Deny,
+            (Allow, LeftButtonRelease) => self.state = Fee,
             (Allow, BothButtonsRelease) => return UiResult::Exit(true),
-            (Allow, RightButtonRelease) => (),
+            (Allow, RightButtonRelease) => self.state = Deny,
+
+            // Deny page
+            (Deny, LeftButtonRelease) => self.state = Allow,
+            (Deny, BothButtonsRelease) => return UiResult::Exit(false),
 
             // Both buttons pressed in other states cancels the request
             (_, BothButtonsRelease) => return UiResult::Exit(false),
@@ -117,7 +116,7 @@ impl TxSummaryApprover {
         if self.state != Init {
             LEFT_ARROW.shift_v(0).display();
         }
-        if self.state != Allow {
+        if self.state != Deny {
             RIGHT_ARROW.shift_v(0).display();
         }
 

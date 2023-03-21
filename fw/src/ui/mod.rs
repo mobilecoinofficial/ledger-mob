@@ -7,8 +7,6 @@ use rand_core::{CryptoRng, RngCore};
 
 use ledger_mob_core::engine::{Driver, Engine};
 
-use nanos_ui::{bagls::RectFull, layout::Draw, SCREEN_HEIGHT, SCREEN_WIDTH};
-
 mod helpers;
 pub use helpers::*;
 
@@ -170,14 +168,4 @@ impl<R> UiResult<R> {
     pub fn is_exit(&self) -> bool {
         matches!(self, UiResult::Exit(..))
     }
-}
-
-/// Clear screen wrapper that works both on hardware and speculos
-/// (required as speculos doesn't support the full screen clear syscall,
-/// and we want to run _exactly_ the same code on both)
-pub fn clear_screen() {
-    RectFull::new()
-        .width(SCREEN_WIDTH as u32)
-        .height(SCREEN_HEIGHT as u32)
-        .erase();
 }

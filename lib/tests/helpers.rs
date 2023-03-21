@@ -158,8 +158,6 @@ pub async fn approve(h: &GenericHandle) {
         Button::Right,
         // Right button to move to hash screen
         Button::Right,
-        // Right button to move to deny screen
-        Button::Right,
         // Right button to move to allow screen
         Button::Right,
         // Both buttons to select allow

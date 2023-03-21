@@ -83,6 +83,8 @@ extern "C" fn sample_main() {
     // must be cleared with user interaction
     #[cfg(feature = "pre-release")]
     {
+        use ButtonEvent::*;
+
         clear_screen();
         "Pending Review".place(Location::Middle, Layout::Centered, false);
         screen_update();
@@ -91,7 +93,7 @@ extern "C" fn sample_main() {
             let evt = comm.next_event::<u8>();
 
             match evt {
-                io::Event::Button(_btn) => break,
+                io::Event::Button(LeftButtonRelease | RightButtonRelease | BothButtonsRelease) => break,
                 io::Event::Command(_cmd) => {
                     comm.reply(SyscallError::Security);
                 }

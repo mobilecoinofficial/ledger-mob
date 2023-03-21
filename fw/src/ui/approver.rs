@@ -72,14 +72,14 @@ impl Approver {
                 RIGHT_ARROW.shift_v(12).display();
                 CROSS_ICON.shift_v(4).shift_h((128 - 16) / 2).display();
 
-                "DENY".place(Location::Custom(48), Layout::Centered, false);
+                "REJECT".place(Location::Custom(48), Layout::Centered, false);
             }
             Allow => {
                 LEFT_ARROW.shift_v(12).display();
                 CHECKMARK_ICON.shift_v(4).shift_h((128 - 16) / 2).display();
 
                 //bitmaps::CHECKMARK.draw((128 - 32) / 2, 24);
-                "ALLOW".place(Location::Custom(48), Layout::Centered, false);
+                "APPROVE".place(Location::Custom(48), Layout::Centered, false);
             }
         }
 
