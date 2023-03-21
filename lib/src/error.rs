@@ -19,7 +19,7 @@ pub enum Error<E: Display + Debug> {
     Transport(E),
 
     /// Invalid transaction state
-    #[error("Invalid transaction state (actual: {0}, expected: {1}")]
+    #[error("Invalid transaction state (actual: {0}, expected: {1})")]
     InvalidState(TxState, TxState),
 
     /// Unexpected APDU response

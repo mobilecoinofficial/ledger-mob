@@ -19,8 +19,8 @@ pub use approver::*;
 mod progress;
 pub use progress::*;
 
-mod complete;
-pub use complete::*;
+mod message;
+pub use message::*;
 
 mod tx_blind_approver;
 pub use tx_blind_approver::*;
@@ -65,8 +65,8 @@ pub enum UiState {
     /// Progress indicator
     Progress(Progress),
 
-    /// Transaction complete
-    Complete(Complete),
+    /// Messages (transaction complete, rejected, etc.)
+    Message(Message),
 }
 
 impl UiState {
@@ -87,8 +87,8 @@ impl UiState {
         matches!(self, UiState::Progress(..))
     }
 
-    pub fn is_complete(&self) -> bool {
-        matches!(self, UiState::Complete(..))
+    pub fn is_message(&self) -> bool {
+        matches!(self, UiState::Message(..))
     }
 
     #[cfg(feature = "ident")]
@@ -118,7 +118,7 @@ impl Ui {
             #[cfg(feature = "ident")]
             UiState::IdentRequest(a) => a.render(engine),
             UiState::Progress(a) => a.render(engine),
-            UiState::Complete(a) => a.render(engine),
+            UiState::Message(a) => a.render(engine),
         }
     }
 }
