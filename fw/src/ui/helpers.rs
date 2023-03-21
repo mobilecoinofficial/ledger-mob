@@ -5,8 +5,7 @@ use nanos_ui::{
     bagls::*,
     bitmaps,
     layout::{Draw, Layout, Location, StringPlace},
-    screen_util,
-    ui,
+    screen_util, ui,
 };
 
 const TX_REQ_APPROVE: &str = "Approve Transaction?";

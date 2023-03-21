@@ -93,7 +93,9 @@ extern "C" fn sample_main() {
             let evt = comm.next_event::<u8>();
 
             match evt {
-                io::Event::Button(LeftButtonRelease | RightButtonRelease | BothButtonsRelease) => break,
+                io::Event::Button(LeftButtonRelease | RightButtonRelease | BothButtonsRelease) => {
+                    break
+                }
                 io::Event::Command(_cmd) => {
                     comm.reply(SyscallError::Security);
                 }
