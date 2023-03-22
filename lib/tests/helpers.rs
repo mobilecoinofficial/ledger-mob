@@ -4,11 +4,11 @@ use log::{debug, LevelFilter};
 use portpicker::pick_unused_port;
 use simplelog::SimpleLogger;
 
-use ledger_mob::transport::{TcpOptions, TransportTcp};
+use ledger_mob::transport::{GenericTransport, TcpOptions, TransportTcp};
 use ledger_sim::*;
 
 // Setup speculos instance and TCP connector with an optional seed
-pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, TransportTcp) {
+pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, GenericTransport) {
     // Setup logging
     let log_level = match std::env::var("LOG_LEVEL").map(|v| LevelFilter::from_str(&v)) {
         Ok(Ok(l)) => l,
@@ -124,7 +124,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Trans
         tokio::time::sleep(Duration::from_millis(1000)).await;
     }
 
-    (d, s, t)
+    (d, s, t.into())
 }
 
 /// Run unlock UI where required for tests

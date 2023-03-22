@@ -35,7 +35,7 @@ impl TestEngine {
 
 #[async_trait]
 impl ledger_transport::Exchange for TestEngine {
-    type Error = Error;
+    type Error = ledger_mob_tests::Error;
 
     async fn exchange<'a, 'c, ANS: ledger_apdu::ApduBase<'a>>(
         &self,

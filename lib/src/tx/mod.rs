@@ -33,7 +33,7 @@ mod summary;
 /// See [DeviceHandle::transaction][super::DeviceHandle::transaction] to
 /// create a [TransactionHandle]
 #[derive(Clone)]
-pub struct TransactionHandle<T: Exchange + Sync + Send> {
+pub struct TransactionHandle<T: Exchange<Error = Error> + Sync + Send> {
     ctx: Arc<Mutex<TransactionContext<T>>>,
 }
 
@@ -49,7 +49,7 @@ pub struct TxConfig {
     pub num_rings: usize,
 }
 
-struct TransactionContext<T: Exchange + Sync + Send> {
+struct TransactionContext<T: Exchange<Error = Error> + Sync + Send> {
     t: T,
 
     /// General transaction configuration
@@ -67,20 +67,14 @@ struct TransactionContext<T: Exchange + Sync + Send> {
 
 //unsafe impl<T: Exchange + Send + Sync> Send for TransactionHandle<T> {}
 
-impl<T: Exchange + Send + Sync> TransactionHandle<T> {
-    /// Initialise a new transaction
-    pub(crate) async fn init(
-        info: TxConfig,
-        transport: T,
-    ) -> Result<Self, Error<<T as Exchange>::Error>> {
+impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
+    /// Initialise a new transaction over the provided device
+    pub async fn new(info: TxConfig, transport: T) -> Result<Self, Error> {
         let mut buff = [0u8; 256];
 
         // Setup transaction
         let tx_init = TxInit::new(info.account_index, info.num_rings as u8);
-        let r = transport
-            .exchange::<TxInfo>(tx_init, &mut buff)
-            .await
-            .map_err(Error::Transport)?;
+        let r = transport.exchange::<TxInfo>(tx_init, &mut buff).await?;
 
         //Self::check_state(r.state, TxState::Init)?;
 
@@ -97,7 +91,7 @@ impl<T: Exchange + Send + Sync> TransactionHandle<T> {
     }
 
     /// Set message for transaction
-    pub async fn set_message(&self, m: &[u8]) -> Result<(), Error<<T as Exchange>::Error>> {
+    pub async fn set_message(&self, m: &[u8]) -> Result<(), Error> {
         let mut buff = [0u8; 256];
         let mut ctx = self.ctx.lock().await;
 
@@ -118,10 +112,7 @@ impl<T: Exchange + Send + Sync> TransactionHandle<T> {
     }
 
     /// Await on-device transaction approval
-    pub async fn await_approval(
-        &self,
-        timeout_s: u32,
-    ) -> Result<(), Error<<T as Exchange>::Error>> {
+    pub async fn await_approval(&self, timeout_s: u32) -> Result<(), Error> {
         let mut buff = [0u8; 256];
         let ctx = self.ctx.lock().await;
 
@@ -149,7 +140,7 @@ impl<T: Exchange + Send + Sync> TransactionHandle<T> {
     }
 
     /// Signal transaction completion
-    pub async fn complete(self) -> Result<(), Error<<T as Exchange>::Error>> {
+    pub async fn complete(self) -> Result<(), Error> {
         let mut buff = [0u8; 256];
         let ctx = self.ctx.lock().await;
 
@@ -160,10 +151,7 @@ impl<T: Exchange + Send + Sync> TransactionHandle<T> {
 }
 
 /// Helper to check state when executing transactions
-pub(crate) fn check_state<T: Exchange>(
-    actual: TxState,
-    expected: TxState,
-) -> Result<(), Error<<T as Exchange>::Error>> {
+pub(crate) fn check_state<T: Exchange>(actual: TxState, expected: TxState) -> Result<(), Error> {
     if actual != expected {
         Err(Error::InvalidState(actual, expected))
     } else {
@@ -172,10 +160,7 @@ pub(crate) fn check_state<T: Exchange>(
 }
 
 /// Helper to check digest when executing transactions
-pub(crate) fn check_digest<T: Exchange>(
-    actual: &Digest,
-    expected: &Digest,
-) -> Result<(), Error<<T as Exchange>::Error>> {
+pub(crate) fn check_digest<T: Exchange>(actual: &Digest, expected: &Digest) -> Result<(), Error> {
     if expected != actual {
         Err(Error::DigestMismatch)
     } else {
@@ -184,18 +169,13 @@ pub(crate) fn check_digest<T: Exchange>(
 }
 
 /// Exchange impl on transaction context
-impl<T: Exchange + Send + Sync> TransactionContext<T> {
+impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
     /// Helper for executing transactions with the device
     pub(crate) async fn exchange<'b, 'c, R: ApduBase<'b>>(
         &self,
         req: impl ApduCmd<'c>,
         buff: &'b mut [u8],
-    ) -> Result<R, Error<<T as Exchange>::Error>> {
-        // Execute exchange with internal timeout
-        match tokio::time::timeout(Duration::from_secs(2), self.t.exchange(req, buff)).await {
-            Ok(Ok(v)) => Ok(v),
-            Ok(Err(e)) => Err(Error::Transport(e)),
-            Err(_e) => Err(Error::RequestTimeout),
-        }
+    ) -> Result<R, Error> {
+        self.t.exchange(req, buff).await
     }
 }

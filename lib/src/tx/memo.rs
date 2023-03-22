@@ -16,11 +16,8 @@ use mc_transaction_signer::traits::MemoHmacSigner;
 
 use super::{check_digest, check_state, Error, TransactionContext, TransactionHandle};
 
-impl<T: Exchange + Send + Sync> MemoHmacSigner for TransactionHandle<T>
-where
-    <T as Exchange>::Error: Send + Sync,
-{
-    type Error = Error<<T as Exchange>::Error>;
+impl<T: Exchange<Error = Error> + Send + Sync> MemoHmacSigner for TransactionHandle<T> {
+    type Error = Error;
 
     /// Compute the HMAC signature for the provided memo and target address
     fn compute_memo_hmac_sig(
@@ -47,10 +44,7 @@ where
     }
 }
 
-impl<T: Exchange + Send + Sync> TransactionContext<T>
-where
-    <T as Exchange>::Error: Send + Sync,
-{
+impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
     /// Asynchronously compute the HMAC signature for the provided memo
     /// and target address.
     ///
@@ -62,7 +56,7 @@ where
         target_subaddress: PublicSubaddress,
         memo_type: &[u8; 2],
         memo_data_sans_hmac: &[u8; 48],
-    ) -> Result<[u8; 16], Error<<T as Exchange>::Error>> {
+    ) -> Result<[u8; 16], Error> {
         let mut buff = [0u8; 256];
 
         // TODO: device state has tx_out_private_key,

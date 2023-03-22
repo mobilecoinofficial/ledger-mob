@@ -2,7 +2,6 @@
 
 //! Account key tests
 
-use std::error::Error;
 use std::future::Future;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -15,14 +14,14 @@ use mc_core::{
 
 use ledger_transport::Exchange;
 
-use ledger_mob::DeviceHandle;
+use ledger_mob::{DeviceHandle, Error};
 
 /// Generate and fetch account view keys for the provided mnemonic
 pub async fn test<T, F, E>(t: T, approve: impl Fn() -> F, mnemonic: Mnemonic) -> anyhow::Result<()>
 where
     T: Exchange<Error = E> + Sync + Send,
     F: Future<Output = ()>,
-    E: Error + Sync + Send + 'static,
+    Error: From<E>,
 {
     info!("using mnemonic: '{}'", mnemonic.phrase());
 

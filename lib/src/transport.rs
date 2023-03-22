@@ -7,21 +7,13 @@ use ledger_apdu::{ApduBase, ApduCmd};
 use ledger_transport::Exchange;
 
 #[cfg(feature = "transport_hid")]
-pub use ledger_transport_hid::TransportNativeHID;
+pub use ledger_transport_hid::{LedgerHIDError, TransportNativeHID};
 
 #[cfg(feature = "transport_tcp")]
-pub use ledger_transport_tcp::{TcpOptions, TransportTcp};
+pub use ledger_transport_tcp::{Error as LedgerTcpError, TcpOptions, TransportTcp};
 use strum::Display;
 
 use crate::Error;
-
-/// Re-export HID transport error type
-#[cfg(feature = "transport_hid")]
-pub type TransportHidError = Error<ledger_transport_hid::LedgerHIDError>;
-
-/// Re-export TCP transport error type
-#[cfg(feature = "transport_tcp")]
-pub type TransportTcpError = Error<ledger_transport_tcp::Error>;
 
 /// Generic ledger device (abstract over transport types)
 #[derive(Display)]
@@ -31,19 +23,6 @@ pub enum GenericTransport {
     Hid(TransportNativeHID),
     #[cfg(feature = "transport_tcp")]
     Tcp(TransportTcp),
-}
-
-/// Generic transport error
-#[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
-pub enum GenericError {
-    #[cfg(feature = "transport_hid")]
-    #[error("HID transport error: {0}")]
-    Hid(#[from] ledger_transport_hid::LedgerHIDError),
-
-    #[cfg(feature = "transport_tcp")]
-    #[error("TCP transport error: {0}")]
-    Tcp(#[from] ledger_transport_tcp::Error),
 }
 
 /// Convert a HID transport into a generic transport
@@ -65,7 +44,7 @@ impl From<ledger_transport_tcp::TransportTcp> for GenericTransport {
 /// Implementation of [Exchange] for [GenericDevice], hiding transport error types
 #[async_trait]
 impl Exchange for GenericTransport {
-    type Error = GenericError;
+    type Error = Error;
 
     async fn exchange<'a, 'c, ANS: ApduBase<'a>>(
         &self,
@@ -86,15 +65,28 @@ impl Exchange for GenericTransport {
 }
 
 #[cfg(feature = "transport_hid")]
-impl From<ledger_transport_hid::LedgerHIDError> for Error<GenericError> {
-    fn from(e: ledger_transport_hid::LedgerHIDError) -> Self {
-        Error::Transport(e.into())
+impl From<LedgerHIDError> for Error {
+    fn from(e: LedgerHIDError) -> Self {
+        match e {
+            LedgerHIDError::DeviceNotFound => Error::NoDevice,
+            LedgerHIDError::Comm(_e) => Error::Unknown,
+            LedgerHIDError::Hid(e) => Error::Hid(e),
+            LedgerHIDError::Io(e) => Error::Io(e),
+            LedgerHIDError::UTF8(_e) => Error::Utf8,
+            LedgerHIDError::Apdu(e) => Error::Apdu(e),
+        }
     }
 }
 
 #[cfg(feature = "transport_tcp")]
-impl From<ledger_transport_tcp::Error> for Error<GenericError> {
-    fn from(e: ledger_transport_tcp::Error) -> Self {
-        Error::Transport(e.into())
+impl From<LedgerTcpError> for Error {
+    fn from(e: LedgerTcpError) -> Self {
+        match e {
+            LedgerTcpError::Io(e) => Error::Io(e),
+            LedgerTcpError::Timeout => Error::RequestTimeout,
+            LedgerTcpError::InvalidLength => Error::InvalidLength,
+            LedgerTcpError::InvalidAnswer => Error::UnexpectedResponse,
+            LedgerTcpError::ApduError => Error::Unknown,
+        }
     }
 }

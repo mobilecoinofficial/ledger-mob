@@ -22,14 +22,23 @@ use ledger_mob_apdu::{
     tx::{TxInfo, TxInfoReq},
     wallet_keys::{WalletKeyReq, WalletKeyResp},
 };
-use mc_core::account::{ViewAccount, ViewSubaddress};
-use mc_transaction_signer::traits::{KeyImageComputer, ViewAccountProvider};
+use mc_core::{
+    account::{ViewAccount, ViewSubaddress},
+    keys::TxOutPublic,
+};
+use mc_transaction_core::{ring_ct::InputRing, tx::Tx};
+use mc_transaction_extra::UnsignedTx;
+use mc_transaction_signer::{
+    traits::{KeyImageComputer, ViewAccountProvider},
+    types::TxoSynced,
+};
 
 use ledger_apdu::{ApduBase, ApduCmd};
 use ledger_transport::Exchange;
 
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_ring_signature::KeyImage;
+use rand_core::OsRng;
 
 use crate::{
     tx::{TransactionHandle, TxConfig},
@@ -66,9 +75,12 @@ pub struct AppInfo {
     pub flags: AppFlags,
 }
 
-impl<T: Exchange + Sync + Send> DeviceHandle<T> {
+impl<T: Exchange + Sync + Send> DeviceHandle<T>
+where
+    Error: From<<T as Exchange>::Error>,
+{
     /// Fetch ledger application info
-    pub async fn app_info(&self) -> Result<AppInfo, Error<<T as Exchange>::Error>> {
+    pub async fn app_info(&self) -> Result<AppInfo, Error> {
         let mut buff = [0u8; 256];
 
         debug!("Requesting app info");
@@ -86,16 +98,15 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
     }
 
     /// Fetch root keys for the provided account index
-    pub async fn account_keys(
-        &self,
-        account_index: u32,
-    ) -> Result<ViewAccount, Error<<T as Exchange>::Error>> {
-        let mut buff = [0u8; 256];
+    pub async fn account_keys(&self, account_index: u32) -> Result<ViewAccount, Error> {
+        let (mut buff_a, mut buff_b) = ([0u8; 256], [0u8; 256]);
 
         debug!("Requesting root keys for account: {}", account_index);
 
         let req = WalletKeyReq::new(account_index);
-        let resp = self.exchange::<WalletKeyResp>(req, &mut buff).await?;
+        let resp = self
+            .retry::<WalletKeyResp>(req, &mut buff_a, &mut buff_b)
+            .await?;
 
         Ok(ViewAccount::new(resp.view_private, resp.spend_public))
     }
@@ -105,8 +116,8 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
         &self,
         account_index: u32,
         subaddress_index: u64,
-    ) -> Result<ViewSubaddress, Error<<T as Exchange>::Error>> {
-        let mut buff = [0u8; 256];
+    ) -> Result<ViewSubaddress, Error> {
+        let (mut buff_a, mut buff_b) = ([0u8; 256], [0u8; 256]);
 
         debug!(
             "Requesting subaddress keys for account: {}, subaddress: {}",
@@ -114,7 +125,9 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
         );
 
         let req = SubaddressKeyReq::new(account_index, subaddress_index);
-        let resp = self.exchange::<SubaddressKeyResp>(req, &mut buff).await?;
+        let resp = self
+            .retry::<SubaddressKeyResp>(req, &mut buff_a, &mut buff_b)
+            .await?;
 
         Ok(ViewSubaddress {
             view_private: resp.view_private,
@@ -128,8 +141,8 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
         account_index: u32,
         subaddress_index: u64,
         tx_public_key: RistrettoPublic,
-    ) -> Result<KeyImage, Error<<T as Exchange>::Error>> {
-        let mut buff = [0u8; 256];
+    ) -> Result<KeyImage, Error> {
+        let (mut buff_a, mut buff_b) = ([0u8; 256], [0u8; 256]);
 
         debug!(
             "Resolving key image for account: {}, subaddress: {}, tx_public_key: {}",
@@ -137,7 +150,9 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
         );
 
         let req = KeyImageReq::new(account_index, subaddress_index, tx_public_key.into());
-        let resp = self.exchange::<KeyImageResp>(req, &mut buff).await?;
+        let resp = self
+            .retry::<KeyImageResp>(req, &mut buff_a, &mut buff_b)
+            .await?;
 
         Ok(resp.key_image)
     }
@@ -153,20 +168,112 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
         }
     }
 
-    /// Start a transaction
-    ///
-    /// This returns a stateful [TransactionHandle] that must be used
-    /// for further operations.
-    /// Note that misuse / reordering will cause the transaction to fail.
+    /// Helper to retry for requests requiring user approval
+    // TODO: fix apdu lifetimes so we don't need multiple buffers here / can return immediate errors
+    async fn retry<'a, ANS: ApduBase<'a>>(
+        &self,
+        req: impl ApduCmd<'_> + Clone,
+        buff_a: &'a mut [u8],
+        buff_b: &'a mut [u8],
+    ) -> Result<ANS, Error> {
+        // First request, may succeed or require approval
+        if let Ok(v) = self.exchange::<ANS>(req.clone(), buff_a).await {
+            return Ok(v);
+        };
+
+        // Poll on app unlock state
+        for i in 0..self.user_timeout_s {
+            let info = self.app_info().await?;
+            match info.flags.contains(AppFlags::UNLOCKED) {
+                true => break,
+                false if i == self.user_timeout_s - 1 => return Err(Error::UserTimeout),
+                false => {
+                    debug!("Waiting for user approval: {}s", i);
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+            }
+        }
+
+        // Re-issue request
+        let resp = self.exchange::<ANS>(req.clone(), buff_b).await?;
+
+        Ok(resp)
+    }
+
+    /// Sign an unsigned transaction object using the device
     pub async fn transaction(
         &self,
-        opts: TxConfig,
-    ) -> Result<TransactionHandle<&Self>, Error<<T as Exchange>::Error>> {
-        debug!("Starting transaction: {:?}", opts);
+        account_index: u32,
+        approval_timeout_s: u32,
+        unsigned: UnsignedTx,
+    ) -> Result<(Tx, Vec<TxoSynced>), Error> {
+        // Start device transaction
+        debug!("Starting transaction");
+        let signer = TransactionHandle::new(
+            TxConfig {
+                account_index,
+                num_memos: 0,
+                num_rings: unsigned.rings.len(),
+            },
+            self,
+        )
+        .await?;
 
-        let t = TransactionHandle::init(opts, self).await.unwrap();
+        // TODO: sign memos (this requires a restructure of UnsignedTx)
 
-        Ok(t)
+        // Build the digest for ring signing
+        debug!("Building TX digest");
+        let (signing_data, summary, unblinding, digest) =
+            unsigned.get_signing_data(&mut OsRng {}).unwrap();
+
+        debug!(
+            "Using extended digest: {:02x?}",
+            signing_data.mlsag_signing_digest
+        );
+
+        // Load transaction summary
+        debug!("Loading tx summary");
+        signer
+            .set_tx_summary(unsigned.block_version, &digest.0, &summary, &unblinding)
+            .await?;
+
+        // Await transaction approval
+        signer.await_approval(approval_timeout_s).await?;
+
+        // Sign rings
+        debug!("Executing signing operation");
+        let signature = signing_data.sign(&unsigned.rings, &signer, &mut OsRng {})?;
+
+        debug!("Signing complete");
+
+        // Signal completion to app
+        signer.complete().await?;
+
+        // Map key images to real inputs via public key
+        let mut txos = vec![];
+        for (i, r) in unsigned.rings.iter().enumerate() {
+            let tx_out_public_key = match r {
+                InputRing::Signable(r) => r.members[r.real_input_index].public_key,
+                InputRing::Presigned(_) => panic!("Pre-signed rings unsupported"),
+            };
+
+            txos.push(TxoSynced {
+                tx_out_public_key: TxOutPublic::from(
+                    RistrettoPublic::try_from(&tx_out_public_key).unwrap(),
+                ),
+                key_image: signature.ring_signatures[i].key_image,
+            });
+        }
+
+        // Buld transaction object
+        let tx = Tx {
+            prefix: unsigned.tx_prefix.clone(),
+            signature,
+            // TODO: where should this come from?
+            fee_map_digest: vec![],
+        };
+
+        Ok((tx, txos))
     }
 
     /// Execute and identity challenge and response
@@ -175,7 +282,7 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
         index: u32,
         uri: &str,
         challenge: &[u8],
-    ) -> Result<(PublicKey, [u8; 64]), Error<<T as Exchange>::Error>> {
+    ) -> Result<(PublicKey, [u8; 64]), Error> {
         let mut buff = [0u8; 256];
 
         debug!("Executing identity challenge");
@@ -206,7 +313,6 @@ impl<T: Exchange + Sync + Send> DeviceHandle<T> {
         // Fetch identity response
 
         let resp = self.exchange::<IdentResp>(IdentGetReq, &mut buff).await?;
-
         let public_key = PublicKey::from_bytes(&resp.public_key).map_err(|_| Error::InvalidKey)?;
 
         Ok((public_key, resp.signature))
@@ -227,9 +333,9 @@ impl<T: Exchange + Sync + Send> AccountHandle<T> {}
 
 impl<T: Exchange + Sync + Send> KeyImageComputer for AccountHandle<T>
 where
-    <T as Exchange>::Error: Send + Sync,
+    Error: From<<T as Exchange>::Error>,
 {
-    type Error = Error<<T as Exchange>::Error>;
+    type Error = Error;
 
     fn compute_key_image(
         &self,
@@ -250,11 +356,7 @@ where
                     subaddress_index,
                     tx_out_public_key.clone(),
                 );
-                let resp = self
-                    .t
-                    .exchange::<KeyImageResp>(req, &mut buff)
-                    .await
-                    .map_err(Error::Transport)?;
+                let resp = self.t.exchange::<KeyImageResp>(req, &mut buff).await?;
 
                 Ok(resp.key_image)
             })
@@ -264,9 +366,9 @@ where
 
 impl<T: Exchange + Sync + Send> ViewAccountProvider for AccountHandle<T>
 where
-    <T as Exchange>::Error: Send + Sync,
+    Error: From<<T as Exchange>::Error>,
 {
-    type Error = Error<<T as Exchange>::Error>;
+    type Error = Error;
 
     fn account(&self) -> Result<ViewAccount, Self::Error> {
         let mut buff = [0u8; 256];
@@ -276,11 +378,7 @@ where
                 debug!("Requesting root keys for account: {}", self.account_index);
 
                 let req = WalletKeyReq::new(self.account_index);
-                let resp = self
-                    .t
-                    .exchange::<WalletKeyResp>(req, &mut buff)
-                    .await
-                    .map_err(Error::Transport)?;
+                let resp = self.t.exchange::<WalletKeyResp>(req, &mut buff).await?;
 
                 Ok(ViewAccount::new(resp.view_private, resp.spend_public))
             })
@@ -290,8 +388,11 @@ where
 
 /// Re-export [Exchange] trait for [DeviceHandle], including timeout function
 #[async_trait]
-impl<T: Exchange + Sync + Send> Exchange for DeviceHandle<T> {
-    type Error = Error<<T as Exchange>::Error>;
+impl<T: Exchange + Sync + Send> Exchange for DeviceHandle<T>
+where
+    Error: From<<T as Exchange>::Error>,
+{
+    type Error = Error;
 
     async fn exchange<'a, 'c, ANS: ApduBase<'a>>(
         &self,
@@ -299,15 +400,12 @@ impl<T: Exchange + Sync + Send> Exchange for DeviceHandle<T> {
         buff: &'a mut [u8],
     ) -> Result<ANS, Self::Error> {
         // Execute exchange with internal timeout
-        match tokio::time::timeout(
+        let v = tokio::time::timeout(
             Duration::from_secs(self.request_timeout_s as u64),
             self.t.exchange(req, buff),
         )
-        .await
-        {
-            Ok(Ok(v)) => Ok(v),
-            Ok(Err(e)) => Err(Error::Transport(e)),
-            Err(_e) => Err(Error::RequestTimeout),
-        }
+        .await??;
+
+        Ok(v)
     }
 }

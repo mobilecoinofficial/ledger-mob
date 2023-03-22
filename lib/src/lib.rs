@@ -7,11 +7,11 @@
 // see https://github.com/rust-lang/rust/issues/91611
 // #![feature(async_fn_in_trait)]
 
-use async_trait::async_trait;
-use std::{convert::Infallible, fmt::Debug};
-use transport::GenericError;
+use std::fmt::Debug;
 
 pub use ledger_transport::Exchange;
+
+use async_trait::async_trait;
 
 #[cfg(feature = "transport_hid")]
 use hidapi::{HidApi, HidError};
@@ -43,7 +43,7 @@ lazy_static::lazy_static! {
 pub struct LedgerProvider {}
 
 /// Device discovery filter
-#[derive(Clone, Debug, PartialEq, clap::ValueEnum, strum::Display)]
+#[derive(Copy, Clone, Debug, PartialEq, clap::ValueEnum, strum::Display)]
 #[non_exhaustive]
 pub enum Filter {
     /// List all devices available using supported transport
@@ -65,7 +65,7 @@ pub enum LedgerInfo {
 
 impl LedgerProvider {
     /// Create a new ledger provider
-    pub fn new() -> Result<Self, Error<Infallible>> {
+    pub fn new() -> Result<Self, Error> {
         // Check we have an HidApi instance
         #[cfg(feature = "transport_hid")]
         let _hid_api = match &*HIDAPI {
@@ -156,10 +156,7 @@ pub trait Connect<T: Exchange> {
     type Options: Debug;
 
     /// Connect to the specified device
-    async fn connect(
-        &self,
-        opts: &Self::Options,
-    ) -> Result<DeviceHandle<T>, Error<<T as Exchange>::Error>>;
+    async fn connect(&self, opts: &Self::Options) -> Result<DeviceHandle<T>, Error>;
 }
 
 /// Generic connect implementation
@@ -168,10 +165,7 @@ pub trait Connect<T: Exchange> {
 impl Connect<GenericTransport> for LedgerProvider {
     type Options = LedgerInfo;
 
-    async fn connect(
-        &self,
-        opts: &Self::Options,
-    ) -> Result<DeviceHandle<GenericTransport>, Error<GenericError>> {
+    async fn connect(&self, opts: &Self::Options) -> Result<DeviceHandle<GenericTransport>, Error> {
         let t = match opts {
             #[cfg(feature = "transport_hid")]
             LedgerInfo::Hid(hid_info) => {
@@ -208,14 +202,14 @@ impl Connect<TransportNativeHID> for LedgerProvider {
     async fn connect(
         &self,
         opts: &Self::Options,
-    ) -> Result<DeviceHandle<TransportNativeHID>, TransportHidError> {
+    ) -> Result<DeviceHandle<TransportNativeHID>, Error> {
         let hid_api = match &*HIDAPI {
             Ok(v) => v,
             Err(_e) => return Err(Error::HidInit),
         };
 
         // Connect to device
-        let t = TransportNativeHID::open_device(hid_api, opts).map_err(Error::Transport)?;
+        let t = TransportNativeHID::open_device(hid_api, opts)?;
 
         // Create handle
         let d = DeviceHandle::from(t);
@@ -230,14 +224,9 @@ impl Connect<TransportNativeHID> for LedgerProvider {
 impl Connect<TransportTcp> for LedgerProvider {
     type Options = ledger_transport_tcp::TcpOptions;
 
-    async fn connect(
-        &self,
-        opts: &Self::Options,
-    ) -> Result<DeviceHandle<TransportTcp>, TransportTcpError> {
+    async fn connect(&self, opts: &Self::Options) -> Result<DeviceHandle<TransportTcp>, Error> {
         // Connect to device
-        let t = TransportTcp::new(opts.clone())
-            .await
-            .map_err(Error::Transport)?;
+        let t = TransportTcp::new(opts.clone()).await?;
 
         // Create handle
         let d = DeviceHandle::from(t);
