@@ -79,6 +79,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
 
     /// out-pointer based init to avoid stack allocation
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub unsafe fn init(
         p: *mut Self,
         message: &[u8],
@@ -104,16 +105,17 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     }
 
     /// Add output information to the summary (must be followed by `add_output_unblinding`)
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn add_output_summary(
         &mut self,
-        masked_amount: Option<MaskedAmount>,
+        masked_amount: Option<&MaskedAmount>,
         target_key: &CompressedRistrettoPublic,
         public_key: &CompressedRistrettoPublic,
         associated_to_input_rules: bool,
     ) -> Result<SummaryState, Error> {
         // Build txout summary
         let tx_out_summary = TxOutSummary {
-            masked_amount,
+            masked_amount: masked_amount.cloned(),
             target_key: *target_key,
             public_key: *public_key,
             associated_to_input_rules,
@@ -133,11 +135,12 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     }
 
     /// Add output unblinding to the summary (must follow `add_output_summary`)
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn add_output_unblinding(
         &mut self,
         unmasked_amount: &UnmaskedAmount,
-        address: Option<(ShortAddressHash, PublicSubaddress)>,
-        tx_private_key: Option<TxPrivateKey>,
+        address: Option<(ShortAddressHash, &PublicSubaddress)>,
+        tx_private_key: Option<&TxPrivateKey>,
     ) -> Result<SummaryState, Error> {
         // TODO: check state
 
@@ -189,6 +192,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         Ok(self.state)
     }
 
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn add_input(
         &mut self,
         pseudo_output_commitment: CompressedCommitment,
@@ -239,6 +243,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         Ok(self.state)
     }
 
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn finalize(
         &mut self,
         fee: Amount,
@@ -294,41 +299,6 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     #[inline]
     pub fn report(&self) -> &TxSummaryUnblindingReport<MAX_RECORDS> {
         &self.report
-    }
-
-    /// Wrapper to handle summary update events
-    pub fn update(&mut self, evt: &Event) -> Result<SummaryState, Error> {
-        match evt {
-            Event::TxSummaryAddOutput {
-                masked_amount,
-                target_key,
-                public_key,
-                associated_to_input_rules,
-            } => self.add_output_summary(
-                masked_amount.clone(),
-                target_key,
-                public_key,
-                *associated_to_input_rules,
-            ),
-            Event::TxSummaryAddOutputUnblinding {
-                unmasked_amount,
-                address,
-                tx_private_key,
-            } => {
-                self.add_output_unblinding(unmasked_amount, address.clone(), tx_private_key.clone())
-            }
-            Event::TxSummaryAddInput {
-                pseudo_output_commitment,
-                input_rules_digest,
-                unmasked_amount,
-            } => self.add_input(
-                *pseudo_output_commitment,
-                *input_rules_digest,
-                unmasked_amount,
-            ),
-
-            _ => Err(Error::UnexpectedEvent),
-        }
     }
 }
 
@@ -397,7 +367,7 @@ mod test {
             let unblinding = &unblinding_data.outputs[i];
 
             s.add_output_summary(
-                summary.masked_amount.clone(),
+                summary.masked_amount.as_ref(),
                 &summary.target_key,
                 &summary.public_key,
                 summary.associated_to_input_rules,
@@ -410,8 +380,12 @@ mod test {
                 .map(|a| (ShortAddressHash::from(a), PublicSubaddress::from(a)));
             let k = unblinding.tx_private_key.map(Key::from);
 
-            s.add_output_unblinding(&unblinding.unmasked_amount, a, k)
-                .unwrap();
+            s.add_output_unblinding(
+                &unblinding.unmasked_amount,
+                (&a).as_ref().map(|(h, p)| (h.clone(), p)),
+                (&k).as_ref(),
+            )
+            .unwrap();
 
             let progress = s.progress();
             assert_eq!(
