@@ -92,7 +92,7 @@ impl UiMenu {
         clear_screen();
 
         // Show arrows on menu pages
-        if state != MenuState::Hello && !self.selected {
+        if !self.selected {
             LEFT_ARROW.display();
             RIGHT_ARROW.display();
         }

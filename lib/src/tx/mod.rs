@@ -131,11 +131,14 @@ impl<T: Exchange + Send + Sync> TransactionHandle<T> {
 
             debug!("awaiting tx approval (state: {:?})", r);
 
-            // Handle responses, waiting for `Ready` or `Error` states
+            // Handle responses, waiting for `Ready`, `Denied` or `Error` states
             match r {
+                Ok(v) if v.state == TxState::Pending => (),
                 Ok(v) if v.state == TxState::Ready => return Ok(()),
+                Ok(v) if v.state == TxState::TxDenied => return Err(Error::UserDenied),
                 Ok(v) if v.state == TxState::Error => return Err(Error::Engine(0)),
-                _ => (),
+                Ok(v) => return Err(Error::InvalidState(v.state, TxState::Pending)),
+                Err(_) => (),
             }
 
             // Sleep while we wait

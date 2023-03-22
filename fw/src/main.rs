@@ -84,6 +84,8 @@ extern "C" fn sample_main() {
     // must be cleared with user interaction
     #[cfg(feature = "pre-release")]
     {
+        use ButtonEvent::*;
+
         clear_screen();
         "Pending Review".place(Location::Middle, Layout::Centered, false);
         screen_update();
@@ -92,7 +94,9 @@ extern "C" fn sample_main() {
             let evt = comm.next_event::<u8>();
 
             match evt {
-                io::Event::Button(_btn) => break,
+                io::Event::Button(LeftButtonRelease | RightButtonRelease | BothButtonsRelease) => {
+                    break
+                }
                 io::Event::Command(_cmd) => {
                     comm.reply(SyscallError::Security);
                 }
@@ -199,9 +203,9 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                 }
             })
         }
-        UiState::Complete(ref mut a) => {
+        UiState::Message(ref mut a) => {
             a.update(btn).map_exit(|_| {
-                // Reset engine on exit
+                // Reset engine on message clear
                 engine.reset()
             })
         }
@@ -212,7 +216,7 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
         UiState::KeyRequest(..)
         | UiState::TxRequest(..)
         | UiState::Progress(..)
-        | UiState::Complete(..)
+        | UiState::Message(..)
             if r.is_exit() =>
         {
             ui.state = UiState::Menu;
@@ -349,9 +353,15 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
             render = true;
         }
 
-        // Update to complete when transaction is complete
-        State::Complete if !ui.state.is_complete() => {
-            ui.state = UiState::Complete(Complete::new());
+        // Set complete message when transaction is complete
+        State::Complete if !ui.state.is_message() => {
+            ui.state = UiState::Message(Message::new("Transaction Complete"));
+            render = true;
+        }
+
+        // Set cancelled message when transaction is aborted
+        State::Deny if !ui.state.is_message() => {
+            ui.state = UiState::Message(Message::new("Transaction Cancelled"));
             render = true;
         }
 
