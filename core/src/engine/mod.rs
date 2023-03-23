@@ -153,9 +153,11 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         }
     }
 
-    /// UNSAFE: Initialise an uninitialised engine instance
+    /// Initialise an uninitialised engine instance
     /// pointer, another adventure in stack frame reduction
     /// TODO: add checks that init and new_with_rng match
+    /// # Safety
+    /// per-field init is okay so long as we init _all_ fields
     pub unsafe fn init(p: *mut Self, drv: DRV, rng: RNG) {
         addr_of_mut!((*p).state).write(State::Init);
         addr_of_mut!((*p).unlocked).write(false);
