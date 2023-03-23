@@ -59,6 +59,8 @@ pub fn app_getrandom(buff: &mut [u8]) -> Result<(), getrandom::Error> {
     Ok(())
 }
 
+/// Application main, sets up the engine and polls on `comm` for button and
+/// APDU events
 #[no_mangle]
 extern "C" fn sample_main() {
     // Setup comms and UI instances
@@ -237,7 +239,6 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
 }
 
 /// Handle APDU commands, returning true if UI should be redrawn
-//#[inline]
 #[cfg_attr(feature = "noinline", inline(never))]
 fn handle_apdu<RNG: RngCore + CryptoRng>(
     engine: &mut Engine<LedgerDriver, RNG>,
@@ -248,13 +249,37 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     use apdu::*;
 
     let mut render = false;
+    let cla = comm.apdu_buffer[0];
 
     // Skip empty APDUs
     if comm.rx == 0 {
         return false;
     }
 
-    // Handle generic app info request
+    // Handle generic / ledger commands (AppInfo, DeviceInfo APDUs)
+    if handle_ledger_apdu(comm, cla, i) {
+        return false;
+    }
+
+    // Ignore APDUs for other apps
+    if comm.apdu_buffer[0] != MOB_APDU_CLA {
+        comm.tx = 0;
+        comm.reply_ok();
+        return false;
+    }
+
+    // Handle engine / transaction commands
+
+    // Decode APDUs to engine events
+    let evt = match Event::parse(i, &comm.apdu_buffer[APDU_HEADER_LEN..]) {
+        Ok(v) => v,
+        Err(_e) => {
+            comm.reply(SyscallError::InvalidParameter);
+            return false;
+        }
+    };
+
+    // Handle _mobilecoin_ app info request
     if i == app_info::AppInfoReq::INS {
         let mut flags = app_flags();
         flags.set(AppFlags::UNLOCKED, engine.is_unlocked());
@@ -274,24 +299,6 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
         return false;
     }
-
-    // Ignore APDUs for other apps
-    if comm.apdu_buffer[0] != MOB_APDU_CLA {
-        comm.reply(SyscallError::Unspecified);
-        return false;
-    }
-    
-
-    // Handle engine / transaction commands
-
-    // Decode APDUs to engine events
-    let evt = match Event::parse(i, &comm.apdu_buffer[APDU_HEADER_LEN..]) {
-        Ok(v) => v,
-        Err(_e) => {
-            comm.reply(SyscallError::InvalidParameter);
-            return false;
-        }
-    };
 
     // WIP: user acknowledgement screens etc.
     // to be moved once i've worked out how to wire this best
@@ -395,6 +402,54 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
     // Return render flag
     render
+}
+
+/// Handle common ledger APDUs (expected by ledger-live)
+fn handle_ledger_apdu(comm: &mut io::Comm, cla: u8, ins: u8) -> bool {
+    // Import ledger standard(ish) APDUs
+    use ledger_apdu::{
+        apdus::{AppFlags, AppInfo, AppInfoGet, DeviceInfo, DeviceInfoGet},
+        ApduStatic,
+    };
+
+    // Build and encode APDUs
+    let r = match (cla, ins) {
+        (DeviceInfoGet::CLA, DeviceInfoGet::INS) => {
+            // TODO: wrap OS functions and contribute upstream
+            let i = DeviceInfo::new(
+                #[cfg(target_os = "nanosplus")]
+                [0x33, 0x10, 0x00, 0x04],
+                #[cfg(target_os = "nanox")]
+                [0x33, 0x00, 0x00, 0x04],
+                "UNKNOWN", //os_seph_version(),
+                "UNKNOWN", //os_version(),
+                &[0; 2],   //os_flags(),
+            );
+
+            i.encode(&mut comm.apdu_buffer)
+        }
+        (AppInfoGet::CLA, AppInfoGet::INS) => {
+            let i = AppInfo::new(APP_NAME, APP_VERSION, AppFlags::empty());
+
+            i.encode(&mut comm.apdu_buffer)
+        }
+        _ => return false,
+    };
+
+    // Handle encoded result
+    match r {
+        Ok(n) => {
+            comm.tx = n;
+            comm.reply_ok();
+        }
+        Err(_e) => {
+            let r = 0x6d00 | (Error::EncodingFailed as u8) as u16;
+            comm.reply(Reply(r));
+        }
+    }
+
+    // Signal we handled the APDU request
+    return true;
 }
 
 const APPROVE_KEY_REQ: &str = "Sync View Keys?";
