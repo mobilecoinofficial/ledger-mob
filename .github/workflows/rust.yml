@@ -412,16 +412,15 @@ jobs:
 
     - name: Setup package files
       run: |
-        cp bin/ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}* .
-        cp bin/app_${{ matrix.platform }}.json .
-        cp fw/assets/mob14x14i.gif .
+        mkdir -p ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
+        cp bin/ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/ledger-mob-fw.hex
+        cp bin/app_${{ matrix.platform }}.json ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
+        cp fw/assets/mob14x14i.gif ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
 
     - name: Build firmware archive
       run: >        
         tar cvf ledger-mob-fw-${{ matrix.platform }}.tgz 
-        ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex 
-        app_${{ matrix.platform }}.json 
-        mob14x14i.gif
+        ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
 
     - name: Upload firmware package artifact
       uses: actions/upload-artifact@v3

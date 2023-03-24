@@ -1,6 +1,5 @@
 RUSTARGS=--release
 
-
 VERSION=$(shell git describe --dirty=+)
 
 NANOSP_ARGS=
@@ -61,22 +60,17 @@ nanosplus-load: fw/target/nanosplus/release/ledger-mob-fw.hex
 fw/target/%/release/ledger-mob-fw.hex: %
 	arm-none-eabi-objcopy fw/target/$</release/ledger-mob-fw -O ihex $@
 
-# Package nanosplus nanoapp
-package-nanosplus: fw/target/nanosplus/release/ledger-mob-fw.hex
-	tar cvf ledger-mob-fw-nanosplus.tgz \
-		-C fw/target/nanosplus/release \
-		app_nanosplus.json \
-		ledger-mob-fw.hex \
-		mob14x14i.gif
+# Package nanoapp
+package-%: % fw/target/%/release/ledger-mob-fw.hex
+	mkdir -p target/ledger-mob-fw-$<
 
-# Package nanox nanoapp
-package-nanox: fw/target/nanox/release/ledger-mob-fw.hex
-	tar cvf ledger-mob-fw-nanosplus.tgz \
-		-C target/nanox/release \
-		app_nanox.json \
-		ledger-mob-fw.hex \
-		mob14x14i.gif
+	cp fw/target/$</release/ledger-mob-fw.hex target/ledger-mob-fw-$<
+	cp fw/target/$</release/app_$<.json target/ledger-mob-fw-$<
+	cp fw/target/$</release/mob14x14i.gif target/ledger-mob-fw-$<
 
+	tar cvf ledger-mob-fw-$<.tgz \
+		-C target \
+		ledger-mob-fw-$<
 
 # Build speculos simulator
 speculos: 
