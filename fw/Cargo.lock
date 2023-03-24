@@ -787,7 +787,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-apdu"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -811,7 +811,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-core"
-version = "0.8.0"
+version = "0.10.0"
 dependencies = [
  "aes",
  "bitflags",
@@ -847,7 +847,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-fw"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "chrono",
