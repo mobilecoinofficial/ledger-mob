@@ -6,23 +6,36 @@ fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=script.ld");
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=manifest.json");
+    println!("cargo:rerun-if-env-changed=VERSION");
+    println!("cargo:rerun-if-env-changed=CI_SHA_SHORT");
 
     let target = std::env::var("TARGET").unwrap();
 
-    // Load git firmware description and export into environment
-    let output = std::process::Command::new("git")
-        .args(["describe", "--dirty=+", "--always"])
-        .output()
-        .expect("git describe failed");
+    // Check if we have an injected app version
+    let version_tag = match std::env::var("VERSION") {
+        Ok(v) => v,
+        // Otherwise, run `git describe`
+        _ => {
+            let output = std::process::Command::new("git")
+                .args(["describe", "--dirty=+", "--always"])
+                .output()
+                .expect("git describe failed");
 
-    let version_tag = std::str::from_utf8(&output.stdout).unwrap().trim();
+            std::str::from_utf8(&output.stdout)
+                .unwrap()
+                .trim()
+                .to_string()
+        }
+    };
+
+    // Load git firmware description and export into environment
     println!("cargo:rustc-env=GIT_TAG={version_tag}");
 
     let build_time = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
     println!("cargo:rustc-env=BUILD_TIME={build_time}");
 
     // Generate manifest file
-    generate_manifest(&target, version_tag)?;
+    generate_manifest(&target, &version_tag)?;
 
     // Copy icons to build dir
     copy_icons()?;
