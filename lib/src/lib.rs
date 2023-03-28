@@ -7,14 +7,14 @@
 // see https://github.com/rust-lang/rust/issues/91611
 // #![feature(async_fn_in_trait)]
 
-use std::fmt::Debug;
+use std::{fmt::Debug};
 
 pub use ledger_transport::Exchange;
 
 use async_trait::async_trait;
 
 #[cfg(feature = "transport_hid")]
-use hidapi::{HidApi, HidError};
+use hidapi::{HidApi};
 
 /// Re-export transports for consumer use
 pub mod transport;
@@ -32,15 +32,11 @@ pub use error::Error;
 pub mod tx;
 use tx::TransactionHandle;
 
-// Setup global / shared hidapi handle
-// TODO: this will cause problems if anyone else has an open hidapi handle
-#[cfg(feature = "transport_hid")]
-lazy_static::lazy_static! {
-    static ref HIDAPI: Result<HidApi, HidError> = hidapi::HidApi::new();
-}
-
 /// Ledger provider manages ledger devices and connections
-pub struct LedgerProvider {}
+pub struct LedgerProvider {
+    #[cfg(feature = "transport_hid")]
+    hid_api: HidApi,
+}
 
 /// Device discovery filter
 #[derive(Copy, Clone, Debug, PartialEq, clap::ValueEnum, strum::Display)]
@@ -65,15 +61,13 @@ pub enum LedgerInfo {
 
 impl LedgerProvider {
     /// Create a new ledger provider
+    /// NOTE: only one provider may exist at a time (workaround for global HID context errors on macos/m1)
     pub fn new() -> Result<Self, Error> {
-        // Check we have an HidApi instance
         #[cfg(feature = "transport_hid")]
-        let _hid_api = match &*HIDAPI {
-            Ok(v) => v,
-            Err(_e) => return Err(Error::HidInit),
-        };
+        return Ok(Self { hid_api: HidApi::new()? });
 
-        Ok(Self {})
+        #[cfg(not(feature = "transport_hid"))]
+        return Ok(Self {});
     }
 
     /// List available ledger devices
@@ -82,12 +76,7 @@ impl LedgerProvider {
 
         #[cfg(feature = "transport_hid")]
         if filter == Filter::Any || filter == Filter::Hid {
-            let hid_api = match &*HIDAPI {
-                Ok(v) => v,
-                Err(_e) => panic!("Invalid HIDAPI state"),
-            };
-
-            TransportNativeHID::list_ledgers(hid_api)
+            TransportNativeHID::list_ledgers(&self.hid_api)
                 .cloned()
                 .for_each(|d| {
                     devices.push(LedgerInfo::Hid(d));
@@ -169,13 +158,8 @@ impl Connect<GenericTransport> for LedgerProvider {
         let t = match opts {
             #[cfg(feature = "transport_hid")]
             LedgerInfo::Hid(hid_info) => {
-                let hid_api = match &*HIDAPI {
-                    Ok(v) => v,
-                    Err(_e) => return Err(Error::HidInit),
-                };
-
                 // Connect to device
-                let t = TransportNativeHID::open_device(hid_api, hid_info)?;
+                let t = TransportNativeHID::open_device(&self.hid_api, hid_info)?;
 
                 // Create handle
                 GenericTransport::Hid(t)
@@ -203,13 +187,8 @@ impl Connect<TransportNativeHID> for LedgerProvider {
         &self,
         opts: &Self::Options,
     ) -> Result<DeviceHandle<TransportNativeHID>, Error> {
-        let hid_api = match &*HIDAPI {
-            Ok(v) => v,
-            Err(_e) => return Err(Error::HidInit),
-        };
-
         // Connect to device
-        let t = TransportNativeHID::open_device(hid_api, opts)?;
+        let t = TransportNativeHID::open_device(&self.hid_api, opts)?;
 
         // Create handle
         let d = DeviceHandle::from(t);
