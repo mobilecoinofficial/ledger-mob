@@ -42,6 +42,8 @@ ledger-apdu = { path = "./vendor/rs/ledger-apdu" }
 ledger-transport = { path = "./vendor/rs/ledger-transport" }
 #ledger-zondax-generic = { path = "./vendor/rs/ledger-zondax-generic" }
 
+mc-account-keys = { path = "./vendor/mob/account-keys" }
+mc-api = { path = "./vendor/mob/api" }
 mc-core = { path = "./vendor/mob/core" }
 mc-crypto-digestible = { path ="./vendor/mob/crypto/digestible" }
 mc-crypto-hashes = { path ="./vendor/mob/crypto/hashes" }
@@ -49,6 +51,7 @@ mc-crypto-keys = { path ="./vendor/mob/crypto/keys" }
 mc-crypto-memo-mac = { path ="./vendor/mob/crypto/memo-mac" }
 mc-crypto-ring-signature = { path ="./vendor/mob/crypto/ring-signature" }
 mc-crypto-ring-signature-signer = { path ="./vendor/mob/crypto/ring-signature/signer" }
+mc-fog-sig-authority = { path = "./vendor/mob/fog/sig/authority" }
 mc-transaction-core = { path = "./vendor/mob/transaction/core" }
 mc-transaction-extra = { path = "./vendor/mob/transaction/extra" }
 mc-transaction-types = { path = "./vendor/mob/transaction/types" }
@@ -56,6 +59,7 @@ mc-transaction-signer = { path = "./vendor/mob/transaction/signer" }
 mc-transaction-summary = { path = "./vendor/mob/transaction/summary" }
 mc-util-from-random = { path = "./vendor/mob/util/from-random" }
 mc-util-test-helper = { path = "./vendor/mob/util/test-helper" }
+mc-util-serial = { path = "./vendor/mob/util/serial" }
 
 #prost = { path = "../prost" }
 #prost-derive = { path = "../prost/prost-derive" }

@@ -5,7 +5,7 @@
 use sha2::{Digest as _, Sha512_256};
 
 use mc_core::{
-    account::{PublicSubaddress, ShortAddressHash},
+    account::{PublicSubaddress},
     keys::{SubaddressViewPublic, TxOutPublic},
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -93,8 +93,10 @@ pub fn digest_tx_summary_add_output(
 
 pub fn digest_tx_summary_add_output_unblinding(
     unmasked_amount: &UnmaskedAmount,
-    address: Option<&(ShortAddressHash, PublicSubaddress)>,
+    address: Option<&PublicSubaddress>,
     tx_private_key: Option<&TxPrivateKey>,
+    fog_sig: Option<&[u8]>,
+    // TODO: add fog info here
 ) -> [u8; 32] {
     let mut d = Sha512_256::new()
         .chain_update("tx_summary_add_output_unblinding")
@@ -103,13 +105,16 @@ pub fn digest_tx_summary_add_output_unblinding(
         .chain_update(unmasked_amount.blinding.as_bytes());
 
     if let Some(a) = address {
-        d.update(a.0.as_ref());
-        d.update(a.1.view_public.to_bytes());
-        d.update(a.1.spend_public.to_bytes());
+        d.update(a.view_public.to_bytes());
+        d.update(a.spend_public.to_bytes());
     }
 
     if let Some(k) = tx_private_key {
         d.update(k.to_bytes());
+    }
+
+    if let Some(s) = fog_sig {
+        d.update(s);
     }
 
     d.finalize().into()

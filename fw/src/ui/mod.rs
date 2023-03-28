@@ -25,6 +25,12 @@ pub use message::*;
 mod tx_blind_approver;
 pub use tx_blind_approver::*;
 
+mod address;
+pub use address::*;
+
+mod app_info;
+pub use app_info::*;
+
 #[cfg(feature = "summary")]
 mod tx_summary_approver;
 #[cfg(feature = "summary")]
@@ -44,10 +50,13 @@ pub struct Ui {
     pub menu: UiMenu,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum UiState {
     /// Showing main menu
     Menu,
+
+    /// Showing a b58 address
+    Address(Address<512>),
 
     /// Request for view keys, awaiting user input
     KeyRequest(Approver),
@@ -67,6 +76,9 @@ pub enum UiState {
 
     /// Messages (transaction complete, rejected, etc.)
     Message(Message),
+
+    /// App information
+    AppInfo(AppInfo),
 }
 
 impl UiState {
@@ -109,8 +121,9 @@ impl Ui {
     /// Render the [Ui] using the current state
     #[inline(never)]
     pub fn render<D: Driver, R: RngCore + CryptoRng>(&self, engine: &Engine<D, R>) {
-        match self.state {
+        match &self.state {
             UiState::Menu => self.menu.render(engine),
+            UiState::Address(a) => a.render(engine),
             UiState::KeyRequest(a) => a.render(engine),
             UiState::TxRequest(a) => a.render(engine),
             #[cfg(feature = "summary")]
@@ -119,6 +132,7 @@ impl Ui {
             UiState::IdentRequest(a) => a.render(engine),
             UiState::Progress(a) => a.render(engine),
             UiState::Message(a) => a.render(engine),
+            UiState::AppInfo(a) => a.render(engine),
         }
     }
 }

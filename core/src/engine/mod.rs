@@ -8,11 +8,12 @@
 use core::ptr::addr_of_mut;
 
 use heapless::Vec;
+use mc_fog_sig_authority::Signer;
 use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
 use mc_core::{
-    account::{Account, RingCtAddress},
+    account::{Account, RingCtAddress, ShortAddressHash, PublicSubaddress},
     keys::{SubaddressViewPublic, TxOutPublic},
     slip10::{wallet_path, Slip10Key},
     subaddress::Subaddress,
@@ -48,6 +49,9 @@ pub use error::Error;
 mod ring;
 pub use ring::{RingState, RESP_SIZE, RING_SIZE};
 
+mod fog;
+pub use fog::{FogCert, FogId};
+
 #[cfg(feature = "ident")]
 mod ident;
 #[cfg(feature = "ident")]
@@ -56,7 +60,9 @@ use ident::{Ident, IdentState};
 #[cfg(feature = "summary")]
 mod summary;
 #[cfg(feature = "summary")]
-use summary::SummaryState;
+use summary::{OutputAddress, SummaryState};
+
+use crate::helpers::digest_public_address;
 
 /// Maximum ring message size
 const MSG_SIZE: usize = 32;
@@ -498,6 +504,35 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         Account::from(&Slip10Key::from_raw(seed))
     }
 
+    /// Fetch a Subaddress instance for a given wallet and subaddress index
+    #[cfg_attr(feature = "noinline", inline(never))]
+    pub fn get_subaddress(&self, account_index: u32, subaddress_index: u64) -> OutputAddress {
+        let account = self.get_account(account_index);
+        let s = account.subaddress(subaddress_index);
+
+        // TODO: Enable FogId selection when stack issue with HC-128 is resolved
+        let fog_id = FogId::None;
+
+        let sig: Option<[u8; 64]> = match fog_id {
+            FogId::None => None,
+            _ => match s.view_private.as_ref().sign_authority(&[]) {
+                Ok(v) => Some(v.into()),
+                Err(e) => panic!("{}", e),
+            },
+        };
+
+        let p = PublicSubaddress::from(&s);
+
+        let short_hash = digest_public_address(&p, fog_id.url(), sig.as_ref().map(|v| &v[..] ).unwrap_or(&[]));
+
+        OutputAddress{
+            short_hash,
+            address: p,
+            fog_id,
+            fog_sig: sig,
+        }
+    }
+
     /// Check whether engine is unlocked (ie. key requests and scanning have been approved)
     pub fn is_unlocked(&self) -> bool {
         self.unlocked
@@ -558,6 +593,21 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     /// Noop report if summary feature is disabled
     #[cfg(not(feature = "summary"))]
     pub fn report(&self) -> Option<()> {
+        None
+    }
+
+    /// Resolve address if available
+    #[cfg(feature = "summary")]
+    pub fn address(&self, h: &ShortAddressHash) -> Option<&OutputAddress> {
+        self.function
+            .summarizer_ref()
+            .map(|v| v.address(h))
+            .flatten()
+    }
+
+    /// Noop report if summary feature is disabled
+    #[cfg(not(feature = "summary"))]
+    pub fn address(&self, _h: &ShortAddressHash) -> Option<&OutputAddress> {
         None
     }
 
@@ -725,11 +775,15 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         // Check streaming message length
         // (note transaction message hash is set later, incoming
         // message is only used for txsummary generation)
+
+        use mc_core::consts::CHANGE_SUBADDRESS_INDEX;
+
         if message.len() > self.message.capacity() {
             return Err(Error::InvalidLength);
         }
 
         let a = self.get_account(self.account_index);
+        let c = a.subaddress(CHANGE_SUBADDRESS_INDEX);
 
         // Setup summarizer context
         let _ctx = self.function.summarizer_init(
@@ -738,6 +792,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             num_outputs as usize,
             num_inputs as usize,
             a.view_private_key(),
+            &PublicSubaddress::from(&c),
         );
 
         self.state = State::Summary(SummaryState::Init);
@@ -777,10 +832,12 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             Event::TxSummaryAddOutputUnblinding {
                 unmasked_amount,
                 address,
+                fog_info,
                 tx_private_key,
             } => summarizer.add_output_unblinding(
                 unmasked_amount,
-                address.as_ref().map(|(h, p)| (h.clone(), p)),
+                address.as_ref(),
+                fog_info.as_ref().map(|(id, sig)| (*id, sig)),
                 tx_private_key.as_ref(),
             ),
             Event::TxSummaryAddInput {

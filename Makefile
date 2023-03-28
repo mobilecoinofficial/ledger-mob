@@ -5,7 +5,7 @@ VERSION=$(shell git describe --dirty=+)
 NANOSP_ARGS=
 NANOX_ARGS=
 
-SPECULOS_ARGS=
+SPECULOS_ARGS=--zoom=4
 ifdef MNEMONIC
 	SPECULOS_ARGS+=--seed "$(MNEMONIC)"
 endif
