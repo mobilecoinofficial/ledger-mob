@@ -7,14 +7,14 @@
 // see https://github.com/rust-lang/rust/issues/91611
 // #![feature(async_fn_in_trait)]
 
-use std::{fmt::Debug};
+use std::fmt::Debug;
 
 pub use ledger_transport::Exchange;
 
 use async_trait::async_trait;
 
 #[cfg(feature = "transport_hid")]
-use hidapi::{HidApi};
+use hidapi::HidApi;
 
 /// Re-export transports for consumer use
 pub mod transport;
@@ -64,7 +64,9 @@ impl LedgerProvider {
     /// NOTE: only one provider may exist at a time (workaround for global HID context errors on macos/m1)
     pub fn new() -> Result<Self, Error> {
         #[cfg(feature = "transport_hid")]
-        return Ok(Self { hid_api: HidApi::new()? });
+        return Ok(Self {
+            hid_api: HidApi::new()?,
+        });
 
         #[cfg(not(feature = "transport_hid"))]
         return Ok(Self {});
