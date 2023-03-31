@@ -8,7 +8,7 @@
 use core::ptr::addr_of_mut;
 
 use heapless::Vec;
-
+use ledger_mob_apdu::tx::TxOnetimeKey;
 use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
@@ -439,6 +439,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     token_id,
                     subaddress_index,
                     real_index,
+                    onetime_private_key,
                 },
             ) => {
                 return self.ring_init(
@@ -447,6 +448,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     *token_id,
                     *subaddress_index,
                     *real_index,
+                    onetime_private_key.clone(),
                 );
             }
 
@@ -679,6 +681,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         token_id: u64,
         subaddress_index: u64,
         real_index: u8,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<Output, Error> {
         // Preload keys for onetime_private_key recovery on real input
         let account = self.get_account(self.account_index);
@@ -701,6 +704,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             value,
             &self.message,
             token_id,
+            onetime_private_key,
         );
 
         // Handle errors
@@ -932,7 +936,7 @@ mod test {
 
             (State::SetMessage, Event::TxSetMessage(&[0xaa, 0xbb, 0xcc])),
 
-            (State::Ready, Event::TxRingInit{ ring_size: RING_SIZE as u8, value: 100, token_id: 10, real_index: 3, subaddress_index: 8 }),
+            (State::Ready, Event::TxRingInit{ ring_size: RING_SIZE as u8, value: 100, token_id: 10, real_index: 3, subaddress_index: 8, onetime_private_key: None }),
 
             (State::SignRing(RingState::Init), Event::TxSetBlinding{ blinding: Scalar::random(&mut OsRng{}), output_blinding: Scalar::random(&mut OsRng{})}),
 
@@ -1128,6 +1132,7 @@ mod test {
             token_id: params.token_id,
             real_index: params.real_index as u8,
             subaddress_index: params.target_subaddress_index,
+            onetime_private_key: None,
         };
         let r = engine.update(&evt).expect("Init ring");
 

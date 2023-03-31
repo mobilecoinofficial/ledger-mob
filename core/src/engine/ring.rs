@@ -3,6 +3,7 @@
 use core::ptr::addr_of_mut;
 
 use heapless::Vec;
+use ledger_mob_apdu::tx::TxOnetimeKey;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
 use super::{Error, Event, Output};
@@ -88,6 +89,7 @@ struct Blindings {
 
 impl RingSigner {
     /// Create new RingSigner instance with provided params
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ring_size: usize,
         real_index: usize,
@@ -96,6 +98,7 @@ impl RingSigner {
         value: u64,
         message: &[u8],
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<Self, Error> {
         Ok(Self {
             state: RingState::Init,
@@ -103,7 +106,7 @@ impl RingSigner {
             real_index,
             root_view_private: root_view_private.clone(),
             subaddress_spend_private: subaddress_spend_private.clone(),
-            onetime_private_key: None,
+            onetime_private_key: onetime_private_key.map(|k| k.inner()),
             value,
             message: Vec::from_slice(message).map_err(|_| Error::InvalidLength)?,
             generator: generators(token_id),
@@ -128,6 +131,7 @@ impl RingSigner {
         value: u64,
         message: &[u8],
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<(), Error> {
         // Per-field init to avoid allocating a whole object just for setup
         // (another stack use minimization hijink)
@@ -137,7 +141,10 @@ impl RingSigner {
         addr_of_mut!((*p).real_index).write(real_index);
         addr_of_mut!((*p).root_view_private).write(root_view_private.clone());
         addr_of_mut!((*p).subaddress_spend_private).write(subaddress_spend_private.clone());
-        addr_of_mut!((*p).onetime_private_key).write(None);
+
+        let onetime_private_key = onetime_private_key.map(|k| k.inner());
+        addr_of_mut!((*p).onetime_private_key).write(onetime_private_key);
+
         addr_of_mut!((*p).value).write(value);
         addr_of_mut!((*p).message)
             .write(Vec::from_slice(message).map_err(|_| Error::InvalidLength)?);
@@ -496,6 +503,7 @@ mod test {
             params.value,
             &params.message,
             params.token_id,
+            None,
         )
         .unwrap();
 

@@ -8,6 +8,8 @@ use mc_core::{
 };
 use mc_transaction_types::BlockVersion;
 
+use ledger_mob_apdu::tx::TxOnetimeKey;
+
 use super::Error;
 
 #[cfg(feature = "mlsag")]
@@ -77,6 +79,7 @@ impl Function {
         value: u64,
         message: &[u8],
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<&mut RingSigner, Error> {
         // Clear function prior to init (executes drop)
         self.clear();
@@ -101,6 +104,7 @@ impl Function {
                 value,
                 message,
                 token_id,
+                onetime_private_key,
             )
         } {
             // Clear context and return error

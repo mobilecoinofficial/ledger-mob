@@ -63,11 +63,12 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
         let ring_size = signable_ring.members.len();
         let real_index = signable_ring.real_input_index;
 
-        let subaddress_index = match signable_ring.input_secret.onetime_key_derive_data {
-            // TODO: error
-            OneTimeKeyDeriveData::OneTimeKey(_) => panic!("ehhh?!"),
-            OneTimeKeyDeriveData::SubaddressIndex(i) => i,
-        };
+        // Handle unsigned and pre-signed rings
+        let (subaddress_index, onetime_key) =
+            match signable_ring.input_secret.onetime_key_derive_data {
+                OneTimeKeyDeriveData::OneTimeKey(key) => (0, Some(key.into())),
+                OneTimeKeyDeriveData::SubaddressIndex(i) => (i, None),
+            };
 
         // TODO: Check we're ready to sign a ring
 
@@ -80,6 +81,7 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
             subaddress_index,
             signable_ring.input_secret.amount.value,
             *signable_ring.input_secret.amount.token_id,
+            onetime_key,
         );
         let r = self.exchange::<TxInfo>(tx_init, &mut buff).await?;
 

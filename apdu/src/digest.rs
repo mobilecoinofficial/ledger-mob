@@ -12,7 +12,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, ReducedTxOut, Scalar};
 use mc_transaction_types::UnmaskedAmount;
 
-use crate::tx::TxPrivateKey;
+use crate::tx::{TxOnetimeKey, TxPrivateKey};
 
 pub fn digest_tx_init(account_index: &u32, num_rings: u8) -> [u8; 32] {
     Sha512_256::new()
@@ -158,16 +158,21 @@ pub fn digest_ring_init(
     subaddress_index: &u64,
     value: &u64,
     token_id: &u64,
+    onetime_private_key: Option<&TxOnetimeKey>,
 ) -> [u8; 32] {
-    Sha512_256::new()
+    let mut h = Sha512_256::new()
         .chain_update("ring_init")
         .chain_update(ring_size.to_le_bytes())
         .chain_update(real_index.to_le_bytes())
         .chain_update(subaddress_index.to_le_bytes())
         .chain_update(value.to_le_bytes())
-        .chain_update(token_id.to_le_bytes())
-        .finalize()
-        .into()
+        .chain_update(token_id.to_le_bytes());
+
+    if let Some(k) = onetime_private_key {
+        h.update(k.to_bytes());
+    }
+
+    h.finalize().into()
 }
 
 pub fn digest_ring_set_blinding(blinding: &Scalar, output_blinding: &Scalar) -> [u8; 32] {
