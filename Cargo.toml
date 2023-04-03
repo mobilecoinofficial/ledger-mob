@@ -55,6 +55,7 @@ mc-transaction-types = { path = "./vendor/mob/transaction/types" }
 mc-transaction-signer = { path = "./vendor/mob/transaction/signer" }
 mc-transaction-summary = { path = "./vendor/mob/transaction/summary" }
 mc-util-from-random = { path = "./vendor/mob/util/from-random" }
+mc-util-test-helper = { path = "./vendor/mob/util/test-helper" }
 
 #prost = { path = "../prost" }
 #prost-derive = { path = "../prost/prost-derive" }
