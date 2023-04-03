@@ -48,16 +48,16 @@ hex_fmt = { version = "0.3.0", default_features = false }
 encdec = { version = "0.8.0", default_features = false }
 emstr = { version = "0.2.0", default_features = false }
 
-mc-core = { version = "4.0.0-pre0", default-features = false }
+mc-core = { version = "4.1.0-pre0", default-features = false }
 ledger-mob-core = { path = "../core", default_features = false }
 
-x25519-dalek = { version = "2.0.0-pre.2", default_features = false, features = ["nightly", "u32_backend"] }
-curve25519-dalek = { version = "4.0.0-pre.2", default_features = false, features = ["nightly", "u32_backend"] }
-ed25519-dalek = { version = "2.0.0-pre.1", default_features = false, features = ["nightly", "u32_backend"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }
+ed25519-dalek = { version = "2.0.0-pre.0", default_features = false }
+x25519-dalek = { version = "2.0.0-pre.2", default_features = false }
 
 
-libc = "*"
-rlibc = "*"
+libc = "0.2.140"
+rlibc = "1.0.0"
 embedded-alloc = { version = "0.5.0", optional = true }
 critical-section = { version = "1.1.1", optional = true }
 
@@ -101,26 +101,20 @@ lto = 'fat'
 
 [patch.crates-io]
 
-# Fix issues with recent nightlies, bump curve25519-dalek version
-curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
-ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
-#curve25519-dalek = { path = "../../dalek/curve25519-dalek" }
-#ed25519-dalek = { path = "../../dalek/ed25519-dalek" }
 
-# Fix issues with recent nightlies, bump curve25519-dalek version
-x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "c1966b8743d320cd07a54191475e5c0f94b2ea30" }
+curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
+ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "b76d8c3a50671b08af0874b25b2543d3302d794d" }
 
-#embedded-graphics = { path = "../../embedded-graphics" }
-
+# Patch-out all instances of ledger-apdu for consistent APIs
 ledger-apdu = { path = "../vendor/rs/ledger-apdu" }
 
 # Mobilecoin core patches (replicates workspace level)
 
 mc-core = { path = "../vendor/mob/core" }
-mc-crypto-dalek = { path ="../vendor/mob/crypto/dalek" }
 mc-crypto-digestible = { path ="../vendor/mob/crypto/digestible" }
 mc-crypto-hashes = { path ="../vendor/mob/crypto/hashes" }
 mc-crypto-keys = { path ="../vendor/mob/crypto/keys" }

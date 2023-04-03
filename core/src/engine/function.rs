@@ -136,7 +136,7 @@ impl Function {
     #[cfg_attr(feature = "noinline", inline(never))]
     pub fn summarizer_init(
         &mut self,
-        message: &[u8],
+        message: &[u8; 32],
         block_version: BlockVersion,
         num_outputs: usize,
         num_inputs: usize,

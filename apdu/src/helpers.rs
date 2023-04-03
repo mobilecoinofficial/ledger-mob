@@ -151,7 +151,8 @@ pub(crate) mod pt {
 
         d.copy_from_slice(&buff[..32]);
 
-        let c = CompressedRistretto::from_slice(&d);
+        // TODO: propagate error
+        let c = CompressedRistretto::from_slice(&d).unwrap();
         let p = P::from(c);
 
         Ok((p, 32))

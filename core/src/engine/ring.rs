@@ -110,7 +110,7 @@ impl RingSigner {
             blindings: None,
             ring_ctx: None,
             fetch_count: 0,
-            responses: [CurveScalar::from(Scalar::zero()); RESP_SIZE],
+            responses: [CurveScalar::from(Scalar::ZERO); RESP_SIZE],
         })
     }
 

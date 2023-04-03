@@ -61,23 +61,16 @@ impl Ident {
     }
 
     /// Compute identity challenge signature using the provide private key
-    pub fn compute(&self, private_key: &[u8]) -> Result<Output, Error> {
+    pub fn compute(&self, private_key: &[u8; 32]) -> Result<Output, Error> {
         #[cfg(feature = "log")]
         log::debug!("computing identity proof");
 
         // Convert to public key type
-        let private_key = ed25519_dalek::SecretKey::from_bytes(private_key).unwrap();
-        let public_key = ed25519_dalek::PublicKey::from(&private_key);
-
-        // Sign provided challenge
-        let keys = ed25519_dalek::Keypair {
-            public: public_key,
-            secret: private_key,
-        };
+        let keys = ed25519_dalek::SigningKey::from_bytes(private_key);
         let signature = ed25519_dalek::Signer::sign(&keys, &self.challenge);
 
         Ok(Output::Identity {
-            public_key: keys.public.to_bytes(),
+            public_key: keys.verifying_key().to_bytes(),
             signature: signature.to_bytes(),
         })
     }
@@ -109,7 +102,7 @@ pub(crate) fn derive_bip32(uri: &str, index: u32) -> [u32; 5] {
 
 #[cfg(test)]
 mod test {
-    use ed25519_dalek::{PublicKey, SecretKey};
+    use ed25519_dalek::{SigningKey, VerifyingKey};
 
     use super::derive_bip32;
     use ledger_mob_tests::ident::{Vector, VECTORS};
@@ -139,8 +132,8 @@ mod test {
             let secret_key = slip10_ed25519::derive_ed25519_private_key(&seed, &p);
 
             // Compute public key
-            let secret_key = SecretKey::from_bytes(&secret_key).unwrap();
-            let public_key = PublicKey::from(&secret_key);
+            let secret_key = SigningKey::from_bytes(&secret_key);
+            let public_key = VerifyingKey::from(&secret_key);
 
             // Compare with expectations
             assert_eq!(public_key.as_bytes(), &v.public_key_bytes());

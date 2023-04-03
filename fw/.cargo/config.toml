@@ -9,8 +9,10 @@ runner = "speculos.py --model nanox --display qt -a 1 --apdu-port 1237 --zoom 2"
 target = "nanosplus"
 rustflags = [
     "-Z", "emit-stack-sizes",
-    "-Clink-args=-Map=/tmp/ledger-mob.map",
+    "-C", "link-args=-Map=/tmp/ledger-mob.map",
+    '--cfg=curve25519_dalek_bits="32"'
 ]
+
 
 [unstable]
 build-std = [ "core", "compiler_builtins", "alloc" ]
@@ -18,6 +20,3 @@ build-std = [ "core", "compiler_builtins", "alloc" ]
 [alias]
 br = "build --release"
 stackcheck = "call-stack --bin ledger-mob-fw --target nanosplus sample_main"
-
-[env]
-RUST_TARGET_PATH = { value = "../../vendor/sdk", relative = true }

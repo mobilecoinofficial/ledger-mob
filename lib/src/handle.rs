@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use ed25519_dalek::PublicKey;
+use ed25519_dalek::VerifyingKey;
 use futures::executor::block_on;
 use log::debug;
 
@@ -282,7 +282,7 @@ where
         index: u32,
         uri: &str,
         challenge: &[u8],
-    ) -> Result<(PublicKey, [u8; 64]), Error> {
+    ) -> Result<(VerifyingKey, [u8; 64]), Error> {
         let mut buff = [0u8; 256];
 
         debug!("Executing identity challenge");
@@ -313,7 +313,9 @@ where
         // Fetch identity response
 
         let resp = self.exchange::<IdentResp>(IdentGetReq, &mut buff).await?;
-        let public_key = PublicKey::from_bytes(&resp.public_key).map_err(|_| Error::InvalidKey)?;
+
+        let public_key =
+            VerifyingKey::from_bytes(&resp.public_key).map_err(|_| Error::InvalidKey)?;
 
         Ok((public_key, resp.signature))
     }
