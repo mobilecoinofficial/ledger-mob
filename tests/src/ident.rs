@@ -7,7 +7,7 @@
 use std::future::Future;
 
 use bip39::{Language, Mnemonic, Seed};
-use ed25519_dalek::{PublicKey, Signature};
+use ed25519_dalek::{Signature, VerifyingKey};
 use ledger_transport::Exchange;
 
 use ledger_mob_apdu::{
@@ -120,7 +120,7 @@ where
     );
 
     // Check challenge signature
-    let public_key = PublicKey::from_bytes(&resp.public_key).unwrap();
+    let public_key = VerifyingKey::from_bytes(&resp.public_key).unwrap();
     public_key
         .verify_strict(&challenge, &Signature::from(resp.signature))
         .unwrap();

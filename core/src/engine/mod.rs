@@ -717,7 +717,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     #[cfg_attr(feature = "noinline", inline(never))]
     fn tx_summary_init(
         &mut self,
-        message: &[u8],
+        message: &[u8; 32],
         block_version: u32,
         num_outputs: u32,
         num_inputs: u32,

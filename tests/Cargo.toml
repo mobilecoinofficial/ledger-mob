@@ -31,14 +31,14 @@ serde = "*"
 serde_json = "*"
 tiny-bip39 = "1.0"
 
-mc-core = { version = "4.0.0", features = [ "bip39" ] }
-mc-crypto-keys = { version = "4.0.0", default-features = false }
-mc-crypto-ring-signature = { version = "4.0.0", default-features = false, features = [ "internals" ] }
-mc-crypto-memo-mac = { version = "4.0.0", default-features = false }
-mc-transaction-core = { version = "4.0.0" }
-mc-transaction-extra = { version = "4.0.0" }
-mc-transaction-signer = { version = "4.0.0" }
-mc-transaction-summary = { version = "4.0.0" }
+mc-core = { version = "4.1.0-pre0", features = [ "bip39" ] }
+mc-crypto-keys = { version = "4.1.0-pre0", default-features = false }
+mc-crypto-ring-signature = { version = "4.1.0-pre0", default-features = false, features = [ "internals" ] }
+mc-crypto-memo-mac = { version = "4.1.0-pre0", default-features = false }
+mc-transaction-core = { version = "4.1.0-pre0" }
+mc-transaction-extra = { version = "4.1.0-pre0" }
+mc-transaction-signer = { version = "4.1.0-pre0" }
+mc-transaction-summary = { version = "4.1.0-pre0" }
 
 mc-util-from-random = { path = "../vendor/mob/util/from-random", default-features = false }
 
@@ -52,9 +52,9 @@ ledger-transport-hid = { path = "../vendor/rs/ledger-transport-hid", optional = 
 hidapi = { version = "1.4.2", optional = true, default_features = false, features = [ "linux-static-hidraw" ] }
 ledger-transport-tcp = { path = "../vendor/rs/ledger-transport-tcp", optional = true }
 
-x25519-dalek = { version = "2.0.0-pre.2", default_features = false, features = ["nightly"] }
-curve25519-dalek = { version = "4.0.0-pre.2", default_features = false, features = ["nightly"] }
-ed25519-dalek = { version = "2.0.0-pre.1", default_features = false, features = ["nightly"] }
+curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }
+x25519-dalek = { version = "2.0.0-pre.2", default_features = false }
+ed25519-dalek = { version = "2.0.0-pre.0", default_features = false }
 
 
 [dev-dependencies]
