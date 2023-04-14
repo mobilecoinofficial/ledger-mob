@@ -15,7 +15,7 @@ use rand_core::{CryptoRng, RngCore};
 
 use nanos_sdk::{
     buttons::ButtonEvent,
-    io::{self, Reply, SyscallError},
+    io::{self, ApduHeader, Reply, SyscallError},
     random::LedgerRng,
 };
 use nanos_ui::{
@@ -91,7 +91,7 @@ extern "C" fn sample_main() {
         screen_update();
 
         loop {
-            let evt = comm.next_event::<u8>();
+            let evt = comm.next_event::<ApduHeader>();
 
             match evt {
                 io::Event::Button(LeftButtonRelease | RightButtonRelease | BothButtonsRelease) => {
@@ -110,7 +110,7 @@ extern "C" fn sample_main() {
 
     loop {
         // Wait for next event
-        let evt = comm.next_event();
+        let evt = comm.next_event::<ApduHeader>();
 
         // Handle input events and update UI state
         match &evt {
@@ -125,7 +125,7 @@ extern "C" fn sample_main() {
             }
             // Handle incoming APDUs
             io::Event::Command(cmd) => {
-                if handle_apdu(engine, &mut comm, &mut ui, *cmd) {
+                if handle_apdu(engine, &mut comm, &mut ui, cmd.ins) {
                     redraw = true;
                 }
             }
@@ -406,7 +406,7 @@ fn platform_tests(comm: &mut io::Comm) {
         "EXIT?".place(Location::Bottom, Layout::Centered, false);
 
         loop {
-            let evt = comm.next_event::<u8>();
+            let evt = comm.next_event::<ApduHeader>();
 
             match evt {
                 io::Event::Button(_btn) => nanos_sdk::exit_app(30),
