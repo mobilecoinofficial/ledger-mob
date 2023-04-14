@@ -219,7 +219,7 @@ mod test {
     use super::*;
     use crate::engine::{FogCert, FogId};
 
-    const MAX_LINE_LEN: usize = 20;
+    pub(crate) const MAX_LINE_LEN: usize = 20;
 
     #[test]
     fn fmt_mob() {

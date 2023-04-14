@@ -19,15 +19,15 @@ use mc_core::{
     subaddress::Subaddress,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPublic};
-use mc_crypto_ring_signature::{onetime_keys::recover_onetime_private_key, KeyImage};
-use mc_fog_sig_authority::Signer;
-pub use mc_transaction_types::{BlockVersion, TokenId};
 #[cfg(feature = "memo")]
 use mc_crypto_memo_mac::compute_category1_hmac;
-#[cfg(feature = "summary")]
-use mc_transaction_summary::TxSummaryUnblindingReport;
+use mc_crypto_ring_signature::{onetime_keys::recover_onetime_private_key, KeyImage};
+use mc_fog_sig_authority::Signer;
 #[cfg(feature = "summary")]
 pub use mc_transaction_summary::TransactionEntity;
+#[cfg(feature = "summary")]
+use mc_transaction_summary::TxSummaryUnblindingReport;
+pub use mc_transaction_types::{BlockVersion, TokenId};
 
 use crate::helpers::sign_authority;
 
@@ -515,7 +515,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 
         let sig: Option<[u8; 64]> = match fog_id {
             FogId::None => None,
-            _ => Some(sign_authority(&s.view_private, fog_id.spki().as_bytes())).map(|v| v.into() ),
+            _ => Some(sign_authority(&s.view_private, fog_id.spki().as_bytes())).map(|v| v.into()),
         };
 
         let p = PublicSubaddress::from(&s);
