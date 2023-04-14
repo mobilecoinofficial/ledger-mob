@@ -469,8 +469,8 @@ jobs:
             ~/.cargo
             ./target
 
-      - name: Install libusb / libudev
-        run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      - name: Install libusb / libudev / protoc
+        run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev protobuf-compiler protobuf-c-compiler 
 
       - name: Build documentation
         uses: actions-rs/cargo@v1
