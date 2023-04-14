@@ -981,6 +981,8 @@ dependencies = [
  "prost",
  "prost-build",
  "rand_core",
+ "rand_hc",
+ "schnorrkel-og",
  "sha2",
  "static_assertions",
  "strum",
@@ -1569,8 +1571,7 @@ dependencies = [
 [[package]]
 name = "rand_hc"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
+source = "git+https://github.com/ryankurte/rngs?branch=hc128-reduce-stack#dff6a233611f80993d28478786412bec72ffb99a"
 dependencies = [
  "rand_core",
 ]

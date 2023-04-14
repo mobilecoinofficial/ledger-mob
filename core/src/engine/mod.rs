@@ -8,7 +8,7 @@
 use core::ptr::addr_of_mut;
 
 use heapless::Vec;
-use mc_fog_sig_authority::Signer;
+
 use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
@@ -20,16 +20,16 @@ use mc_core::{
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPublic};
 use mc_crypto_ring_signature::{onetime_keys::recover_onetime_private_key, KeyImage};
+use mc_fog_sig_authority::Signer;
 pub use mc_transaction_types::{BlockVersion, TokenId};
-
 #[cfg(feature = "memo")]
 use mc_crypto_memo_mac::compute_category1_hmac;
-
 #[cfg(feature = "summary")]
 use mc_transaction_summary::TxSummaryUnblindingReport;
-
 #[cfg(feature = "summary")]
 pub use mc_transaction_summary::TransactionEntity;
+
+use crate::helpers::sign_authority;
 
 mod function;
 pub use function::Function;
@@ -511,14 +511,11 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         let s = account.subaddress(subaddress_index);
 
         // TODO: Enable FogId selection when stack issue with HC-128 is resolved
-        let fog_id = FogId::None;
+        let fog_id = FogId::MobMain;
 
         let sig: Option<[u8; 64]> = match fog_id {
             FogId::None => None,
-            _ => match s.view_private.as_ref().sign_authority(&[]) {
-                Ok(v) => Some(v.into()),
-                Err(e) => panic!("{}", e),
-            },
+            _ => Some(sign_authority(&s.view_private, fog_id.spki().as_bytes())).map(|v| v.into() ),
         };
 
         let p = PublicSubaddress::from(&s);

@@ -1894,6 +1894,8 @@ dependencies = [
  "prost-build",
  "rand",
  "rand_core",
+ "rand_hc",
+ "schnorrkel-og",
  "sha2 0.10.6",
  "simplelog",
  "slip10_ed25519",

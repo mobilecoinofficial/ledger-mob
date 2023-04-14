@@ -13,6 +13,9 @@ use mc_core::account::{RingCtAddress, ShortAddressHash};
 
 use crate::engine::{Error, TokenId};
 
+mod schnorrkel;
+pub use schnorrkel::sign_authority;
+
 // Include generated protobuf types
 include!(concat!(env!("OUT_DIR"), "/mob.rs"));
 
