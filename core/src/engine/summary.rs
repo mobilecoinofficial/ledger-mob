@@ -197,12 +197,12 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
 
         // Cache output address' for future display
         if let Some((h, _)) = &a {
-            if self.addresses.iter().find(|v| &v.short_hash == h).is_none() {
+            if !self.addresses.iter().any(|v| &v.short_hash == h) {
                 self.addresses.push(OutputAddress {
                     short_hash: h.clone(),
                     address: address.cloned().unwrap(),
                     fog_id: fog_info.map(|(f, _)| f).unwrap_or_default(),
-                    fog_sig: fog_info.map(|(_, s)| s.clone()),
+                    fog_sig: fog_info.map(|(_, s)| *s),
                 });
             }
         }
@@ -430,8 +430,8 @@ mod test {
             let address = unblinding.address.as_ref();
             let k = unblinding.tx_private_key.map(Key::from);
 
-            let fog_info = address
-                .map(|a| match (a.fog_report_url(), a.fog_authority_sig()) {
+            let fog_info =
+                address.and_then(|a| match (a.fog_report_url(), a.fog_authority_sig()) {
                     (Some(url), Some(s)) => {
                         let fog_id = FogId::from_str(url).unwrap();
 
@@ -440,14 +440,13 @@ mod test {
                         Some((fog_id, sig))
                     }
                     _ => None,
-                })
-                .flatten();
+                });
 
             s.add_output_unblinding(
                 &unblinding.unmasked_amount,
-                address.map(|a| PublicSubaddress::from(a)).as_ref(),
+                address.map(PublicSubaddress::from).as_ref(),
                 fog_info.as_ref().map(|(url, sig)| (*url, sig)),
-                (&k).as_ref(),
+                k.as_ref(),
             )
             .unwrap();
 

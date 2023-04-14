@@ -1,5 +1,6 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
+use alloc::string::ToString;
 use core::{ops::Deref, str::from_utf8};
 
 use emstr::{helpers::Fractional, EncodeStr};
@@ -10,7 +11,7 @@ use prost::{
 
 use mc_core::account::{RingCtAddress, ShortAddressHash};
 
-use crate::engine::TokenId;
+use crate::engine::{Error, TokenId};
 
 // Include generated protobuf types
 include!(concat!(env!("OUT_DIR"), "/mob.rs"));
@@ -115,7 +116,7 @@ pub(crate) fn digest_public_address(
 
     // Return first 16 bytes as ShortAddressHash
     let hash: [u8; 16] = digest[0..16].try_into().expect("arithmetic error");
-    return ShortAddressHash::from(hash);
+    ShortAddressHash::from(hash)
 }
 
 /// Helper to b58 encode [PublicAddress] equivalent types without
@@ -125,9 +126,7 @@ pub fn b58_encode_public_address<const N: usize>(
     subaddress: impl RingCtAddress,
     fog_report_url: &str,
     fog_authority_sig: &[u8],
-) -> Result<heapless::String<N>, ()> {
-    use alloc::string::ToString;
-
+) -> Result<heapless::String<N>, Error> {
     use printable_wrapper::*;
 
     let view_public = subaddress.view_public_key();
@@ -150,7 +149,7 @@ pub fn b58_encode_public_address<const N: usize>(
     };
 
     // Encode to temporary byte buffer
-    // TODO: prefer not to use alloc here but, BuffMut seems to be broken for
+    // TODO: prefer not to use alloc here but, BufMut seems to be broken for
     // const generic types?!
     let mut data = BytesMut::with_capacity(p.encoded_len() + 4);
     // Pre-allocate space for checksum
@@ -264,7 +263,7 @@ mod test {
             // Create random account without fog info
             let a = AccountKey::random(&mut OsRng {});
 
-            println!("A: {:?}", a);
+            println!("A: {a:?}");
 
             // Test short address hashing
             let h1 = ShortAddressHash::from(&a.default_subaddress());

@@ -269,7 +269,7 @@ impl<'a> Event<'a> {
                 unmasked_amount,
                 address.as_ref(),
                 tx_private_key.as_ref(),
-                fog_info.as_ref().map(|(_id, sig)| &sig[..] ),
+                fog_info.as_ref().map(|(_id, sig)| &sig[..]),
             ),
             Event::TxSummaryAddInput {
                 pseudo_output_commitment,

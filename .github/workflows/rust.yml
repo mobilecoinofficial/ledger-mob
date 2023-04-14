@@ -35,7 +35,7 @@ jobs:
       run: echo "RUST_TARGET_PATH=${GITHUB_WORKSPACE}/fw/" >> $GITHUB_ENV
 
     - name: Install cross toolchain, libraries
-      run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev protobuf-compiler protobuf-c-compiler 
 
     - name: Restore core cache
       uses: actions/cache/restore@v3
@@ -66,8 +66,10 @@ jobs:
       uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly-2023-01-04
-        target:  ${{ matrix.target }}
         override: true
+
+    - name: Install protobuf tools
+      run: sudo apt update && sudo apt install -y protobuf-compiler protobuf-c-compiler 
 
     - name: Restore core cache
       uses: actions/cache/restore@v3
@@ -162,7 +164,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --package ledger-mob --target ${{ matrix.target }} --release ${{ matrix.args }}
+        args: --package ledger-mob --target ${{ matrix.target }} --release
 
     - name: Update ${{ matrix.target }} CLI cache
       if: ${{ github.ref == 'refs/heads/main' }}
@@ -231,7 +233,7 @@ jobs:
         components: rust-src
 
     - name: Install cross toolchain 
-      run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib
+      run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib protobuf-compiler protobuf-c-compiler 
 
     - name: Load ${{ matrix.platform }} FW cache
       uses: actions/cache/restore@v3

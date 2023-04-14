@@ -131,7 +131,7 @@ where
                 &summary,
                 &unblinding,
                 account.view_private_key().clone().inner(),
-                &PublicSubaddress::from(&change),
+                PublicSubaddress::from(&change),
             )
             .unwrap();
 

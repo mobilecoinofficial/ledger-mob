@@ -102,7 +102,7 @@ impl TxSummaryApprover {
                 };
 
                 // Resolve address from short hash
-                let s = match engine.address(&h) {
+                let s = match engine.address(h) {
                     Some(a) => a,
                     None => return UiResult::None,
                 };

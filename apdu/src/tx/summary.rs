@@ -315,7 +315,7 @@ impl Encode for FogId {
     }
 
     fn encode(&self, buff: &mut [u8]) -> Result<usize, Self::Error> {
-        if buff.len() < 1 {
+        if buff.is_empty() {
             return Err(encdec::Error::Length);
         }
 
@@ -331,7 +331,7 @@ impl DecodeOwned for FogId {
     type Error = encdec::Error;
 
     fn decode_owned(buff: &[u8]) -> Result<(Self::Output, usize), Self::Error> {
-        if buff.len() < 1 {
+        if buff.is_empty() {
             return Err(encdec::Error::Length);
         }
 
@@ -456,7 +456,7 @@ impl TxSummaryAddTxOutUnblinding {
             return None;
         }
 
-        Some((self.fog_id, self.fog_authority_sig.clone()))
+        Some((self.fog_id, self.fog_authority_sig))
     }
 
     /// Compute hash for [TxSummaryAddTxOutUnblinding]

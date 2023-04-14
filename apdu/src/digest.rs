@@ -5,7 +5,7 @@
 use sha2::{Digest as _, Sha512_256};
 
 use mc_core::{
-    account::{PublicSubaddress},
+    account::PublicSubaddress,
     keys::{SubaddressViewPublic, TxOutPublic},
 };
 use mc_crypto_keys::CompressedRistrettoPublic;

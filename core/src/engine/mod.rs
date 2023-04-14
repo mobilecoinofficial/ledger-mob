@@ -13,7 +13,7 @@ use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
 use mc_core::{
-    account::{Account, RingCtAddress, ShortAddressHash, PublicSubaddress},
+    account::{Account, PublicSubaddress, RingCtAddress, ShortAddressHash},
     keys::{SubaddressViewPublic, TxOutPublic},
     slip10::{wallet_path, Slip10Key},
     subaddress::Subaddress,
@@ -523,9 +523,13 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 
         let p = PublicSubaddress::from(&s);
 
-        let short_hash = digest_public_address(&p, fog_id.url(), sig.as_ref().map(|v| &v[..] ).unwrap_or(&[]));
+        let short_hash = digest_public_address(
+            &p,
+            fog_id.url(),
+            sig.as_ref().map(|v| &v[..]).unwrap_or(&[]),
+        );
 
-        OutputAddress{
+        OutputAddress {
             short_hash,
             address: p,
             fog_id,
@@ -599,10 +603,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     /// Resolve address if available
     #[cfg(feature = "summary")]
     pub fn address(&self, h: &ShortAddressHash) -> Option<&OutputAddress> {
-        self.function
-            .summarizer_ref()
-            .map(|v| v.address(h))
-            .flatten()
+        self.function.summarizer_ref().and_then(|v| v.address(h))
     }
 
     /// Noop report if summary feature is disabled
