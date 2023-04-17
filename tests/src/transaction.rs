@@ -2,7 +2,12 @@
 
 use bip39::Mnemonic;
 use log::{debug, error, info, trace};
-use mc_core::{account::Account, slip10::Slip10KeyGenerator};
+use mc_core::{
+    account::{Account, PublicSubaddress},
+    consts::CHANGE_SUBADDRESS_INDEX,
+    slip10::Slip10KeyGenerator,
+    subaddress::Subaddress,
+};
 use mc_transaction_summary::verify_tx_summary;
 use rand_core::OsRng;
 use std::future::Future;
@@ -73,6 +78,7 @@ where
 {
     // Load account and unsigned transaction
     let account = tx.account();
+    let change = account.subaddress(CHANGE_SUBADDRESS_INDEX);
     let req = tx.tx_req();
 
     trace!("Request: {:?}", req);
@@ -125,6 +131,7 @@ where
                 &summary,
                 &unblinding,
                 account.view_private_key().clone().inner(),
+                PublicSubaddress::from(&change),
             )
             .unwrap();
 

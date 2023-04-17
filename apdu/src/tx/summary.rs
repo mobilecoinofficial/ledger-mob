@@ -1,7 +1,9 @@
 #![allow(unused)]
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-use encdec::{Decode, Encode};
+use core::str::FromStr;
+
+use encdec::{Decode, DecodeOwned, Encode};
 use ledger_apdu::ApduStatic;
 
 use mc_core::{
@@ -200,7 +202,10 @@ pub struct TxSummaryAddTxOutUnblinding {
     /// TxOut index for idempotency
     pub index: u8,
 
-    pub reserved: [u8; 2],
+    /// Fog ID for address if available
+    pub fog_id: FogId,
+
+    pub reserved: u8,
 
     /// UnmaskedAmount.value
     pub unmasked_value: u64,
@@ -220,13 +225,12 @@ pub struct TxSummaryAddTxOutUnblinding {
     #[encdec(with = "pub_key")]
     pub address_view_public: SubaddressViewPublic,
 
-    // TxOut receiver short address hash
-    #[encdec(with = "arr")]
-    pub address_short_hash: [u8; 16],
-
     // (optional) transaction private key
     #[encdec(with = "pri_key")]
     pub tx_private_key: TxPrivateKey,
+
+    #[encdec(with = "arr")]
+    pub fog_authority_sig: [u8; 64],
 }
 
 bitflags::bitflags! {
@@ -236,10 +240,113 @@ bitflags::bitflags! {
         const HAS_PRIVATE_KEY = 1 << 0;
         /// TxSummaryAddTxOutUnblinding contains address information
         const HAS_ADDRESS = 1 << 1;
+        /// TxSummaryAddTxOutUnblinding contains fog authority signature
+        const HAS_FOG_AUTHORITY_SIG = 1 << 2;
     }
 }
 
 crate::encdec_bitflags!(AddTxOutUnblindingFlags);
+
+/// Fog identifier for resolving account information
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[repr(u8)]
+pub enum FogId {
+    /// No fog associated with account
+    None = 0,
+    /// MobileCoin MainNet fog
+    MobMain = 1,
+    /// MobileCoin TestNet fog
+    MobTest = 2,
+    /// Signal MainNet fog
+    SignalMain = 3,
+    /// Signal TestNet fog
+    SignalTest = 4,
+}
+
+impl Default for FogId {
+    fn default() -> Self {
+        FogId::None
+    }
+}
+
+impl FogId {
+    /// Resolve fog ID to URL
+    pub fn url(&self) -> &'static str {
+        match self {
+            FogId::None => "",
+            FogId::MobMain => FOG_MC_MAINNET_URI,
+            FogId::MobTest => FOG_MC_TESTNET_URI,
+            FogId::SignalMain => FOG_SIGNAL_MAINNET_URI,
+            FogId::SignalTest => FOG_SIGNAL_TESTNET_URI,
+        }
+    }
+}
+
+impl FromStr for FogId {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let id = match s {
+            "" => FogId::None,
+            FOG_MC_MAINNET_URI => FogId::MobMain,
+            FOG_MC_TESTNET_URI => FogId::MobTest,
+            FOG_SIGNAL_MAINNET_URI => FogId::SignalMain,
+            FOG_SIGNAL_TESTNET_URI => FogId::SignalTest,
+            _ => return Err(()),
+        };
+        Ok(id)
+    }
+}
+
+/// MobileCoin TestNet fog URI
+const FOG_MC_TESTNET_URI: &str = "fog://fog.test.mobilecoin.com";
+/// MobileCoin MainNet fog URI
+const FOG_MC_MAINNET_URI: &str = "fog://fog.prod.mobilecoinww.com";
+/// Signal TestNet fog URI
+const FOG_SIGNAL_TESTNET_URI: &str = "fog://???";
+/// Signal MainNet fog URI
+const FOG_SIGNAL_MAINNET_URI: &str = "fog://???";
+
+impl Encode for FogId {
+    type Error = encdec::Error;
+
+    fn encode_len(&self) -> Result<usize, Self::Error> {
+        Ok(1)
+    }
+
+    fn encode(&self, buff: &mut [u8]) -> Result<usize, Self::Error> {
+        if buff.is_empty() {
+            return Err(encdec::Error::Length);
+        }
+
+        buff[0] = *self as u8;
+
+        Ok(1)
+    }
+}
+
+impl DecodeOwned for FogId {
+    type Output = Self;
+
+    type Error = encdec::Error;
+
+    fn decode_owned(buff: &[u8]) -> Result<(Self::Output, usize), Self::Error> {
+        if buff.is_empty() {
+            return Err(encdec::Error::Length);
+        }
+
+        let id = match buff[0] {
+            0 => FogId::None,
+            1 => FogId::MobMain,
+            2 => FogId::MobTest,
+            3 => FogId::SignalMain,
+            4 => FogId::SignalTest,
+            _ => FogId::None,
+        };
+
+        Ok((id, 1))
+    }
+}
 
 impl ApduStatic for TxSummaryAddTxOutUnblinding {
     const CLA: u8 = MOB_APDU_CLA;
@@ -252,8 +359,9 @@ impl TxSummaryAddTxOutUnblinding {
         index: u8,
         unmasked_amount: &UnmaskedAmount,
         address: Option<(impl RingCtAddress, ShortAddressHash)>,
+        fog_info: Option<(&str, [u8; 64])>,
         tx_private_key: Option<TxPrivateKey>,
-    ) -> Self {
+    ) -> Result<Self, ApduError> {
         // Setup flags
         let mut flags = AddTxOutUnblindingFlags::empty();
         flags.set(AddTxOutUnblindingFlags::HAS_ADDRESS, address.is_some());
@@ -272,19 +380,40 @@ impl TxSummaryAddTxOutUnblinding {
             None => (Default::default(), Default::default(), Default::default()),
         };
 
+        // Parse fog information
+
+        let (fog_id, fog_authority_sig) = match fog_info {
+            Some((url, sig)) => {
+                // Parse fog url
+                let fog_id = match FogId::from_str(url) {
+                    Ok(v) => v,
+                    Err(_) => return Err(ApduError::InvalidEncoding),
+                };
+
+                let mut fog_authority_sig = [0u8; 64];
+                fog_authority_sig.copy_from_slice(&sig);
+
+                flags.insert(AddTxOutUnblindingFlags::HAS_FOG_AUTHORITY_SIG);
+
+                (fog_id, fog_authority_sig)
+            }
+            _ => (FogId::None, [0u8; 64]),
+        };
+
         // Return object
-        Self {
+        Ok(Self {
             flags,
             index,
-            reserved: [0u8; 2],
+            fog_id,
+            reserved: 0,
             unmasked_value: unmasked_amount.value,
             token_id: unmasked_amount.token_id,
             blinding: unmasked_amount.blinding.into(),
             address_spend_public,
             address_view_public,
-            address_short_hash: *address_short_hash.as_ref(),
             tx_private_key: tx_private_key.map(Key::from).unwrap_or_default(),
-        }
+            fog_authority_sig,
+        })
     }
 
     pub fn flags(&self) -> AddTxOutUnblindingFlags {
@@ -309,25 +438,39 @@ impl TxSummaryAddTxOutUnblinding {
         }
     }
 
-    pub fn address(&self) -> Option<(ShortAddressHash, PublicSubaddress)> {
+    pub fn address(&self) -> Option<PublicSubaddress> {
         match self.flags().contains(AddTxOutUnblindingFlags::HAS_ADDRESS) {
-            true => Some((
-                ShortAddressHash::from(self.address_short_hash),
-                PublicSubaddress {
-                    view_public: self.address_view_public.clone(),
-                    spend_public: self.address_spend_public.clone(),
-                },
-            )),
+            true => Some(PublicSubaddress {
+                view_public: self.address_view_public.clone(),
+                spend_public: self.address_spend_public.clone(),
+            }),
             false => None,
         }
     }
 
+    pub fn fog_info(&self) -> Option<(FogId, [u8; 64])> {
+        if !self
+            .flags
+            .contains(AddTxOutUnblindingFlags::HAS_FOG_AUTHORITY_SIG)
+        {
+            return None;
+        }
+
+        Some((self.fog_id, self.fog_authority_sig))
+    }
+
     /// Compute hash for [TxSummaryAddTxOutUnblinding]
     pub fn hash(&self) -> [u8; 32] {
+        let fog_authority_sig = match self.fog_id {
+            FogId::None => None,
+            _ => Some(&self.fog_authority_sig[..]),
+        };
+
         crate::digest::digest_tx_summary_add_output_unblinding(
             &self.unmasked_amount(),
             self.address().as_ref(),
             self.tx_private_key(),
+            fog_authority_sig,
         )
     }
 }
@@ -464,6 +607,8 @@ impl TxSummaryBuild {
 
 #[cfg(test)]
 mod test {
+    use core::{any::type_name, mem::size_of};
+
     use curve25519_dalek::ristretto::RistrettoPoint;
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
@@ -513,18 +658,26 @@ mod test {
         let spend_public = RistrettoPublic::from_random(&mut OsRng {});
         let tx_private_key = RistrettoPrivate::from_random(&mut OsRng {});
 
-        let apdu = TxSummaryAddTxOutUnblinding {
-            flags: AddTxOutUnblindingFlags::HAS_ADDRESS,
-            index: random(),
-            reserved: [0u8; 2],
-            unmasked_value: random(),
-            token_id: random(),
-            blinding: Scalar::random(&mut OsRng {}),
-            address_spend_public: view_public.into(),
-            address_view_public: spend_public.into(),
-            address_short_hash: random(),
-            tx_private_key: tx_private_key.into(),
-        };
+        let hash = ShortAddressHash::from(random::<[u8; 16]>());
+
+        let apdu = TxSummaryAddTxOutUnblinding::new(
+            random(),
+            &UnmaskedAmount {
+                value: random(),
+                token_id: random(),
+                blinding: Scalar::random(&mut OsRng {}).into(),
+            },
+            Some((
+                PublicSubaddress {
+                    view_public: view_public.into(),
+                    spend_public: spend_public.into(),
+                },
+                hash,
+            )),
+            Some((FogId::MobMain.url(), [0xab; 64])),
+            Some(tx_private_key.into()),
+        )
+        .unwrap();
 
         let mut buff = [0u8; 256];
         encode_decode_apdu(&mut buff, &apdu);

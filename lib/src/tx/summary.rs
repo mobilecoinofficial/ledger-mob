@@ -70,13 +70,30 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
             check_state::<T>(resp.state, TxState::SummaryAddTxOut)?;
             //check_digest::<T>(&resp.digest, &ctx.digest)?;
 
+            log::debug!("Address: {:?}", u.address);
+
+            let fog_info = match u
+                .address
+                .as_ref()
+                .map(|a| (a.fog_report_url(), a.fog_authority_sig()))
+            {
+                Some((Some(url), Some(s))) => {
+                    let mut sig = [0u8; 64];
+                    sig.copy_from_slice(s);
+                    Some((url, sig))
+                }
+                None | Some((None, None)) => None,
+                _ => panic!("Fog url and signature must be both present or both absent"),
+            };
+
             // Build tx out unblinding
             let tx_out_unblinding = TxSummaryAddTxOutUnblinding::new(
                 n as u8,
                 &u.unmasked_amount,
                 u.address.as_ref().map(|a| (a, ShortAddressHash::from(a))),
+                fog_info,
                 u.tx_private_key.map(|k| k.into()),
-            );
+            )?;
 
             // Submit tx out unblinding
             let resp = ctx.exchange::<TxInfo>(tx_out_unblinding, &mut buff).await?;

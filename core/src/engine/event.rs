@@ -17,7 +17,10 @@ use mc_crypto_ring_signature::{CompressedCommitment, CurveScalar, ReducedTxOut, 
 use mc_transaction_types::{Amount, MaskedAmount, UnmaskedAmount};
 
 use ledger_apdu::{ApduError, ApduStatic};
-use ledger_mob_apdu::{prelude::*, tx::AddTxInFlags};
+use ledger_mob_apdu::{
+    prelude::*,
+    tx::{AddTxInFlags, FogId},
+};
 
 /// [`Engine`][super::Engine] input events, typically decoded from request [APDUs][crate::apdu]
 #[derive(Clone, Debug)]
@@ -96,7 +99,8 @@ pub enum Event<'a> {
     #[cfg(feature = "summary")]
     TxSummaryAddOutputUnblinding {
         unmasked_amount: UnmaskedAmount,
-        address: Option<(ShortAddressHash, PublicSubaddress)>,
+        address: Option<PublicSubaddress>,
+        fog_info: Option<(FogId, [u8; 64])>,
         tx_private_key: Option<TxPrivateKey>,
     },
 
@@ -259,11 +263,13 @@ impl<'a> Event<'a> {
             Event::TxSummaryAddOutputUnblinding {
                 unmasked_amount,
                 address,
+                fog_info,
                 tx_private_key,
             } => digest_tx_summary_add_output_unblinding(
                 unmasked_amount,
                 address.as_ref(),
                 tx_private_key.as_ref(),
+                fog_info.as_ref().map(|(_id, sig)| &sig[..]),
             ),
             Event::TxSummaryAddInput {
                 pseudo_output_commitment,
@@ -405,6 +411,7 @@ impl<'a> From<TxSummaryAddTxOutUnblinding> for Event<'a> {
                 blinding: CurveScalar::from(a.blinding),
             },
             address: a.address(),
+            fog_info: a.fog_info(),
             tx_private_key: a.tx_private_key().cloned(),
         }
     }

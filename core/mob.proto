@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package mob;
+
+/// A 32-byte compressed Ristretto curve point (public key)
+message CompressedRistretto {
+    bytes data = 1;
+}
+
+/// A public address, used to identify recipients.
+message PublicAddress {
+    /// View public key
+    CompressedRistretto view_public_key = 1;
+
+    /// Spend public key
+    CompressedRistretto spend_public_key = 2;
+
+    /// Optional url of fog report server.
+    /// Empty string when not in use, i.e. for accounts that don't have fog service.
+    /// Indicates the place at which the fog report server should be contacted.
+    string fog_report_url = 3;
+
+    /// Optional fog report id.
+    /// The fog report server may serve multiple reports, this id disambiguates
+    /// which one to use when sending to this account.
+    string fog_report_id = 4;
+
+    /// View key signature over the fog authority subjectPublicKeyInfo.
+    ///
+    /// This must be parseable as a RistrettoSignature.
+    bytes fog_authority_sig = 5;
+}
+
+/// This wraps all of the above messages using "oneof", allowing us to
+/// have a single encoding scheme and extend as necessary simply by adding
+/// new messages without breaking backwards compatibility
+message PrintableWrapper { oneof wrapper {
+    PublicAddress public_address = 1;
+}}

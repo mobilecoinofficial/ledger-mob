@@ -1,11 +1,15 @@
 #![allow(unused)]
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
+use alloc::string::ToString;
+use heapless::Vec;
+
+use ledger_mob_apdu::tx::FogId;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
 use mc_core::{
     account::{PublicSubaddress, ShortAddressHash},
-    keys::{RootViewPrivate, TxOutPublic, TxOutTargetPublic},
+    keys::{RootViewPrivate, SubaddressViewPublic, TxOutPublic, TxOutTargetPublic},
 };
 use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
@@ -18,7 +22,7 @@ use mc_transaction_types::{
     Amount, BlockVersion, MaskedAmount, TxInSummary, TxOutSummary, UnmaskedAmount,
 };
 
-use crate::apdu::tx::TxPrivateKey;
+use crate::{apdu::tx::TxPrivateKey, helpers::digest_public_address};
 
 use super::{Error, Event};
 
@@ -27,6 +31,7 @@ pub struct Summarizer<const MAX_RECORDS: usize = 16> {
     state: SummaryState,
     verifier: Option<TxSummaryStreamingVerifierCtx>,
     report: TxSummaryUnblindingReport<MAX_RECORDS>,
+    addresses: Vec<OutputAddress, MAX_RECORDS>,
     tx_out_summary: Option<TxOutSummary>,
     num_outputs: usize,
     num_inputs: usize,
@@ -45,6 +50,18 @@ pub enum SummaryState {
     Complete,
 }
 
+/// Cached output address for later rendering
+pub struct OutputAddress {
+    /// Short address hash, matched against report entries
+    pub short_hash: ShortAddressHash,
+    /// Public address
+    pub address: PublicSubaddress,
+    /// Fog information
+    pub fog_id: FogId,
+    /// Fog signature
+    pub fog_sig: Option<[u8; 64]>,
+}
+
 impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     /// Create a new summarizer instance
     pub fn new(
@@ -53,6 +70,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         num_outputs: usize,
         num_inputs: usize,
         view_private_key: &RootViewPrivate,
+        change_address: &PublicSubaddress,
     ) -> Self {
         // TODO: check message length
 
@@ -63,6 +81,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             num_outputs,
             num_inputs,
             view_private_key.clone().inner(),
+            change_address.clone(),
         ));
 
         let report = TxSummaryUnblindingReport::default();
@@ -71,6 +90,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             state: SummaryState::Init,
             verifier,
             report,
+            addresses: Vec::new(),
             tx_out_summary: None,
             num_outputs,
             num_inputs,
@@ -87,6 +107,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         num_outputs: usize,
         num_inputs: usize,
         view_private_key: &RootViewPrivate,
+        change_address: &PublicSubaddress,
     ) {
         p.write(Self {
             state: SummaryState::Init,
@@ -96,8 +117,10 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
                 num_outputs,
                 num_inputs,
                 view_private_key.clone().inner(),
+                change_address.clone(),
             )),
             report: TxSummaryUnblindingReport::default(),
+            addresses: Vec::new(),
             tx_out_summary: None,
             num_outputs,
             num_inputs,
@@ -139,7 +162,8 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     pub fn add_output_unblinding(
         &mut self,
         unmasked_amount: &UnmaskedAmount,
-        address: Option<(ShortAddressHash, &PublicSubaddress)>,
+        address: Option<&PublicSubaddress>,
+        fog_info: Option<(FogId, &[u8; 64])>,
         tx_private_key: Option<&TxPrivateKey>,
     ) -> Result<SummaryState, Error> {
         // TODO: check state
@@ -165,11 +189,29 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             }
         };
 
+        // Regenerate short hash for address
+        let (fog_url, fog_sig) = fog_info
+            .map(|(f, s)| (f.url(), &s[..]))
+            .unwrap_or(("", &[]));
+        let a = address.map(|a| (digest_public_address(a, fog_url, fog_sig), a));
+
+        // Cache output address' for future display
+        if let Some((h, _)) = &a {
+            if !self.addresses.iter().any(|v| &v.short_hash == h) {
+                self.addresses.push(OutputAddress {
+                    short_hash: h.clone(),
+                    address: address.cloned().unwrap(),
+                    fog_id: fog_info.map(|(f, _)| f).unwrap_or_default(),
+                    fog_sig: fog_info.map(|(_, s)| *s),
+                });
+            }
+        }
+
         // Digest output w/ unblinding info
         match verifier.digest_output(
             &tx_out_summary,
             unmasked_amount,
-            address,
+            a,
             tx_private_key.as_ref().map(|v| v.as_ref()),
             &mut self.report,
         ) {
@@ -300,12 +342,21 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
     pub fn report(&self) -> &TxSummaryUnblindingReport<MAX_RECORDS> {
         &self.report
     }
+
+    /// Fetch address from summarizer cache (must be called after `finalize`)
+    #[inline]
+    pub fn address(&self, h: &ShortAddressHash) -> Option<&OutputAddress> {
+        self.addresses.iter().find(|v| &v.short_hash == h)
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use core::str::FromStr;
+
     use log::*;
-    use mc_core::{account::Account, keys::Key};
+    use mc_core::consts::CHANGE_SUBADDRESS_INDEX;
+    use mc_core::{account::Account, keys::Key, subaddress::Subaddress};
     use mc_transaction_summary::verify_tx_summary;
     use rand_core::OsRng;
 
@@ -341,6 +392,7 @@ mod test {
             &summary,
             &unblinding_data,
             account.view_private_key().clone().inner(),
+            &account.subaddress(CHANGE_SUBADDRESS_INDEX),
         )
         .unwrap();
 
@@ -357,6 +409,7 @@ mod test {
             summary.outputs.len(),
             summary.inputs.len(),
             account.view_private_key(),
+            &PublicSubaddress::from(&account.subaddress(CHANGE_SUBADDRESS_INDEX)),
         );
 
         let progress_total = summary.inputs.len() + summary.outputs.len() + 1;
@@ -374,16 +427,26 @@ mod test {
             )
             .unwrap();
 
-            let a = unblinding
-                .address
-                .as_ref()
-                .map(|a| (ShortAddressHash::from(a), PublicSubaddress::from(a)));
+            let address = unblinding.address.as_ref();
             let k = unblinding.tx_private_key.map(Key::from);
+
+            let fog_info =
+                address.and_then(|a| match (a.fog_report_url(), a.fog_authority_sig()) {
+                    (Some(url), Some(s)) => {
+                        let fog_id = FogId::from_str(url).unwrap();
+
+                        let mut sig = [0u8; 64];
+                        sig.copy_from_slice(s.as_ref());
+                        Some((fog_id, sig))
+                    }
+                    _ => None,
+                });
 
             s.add_output_unblinding(
                 &unblinding.unmasked_amount,
-                (&a).as_ref().map(|(h, p)| (h.clone(), p)),
-                (&k).as_ref(),
+                address.map(PublicSubaddress::from).as_ref(),
+                fog_info.as_ref().map(|(url, sig)| (*url, sig)),
+                k.as_ref(),
             )
             .unwrap();
 
@@ -458,6 +521,6 @@ mod test {
     fn summarizer_size() {
         // TODO: check summarizer size is reasonable
         let s = core::mem::size_of::<Summarizer<16>>();
-        assert!(s < 2048, "summarizer size: {s}");
+        assert!(s < 8192, "summarizer size: {s} > 8192");
     }
 }

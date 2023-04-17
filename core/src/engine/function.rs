@@ -2,7 +2,10 @@
 
 use core::mem::MaybeUninit;
 
-use mc_core::keys::{RootViewPrivate, SubaddressSpendPrivate};
+use mc_core::{
+    account::PublicSubaddress,
+    keys::{RootViewPrivate, SubaddressSpendPrivate},
+};
 use mc_transaction_types::BlockVersion;
 
 use super::Error;
@@ -141,8 +144,10 @@ impl Function {
         num_outputs: usize,
         num_inputs: usize,
         view_private_key: &RootViewPrivate,
+        change_subaddress: &PublicSubaddress,
     ) -> &mut Summarizer<MAX_RECORDS> {
         // Clear function prior to init (executes drop)
+
         self.clear();
 
         // Setup uninitialised context
@@ -163,6 +168,7 @@ impl Function {
                 num_outputs,
                 num_inputs,
                 view_private_key,
+                change_subaddress,
             )
         };
 

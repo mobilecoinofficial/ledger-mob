@@ -27,6 +27,7 @@ use ledger_mob_core::{
     apdu::{self, app_info::AppFlags},
     engine::{Engine, Error, Event, State},
 };
+use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
 
 mod consts;
 use consts::*;
@@ -124,8 +125,8 @@ extern "C" fn sample_main() {
                 timeout = ticks.wrapping_add(TIMEOUT_S * TICKS_PER_S);
             }
             // Handle incoming APDUs
-            io::Event::Command(cmd) => {
-                if handle_apdu(engine, &mut comm, &mut ui, cmd.ins) {
+            io::Event::Command(hdr) => {
+                if handle_apdu(engine, &mut comm, &mut ui, hdr.ins) {
                     redraw = true;
                 }
             }
@@ -159,7 +160,30 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
 ) -> bool {
     // Handle buttons depending on UI state
     let r = match ui.state {
-        UiState::Menu => ui.menu.update(btn),
+        UiState::Menu => {
+            // Handle menu selections
+            ui.menu.update(btn).map_exit(|v| {
+                match v {
+                    MenuState::Address => {
+                        // Fetch subaddress from engine
+                        let s = engine.get_subaddress(0, DEFAULT_SUBADDRESS_INDEX);
+
+                        // Set UI state to display subaddress
+                        ui.state = UiState::Address(Address::new(
+                            &s.address,
+                            s.fog_id,
+                            s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
+                        ));
+                    }
+                    MenuState::Version => ui.state = UiState::AppInfo(AppInfo::new()),
+                    MenuState::Exit => nanos_sdk::exit_app(0),
+                    _ => (),
+                }
+            });
+            // Force redraw
+            UiResult::Update
+        }
+        UiState::Address(ref mut a) => a.update(btn),
         UiState::KeyRequest(ref mut a) => {
             a.update(btn).map_exit(|v| {
                 // Unlock engine on approval
@@ -186,7 +210,7 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
         }
         #[cfg(feature = "summary")]
         UiState::TxSummaryRequest(ref mut a) => {
-            a.update(btn).map_exit(|v| {
+            a.update(btn, engine).map_exit(|v| {
                 // Approve or deny transaction
                 match *v {
                     true => engine.approve(),
@@ -209,14 +233,17 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                 engine.reset()
             })
         }
+        UiState::AppInfo(ref mut a) => a.update(btn),
     };
 
     // Handle ui results
     match ui.state {
-        UiState::KeyRequest(..)
+        UiState::Address(..)
+        | UiState::KeyRequest(..)
         | UiState::TxRequest(..)
         | UiState::Progress(..)
         | UiState::Message(..)
+        | UiState::AppInfo(..)
             if r.is_exit() =>
         {
             ui.state = UiState::Menu;
@@ -337,8 +364,10 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         State::Pending if !ui.state.is_tx_request() => match engine.report() {
             #[cfg(feature = "summary")]
             Some(r) => {
-                ui.state =
-                    UiState::TxSummaryRequest(TxSummaryApprover::new(r.balance_changes.len()));
+                ui.state = UiState::TxSummaryRequest(TxSummaryApprover::new(
+                    r.outputs.len(),
+                    r.totals.len(),
+                ));
                 render = true;
             }
             _ => {

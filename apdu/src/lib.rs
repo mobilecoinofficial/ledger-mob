@@ -154,7 +154,8 @@ pub(crate) mod test {
         let n = apdu.encode(buff).expect("encode failed");
 
         // Ensure encoded data fits maximum APDU payload
-        assert!(n < 249);
+        let m = 249;
+        assert!(n < m, "encoded length {n} exceeds maximum APDU payload {m}");
 
         // Check encoded length matches expected length
         let expected_n = apdu.encode_len().expect("get length failed");
