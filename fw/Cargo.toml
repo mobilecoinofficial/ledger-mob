@@ -133,7 +133,6 @@ mc-util-serial = { path = "../vendor/mob/util/serial" }
 heapless = { git = "https://github.com/mobilecoinofficial/heapless", rev = "2726f63bdc767d025f370d88341b1eb785178f2b" }
 
 #rand_core = { path = "../../forks/rand/rand_core" }
-rand_hc = { git = "https://github.com/ryankurte/rngs", branch = "hc128-reduce-stack" }
 
 # patch nanos_sdk so nanos_ui uses the same version
 # hack to avoid cargo#5478 https://github.com/rust-lang/cargo/issues/5478

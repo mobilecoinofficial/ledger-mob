@@ -1570,8 +1570,9 @@ dependencies = [
 
 [[package]]
 name = "rand_hc"
-version = "0.3.1"
-source = "git+https://github.com/ryankurte/rngs?branch=hc128-reduce-stack#dff6a233611f80993d28478786412bec72ffb99a"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b363d4f6370f88d62bf586c80405657bde0f0e1b8945d47d2ad59b906cb4f54"
 dependencies = [
  "rand_core",
 ]

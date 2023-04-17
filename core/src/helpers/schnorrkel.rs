@@ -1,4 +1,8 @@
-use core::mem::MaybeUninit;
+//! Schrnorrkel / fog authority signing helpers
+//!
+//! These implement the same behaviour as the upstream `Signer` and `Verifier`
+//! traits, with modifications to reduce stack use for execution on the ledger.
+//!
 
 use mc_core::keys::SubaddressViewPrivate;
 use mc_crypto_digestible::MerlinTranscript;
@@ -6,7 +10,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoSignature};
 
 use rand_core::{
     block::{BlockRng, BlockRngCore},
-    CryptoRngCore, SeedableRng,
+    SeedableRng,
 };
 use rand_hc::Hc128Core;
 use schnorrkel_og::{context::attach_rng, SecretKey as SchnorrkelPrivate};
@@ -34,7 +38,7 @@ fn schnorrkel_secret(private_key: &RistrettoPrivate, nonce: &[u8; 32]) -> Schnor
 }
 
 #[inline(never)]
-pub fn schnorrkel_sign(
+fn schnorrkel_sign(
     private_key: &RistrettoPrivate,
     context: &[u8],
     message: &[u8],
@@ -58,17 +62,17 @@ pub fn schnorrkel_sign(
     let mut core = Hc128Core::from_seed(nonce);
 
     // Wrap this in BlockRng
-    // using a pointer container to avoid further allocation
+    // using a pointer container to avoid further stack allocation
     let container = Hc128CoreContainer(&mut core);
     let mut csprng = BlockRng::new(container);
 
-    //let mut csprng = Hc128Rng::from_seed(nonce);
     let mut transcript = attach_rng(t, &mut csprng);
     RistrettoSignature::from(keypair.sign(&mut transcript))
 }
 
-/// Wrapper for [Hc128Core] pointer, working around the lack of
-/// a blanket [BlockRngCore] impl for `&mut T` where `T: BlockRngCore`.
+/// Wrapper allowing [Hc128Core] reference to implement [BlockRngCore],
+///  working around the lack of a blanket [BlockRngCore] impl
+/// for `&mut T` where `T: BlockRngCore`.
 struct Hc128CoreContainer<'a>(&'a mut Hc128Core);
 
 impl<'a> BlockRngCore for Hc128CoreContainer<'a> {
@@ -83,9 +87,10 @@ impl<'a> BlockRngCore for Hc128CoreContainer<'a> {
 impl<'a> rand_core::CryptoRng for Hc128CoreContainer<'a> {}
 
 /// Canonical signing context byte string
-const CONTEXT: &'static [u8] = b"Fog authority signature";
+const CONTEXT: &[u8] = b"Fog authority signature";
 
-/// Re-implementation of `Signer` for `RistrettoPrivate` using types to minimize allocations
+/// Re-implementation of `Signer` for `RistrettoPrivate` using reference types
+/// to minimize stack allocations
 #[inline(never)]
 pub fn sign_authority(
     private_key: &SubaddressViewPrivate,
@@ -99,7 +104,6 @@ mod test {
     use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::RistrettoPublic;
     use mc_fog_sig_authority::{Signer, Verifier};
-    use mc_transaction_types::TokenId;
     use mc_util_from_random::FromRandom;
     use rand_core::OsRng;
 

@@ -22,7 +22,6 @@ use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPub
 #[cfg(feature = "memo")]
 use mc_crypto_memo_mac::compute_category1_hmac;
 use mc_crypto_ring_signature::{onetime_keys::recover_onetime_private_key, KeyImage};
-use mc_fog_sig_authority::Signer;
 #[cfg(feature = "summary")]
 pub use mc_transaction_summary::TransactionEntity;
 #[cfg(feature = "summary")]
