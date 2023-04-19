@@ -132,6 +132,8 @@ mc-util-serial = { path = "../vendor/mob/util/serial" }
 # This specifies we use the latest version of heapless ~`0.9.4` to solve the dependency constraints. 
 heapless = { git = "https://github.com/mobilecoinofficial/heapless", rev = "2726f63bdc767d025f370d88341b1eb785178f2b" }
 
+#rand_core = { path = "../../forks/rand/rand_core" }
+
 # patch nanos_sdk so nanos_ui uses the same version
 # hack to avoid cargo#5478 https://github.com/rust-lang/cargo/issues/5478
 [patch."https://github.com/LedgerHQ/ledger-nanos-sdk"]

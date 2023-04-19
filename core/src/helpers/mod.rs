@@ -13,6 +13,9 @@ use mc_core::account::{RingCtAddress, ShortAddressHash};
 
 use crate::engine::{Error, TokenId};
 
+mod schnorrkel;
+pub use schnorrkel::sign_authority;
+
 // Include generated protobuf types
 include!(concat!(env!("OUT_DIR"), "/mob.rs"));
 
@@ -216,7 +219,7 @@ mod test {
     use super::*;
     use crate::engine::{FogCert, FogId};
 
-    const MAX_LINE_LEN: usize = 20;
+    pub(crate) const MAX_LINE_LEN: usize = 20;
 
     #[test]
     fn fmt_mob() {
