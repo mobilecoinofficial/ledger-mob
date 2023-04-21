@@ -49,7 +49,7 @@ ledger-apdu = { path = "../vendor/rs/ledger-apdu" }
 ledger-transport = { path = "../vendor/rs/ledger-transport" }
 
 ledger-transport-hid = { path = "../vendor/rs/ledger-transport-hid", optional = true }
-hidapi = { version = "1.4.2", optional = true, default_features = false, features = [ "linux-static-hidraw" ] }
+hidapi = { version = "2.2.2", optional = true, default_features = false, features = [ "linux-static-hidraw" ] }
 ledger-transport-tcp = { path = "../vendor/rs/ledger-transport-tcp", optional = true }
 
 curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }

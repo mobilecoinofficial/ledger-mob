@@ -28,7 +28,7 @@ encdec = "0.8.3"
 strum = { version = "0.24.1", features = [ "derive" ] }
 tokio = { version = "1.20.1", features = [ "full" ] }
 hex = "0.4.3"
-hidapi = { version = "1.4.2", optional = true, default_features = false, features = [ "linux-static-hidraw" ] }
+hidapi = { version = "2.2.2", optional = true, default_features = false }
 thiserror = "1.0.37"
 lazy_static = "1.4.0"
 log = "0.4.17"
@@ -58,6 +58,14 @@ mc-transaction-core = { version = "4.1.0-pre0" }
 mc-transaction-extra = { version = "4.1.0-pre0" }
 mc-transaction-signer = { version = "4.1.0-pre0" }
 mc-transaction-summary = { version = "4.1.0-pre0" }
+
+# Use statically linked hidapi for linux
+[target.'cfg(target_os = "linux")'.dependencies]
+hidapi = { version = "2.2.2", optional = true, default_features = false, features = [ "linux-static-hidraw" ] }
+
+# Support shared HID device use on macos
+[target.'cfg(target_os = "macos")'.dependencies]
+hidapi = { version = "2.2.2", optional = true, default_features = false, features = [ "macos-shared-device" ] }
 
 
 [dev-dependencies]
