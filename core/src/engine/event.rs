@@ -19,7 +19,7 @@ use mc_transaction_types::{Amount, MaskedAmount, UnmaskedAmount};
 use ledger_apdu::{ApduError, ApduStatic};
 use ledger_mob_apdu::{
     prelude::*,
-    tx::{AddTxInFlags, FogId},
+    tx::{AddTxInFlags, FogId, TxOnetimeKey, TxRingInitFlags},
 };
 
 /// [`Engine`][super::Engine] input events, typically decoded from request [APDUs][crate::apdu]
@@ -127,6 +127,7 @@ pub enum Event<'a> {
         subaddress_index: u64,
         value: u64,
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     },
 
     // Setup blinding
@@ -292,7 +293,15 @@ impl<'a> Event<'a> {
                 subaddress_index,
                 value,
                 token_id,
-            } => digest_ring_init(*ring_size, *real_index, subaddress_index, value, token_id),
+                onetime_private_key,
+            } => digest_ring_init(
+                *ring_size,
+                *real_index,
+                subaddress_index,
+                value,
+                token_id,
+                onetime_private_key.as_ref(),
+            ),
             Event::TxSetBlinding {
                 blinding,
                 output_blinding,
@@ -448,12 +457,18 @@ impl<'a> From<TxSummaryBuild> for Event<'a> {
 
 impl<'a> From<TxRingInit> for Event<'a> {
     fn from(a: TxRingInit) -> Self {
+        let onetime_private_key = match a.flags.contains(TxRingInitFlags::HAS_ONETIME_PRIVATE_KEY) {
+            true => Some(a.onetime_private_key),
+            false => None,
+        };
+
         Event::TxRingInit {
             ring_size: a.ring_size,
             real_index: a.real_index,
             subaddress_index: a.subaddress_index,
             value: a.value,
             token_id: a.token_id,
+            onetime_private_key,
         }
     }
 }

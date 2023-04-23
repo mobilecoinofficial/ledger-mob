@@ -119,6 +119,7 @@ where
         params.target_subaddress_index,
         params.value,
         params.token_id,
+        None,
     );
     info!("Start ring signing: {:?}", tx_ring_init);
     let r = t.exchange::<TxInfo>(tx_ring_init, &mut buff).await.unwrap();

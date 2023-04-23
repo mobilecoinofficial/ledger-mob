@@ -72,8 +72,6 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         view_private_key: &RootViewPrivate,
         change_address: &PublicSubaddress,
     ) -> Self {
-        // TODO: check message length
-
         // Setup verifier
         let verifier = Some(TxSummaryStreamingVerifierCtx::new(
             message,
@@ -445,7 +443,7 @@ mod test {
             s.add_output_unblinding(
                 &unblinding.unmasked_amount,
                 address.map(PublicSubaddress::from).as_ref(),
-                fog_info.as_ref().map(|(url, sig)| (*url, sig)),
+                fog_info.as_ref().map(|(f, s)| (*f, s)),
                 k.as_ref(),
             )
             .unwrap();
