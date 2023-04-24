@@ -113,15 +113,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atomic-polyfill"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d299f547288d6db8d5c3a2916f7b2f66134b15b8c1ac1c4357dd3b8752af7bb2"
-dependencies = [
- "critical-section",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -938,7 +929,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88c5088f73e99c3f16962cd9d1257a6ecc23951061648f043beb9e03922d5573"
 dependencies = [
  "byteorder",
- "heapless 0.7.16",
+ "heapless",
  "num-traits",
  "thiserror",
 ]
@@ -950,7 +941,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "825dce54de7b07af1e5e6fb68321151291cd0fe7b0765aaa12a757c932ae3a1d"
 dependencies = [
  "byteorder",
- "heapless 0.7.16",
+ "heapless",
  "num-traits",
  "thiserror",
 ]
@@ -1352,15 +1343,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hash32"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47d60b12902ba28e2730cd37e95b8c9223af2808df9e902d4df49588d1470606"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1381,20 +1363,8 @@ version = "0.7.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db04bc24a18b9ea980628ecf00e6c0264f3c1426dac36c00cb49b6fbad8b0743"
 dependencies = [
- "atomic-polyfill 0.1.11",
- "hash32 0.2.1",
- "rustc_version",
- "spin 0.9.4",
- "stable_deref_trait",
-]
-
-[[package]]
-name = "heapless"
-version = "0.8.0"
-source = "git+https://github.com/mobilecoinofficial/heapless?rev=2726f63bdc767d025f370d88341b1eb785178f2b#2726f63bdc767d025f370d88341b1eb785178f2b"
-dependencies = [
- "atomic-polyfill 1.0.1",
- "hash32 0.3.1",
+ "atomic-polyfill",
+ "hash32",
  "rustc_version",
  "serde",
  "spin 0.9.4",
@@ -1833,7 +1803,7 @@ dependencies = [
  "byteorder",
  "curve25519-dalek",
  "encdec 0.8.3",
- "heapless 0.8.0",
+ "heapless",
  "ledger-apdu",
  "log",
  "mc-core",
@@ -1867,7 +1837,7 @@ dependencies = [
  "ed25519-dalek",
  "emstr",
  "encdec 0.8.3",
- "heapless 0.8.0",
+ "heapless",
  "hkdf",
  "lazy_static",
  "ledger-apdu",
@@ -1920,7 +1890,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "futures",
- "heapless 0.8.0",
+ "heapless",
  "hex",
  "hidapi",
  "lazy_static",
@@ -2528,7 +2498,7 @@ name = "mc-transaction-summary"
 version = "4.1.0-pre0"
 dependencies = [
  "displaydoc",
- "heapless 0.7.16",
+ "heapless",
  "mc-account-keys",
  "mc-core",
  "mc-crypto-digestible",
@@ -2654,7 +2624,7 @@ name = "mc-util-vec-map"
 version = "4.1.0-pre0"
 dependencies = [
  "displaydoc",
- "heapless 0.7.16",
+ "heapless",
 ]
 
 [[package]]
@@ -3636,9 +3606,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.91"
+version = "1.0.96"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877c235533714907a8c2464236f5c4b2a17262ef1bd71f38f35ea592c8da6883"
+checksum = "057d394a50403bcac12672b2b18fb387ab6d289d957dab67dd201875391e52f1"
 dependencies = [
  "itoa",
  "ryu",
@@ -3765,9 +3735,9 @@ dependencies = [
 
 [[package]]
 name = "simplelog"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48dfff04aade74dd495b007c831cd6f4e0cee19c344dd9dc0884c0289b70a786"
+checksum = "acee08041c5de3d5048c8b3f6f13fafb3026b24ba43c6a695a0c76179b844369"
 dependencies = [
  "log",
  "termcolor",
