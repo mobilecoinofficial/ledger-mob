@@ -512,11 +512,11 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         let s = account.subaddress(subaddress_index);
 
         // TODO: Enable FogId selection when stack issue with HC-128 is resolved
-        let fog_id = FogId::MobMain;
+        let fog_id = FogId::MobTest;
 
         let sig: Option<[u8; 64]> = match fog_id {
             FogId::None => None,
-            _ => Some(sign_authority(&s.view_private, fog_id.spki().as_bytes())).map(|v| v.into()),
+            _ => Some(sign_authority(&s.view_private, fog_id.spki())).map(|v| v.into()),
         };
 
         let p = PublicSubaddress::from(&s);
