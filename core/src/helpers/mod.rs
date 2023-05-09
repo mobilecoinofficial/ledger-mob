@@ -281,8 +281,7 @@ mod test {
         for f in FOGS {
             for _i in 0..10 {
                 // Create random account with fog info
-                let a =
-                    AccountKey::random(&mut OsRng {}).with_fog(f.url(), "", f.spki().as_bytes());
+                let a = AccountKey::random(&mut OsRng {}).with_fog(f.url(), "", f.spki());
                 let p = a.default_subaddress();
 
                 // Test short address hashing
@@ -329,8 +328,7 @@ mod test {
         for f in FOGS {
             for _i in 0..10 {
                 // Create random account with fog info
-                let a =
-                    AccountKey::random(&mut OsRng {}).with_fog(f.url(), "", f.spki().as_bytes());
+                let a = AccountKey::random(&mut OsRng {}).with_fog(f.url(), "", f.spki());
                 let p = a.default_subaddress();
 
                 // Local b58 encoding

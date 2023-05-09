@@ -67,15 +67,13 @@ impl LedgerProvider {
         let s = {
             let mut hid_api = HidApi::new()?;
             hid_api.refresh_devices()?;
-            Self {
-                hid_api,
-            }
+            Self { hid_api }
         };
 
         #[cfg(not(feature = "transport_hid"))]
-        let s = Self{};
+        let s = Self {};
 
-        return Ok(s)
+        Ok(s)
     }
 
     /// List available ledger devices
@@ -84,7 +82,6 @@ impl LedgerProvider {
 
         #[cfg(feature = "transport_hid")]
         if filter == Filter::Any || filter == Filter::Hid {
-
             TransportNativeHID::list_ledgers(&self.hid_api)
                 .cloned()
                 .for_each(|d| {
