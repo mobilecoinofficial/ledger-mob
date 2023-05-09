@@ -342,6 +342,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 // Set common transaction information
                 self.account_index = *account_index;
                 self.num_rings = *num_rings as usize;
+                self.ring_count = 0;
                 self.digest = TxDigest::from_random(&mut self.rng);
 
                 // TODO: start timeout for transaction completion
@@ -350,6 +351,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 // clear so prior report cannot be reused.
                 self.state = State::BuildMemos(0);
                 self.function.clear();
+                self.message.clear();
             }
 
             // Sign memos for the transaction
