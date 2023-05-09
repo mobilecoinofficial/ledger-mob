@@ -64,12 +64,16 @@ impl LedgerProvider {
     /// NOTE: only one provider may exist at a time (workaround for global HID context errors on macos/m1)
     pub fn new() -> Result<Self, Error> {
         #[cfg(feature = "transport_hid")]
-        return Ok(Self {
-            hid_api: HidApi::new()?,
-        });
+        let s = {
+            let mut hid_api = HidApi::new()?;
+            hid_api.refresh_devices()?;
+            Self { hid_api }
+        };
 
         #[cfg(not(feature = "transport_hid"))]
-        return Ok(Self {});
+        let s = Self {};
+
+        Ok(s)
     }
 
     /// List available ledger devices

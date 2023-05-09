@@ -124,7 +124,7 @@ mod test {
         for _i in 0..10 {
             let k = RistrettoPrivate::from_random(&mut OsRng {});
             let p = RistrettoPublic::from(&k);
-            let spki = FogId::MobMain.spki().as_bytes();
+            let spki = FogId::MobMain.spki();
 
             // Generate using upstream impl
             let s1 = k.sign_authority(spki).unwrap();
@@ -144,7 +144,7 @@ mod test {
         for f in FOGS {
             for _i in 0..10 {
                 // Create random account with fog info
-                let spki = f.spki().as_bytes();
+                let spki = f.spki();
                 let a = AccountKey::random(&mut OsRng {}).with_fog(f.url(), "", spki);
 
                 // Using the default subaddress

@@ -64,6 +64,7 @@ rand_hc = { version = "0.3.2", default_features = false }
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
 sha2 = { version = "0.10.6", default_features = false }
 bs58 = { version = "0.4.0", default_features = false }
+const-decoder = "0.3.0"
 
 ledger-apdu = { version = "0.10.0", default_features = false }
 ledger-mob-apdu = { path = "../apdu", default_features = false }

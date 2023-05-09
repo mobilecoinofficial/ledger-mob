@@ -303,9 +303,11 @@ const FOG_MC_TESTNET_URI: &str = "fog://fog.test.mobilecoin.com";
 /// MobileCoin MainNet fog URI
 const FOG_MC_MAINNET_URI: &str = "fog://fog.prod.mobilecoinww.com";
 /// Signal TestNet fog URI
-const FOG_SIGNAL_TESTNET_URI: &str = "fog://???";
+const FOG_SIGNAL_TESTNET_URI: &str = "fog://fog-rpt-stg.namda.net";
 /// Signal MainNet fog URI
-const FOG_SIGNAL_MAINNET_URI: &str = "fog://???";
+const FOG_SIGNAL_MAINNET_URI: &str = "fog://fog-rpt-prd.namda.net";
+
+/// TODO: support old signal fog URLs
 
 impl Encode for FogId {
     type Error = encdec::Error;
