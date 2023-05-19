@@ -40,11 +40,18 @@ use ui::*;
 
 const APDU_HEADER_LEN: usize = 5;
 
-/// Engine context is global to mitigate stack-related issues in ledger fw,
-/// expect this to be resolved in future but, the workaround is not egregious...
-/// (in current releases if you use >8k of _stack_ all syscalls fail, as distinct
-/// from using too much _memory_ which would also be a problem)
-static mut ENGINE_CTX: MaybeUninit<Engine<LedgerDriver, LedgerRng>> = MaybeUninit::uninit();
+/// Engine context is global to mitigate stack-related issues in current ledger OS.
+/// (in current releases if you use >8k of _stack_ on the nanosplus syscalls will
+/// fail while on the nanox all memory access will fail)
+/// This is exascerbated by rust/llvm failing to support NRVO or copy-elision
+/// expect this to be resolved in the OS in future but, the workaround is not egregious...
+static mut APP_CTX: MaybeUninit<AppCtx> = MaybeUninit::uninit();
+
+/// Container for app context to simplify global init
+struct AppCtx {
+    engine: Engine<LedgerDriver, LedgerRng>,
+    ui: Ui,
+}
 
 // Setup ledger panic handler
 nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
@@ -64,7 +71,6 @@ pub fn app_getrandom(buff: &mut [u8]) -> Result<(), getrandom::Error> {
 extern "C" fn sample_main() {
     // Setup comms and UI instances
     let mut comm = io::Comm::new();
-    let mut ui = Ui::new();
 
     let mut ticks = 0u32;
     let mut timeout = TIMEOUT_S * TICKS_PER_S;
@@ -74,11 +80,14 @@ extern "C" fn sample_main() {
     #[cfg(feature = "alloc")]
     platform::allocator::init();
 
-    // Bind engine context
-    let engine = unsafe {
-        let p = &mut *ENGINE_CTX.as_mut_ptr();
-        Engine::init(p, LedgerDriver {}, LedgerRng {});
-        p
+    // Initialise and bind globally allocated contexts
+    let (engine, ui) = unsafe {
+        let p = &mut *APP_CTX.as_mut_ptr();
+
+        Engine::init(&mut p.engine, LedgerDriver {}, LedgerRng {});
+        Ui::init(&mut p.ui);
+
+        (&mut p.engine, &mut p.ui)
     };
 
     // Developer mode / pending review popup
@@ -117,7 +126,7 @@ extern "C" fn sample_main() {
         match &evt {
             // Handle button presses
             io::Event::Button(btn) => {
-                if handle_btn(engine, &mut comm, &mut ui, btn) {
+                if handle_btn(engine, &mut comm, ui, btn) {
                     redraw = true
                 }
 
@@ -126,7 +135,7 @@ extern "C" fn sample_main() {
             }
             // Handle incoming APDUs
             io::Event::Command(hdr) => {
-                if handle_apdu(engine, &mut comm, &mut ui, hdr.ins) {
+                if handle_apdu(engine, &mut comm, ui, hdr.ins) {
                     redraw = true;
                 }
             }
@@ -454,3 +463,4 @@ fn platform_tests(comm: &mut io::Comm) {
         drop(v);
     }
 }
+

@@ -57,6 +57,7 @@ pub(crate) mod allocator {
     }
 
     /// Initialise allocator
+    #[inline(never)]
     pub fn init() {
         unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
     }
@@ -77,6 +78,9 @@ pub(crate) mod allocator {
     }
 }
 
+/// Timeout and request pin validation to unlock
+// TODO: replace app exit with this behaviour
+// TODO: timeout should also clear app auth flag for key operations
 #[cfg(nyet)]
 fn request_pin_validation() {
     let mut params = nanos_sdk::bindings::bolos_ux_params_t::default();
@@ -84,4 +88,22 @@ fn request_pin_validation() {
     unsafe {
         nanos_sdk::bindings::os_ux(&params as *mut nanos_sdk::bindings::bolos_ux_params_t);
     }
+}
+
+/// Helper to print the current stack position, useful for diagnosing the 8kb stack limit
+#[no_mangle]
+#[inline(never)]
+pub extern "C" fn print_stack() {
+    use nanos_sdk::bindings::try_context_s;
+
+    // Create a variable to fetch current stack pointer
+    let p = 0u32;
+    let a = core::ptr::addr_of!(p) as u32;
+
+    // Mask and offset to get stack use
+    // (this is ~100 bytes larger than computed, probably due to _start or vector table)
+    let s = 30720 - (a & 0xFFFF);
+
+    // Set context for a syscall, allows this to be printed under speculos
+    unsafe { nanos_sdk::bindings::try_context_set( s as *mut try_context_s ); }
 }

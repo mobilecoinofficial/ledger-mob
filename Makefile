@@ -5,7 +5,7 @@ VERSION=$(shell git describe --dirty=+)
 NANOSP_ARGS=
 NANOX_ARGS=
 
-SPECULOS_ARGS=--zoom=4
+SPECULOS_ARGS=--zoom=4 -t
 ifdef MNEMONIC
 	SPECULOS_ARGS+=--seed "$(MNEMONIC)"
 endif
@@ -90,10 +90,10 @@ objdump:
 	arm-none-eabi-objdump fw/target/nanosplus/release/ledger-mob-fw --disassemble=sample_main -S | head -n 20
 
 wts-nanosplus:
-	wts fw/target/nanosplus/release/ledger-mob-fw -n 15
+	wts fw/target/nanosplus/release/ledger-mob-fw -n 20
 
 wts-nanox:
-	wts fw/target/nanox/release/ledger-mob-fw -n 15
+	wts fw/target/nanox/release/ledger-mob-fw -n 20
 
 # Run linters
 lint: fmt clippy

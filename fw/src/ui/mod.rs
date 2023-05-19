@@ -118,6 +118,11 @@ impl Ui {
         }
     }
 
+    /// Initialise a UI instance without double stack allocations
+    pub unsafe fn init(p: *mut Self) {
+        core::ptr::write(p, Self::new());
+    }
+
     /// Render the [Ui] using the current state
     #[inline(never)]
     pub fn render<D: Driver, R: RngCore + CryptoRng>(&self, engine: &Engine<D, R>) {
