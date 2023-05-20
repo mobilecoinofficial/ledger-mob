@@ -164,15 +164,17 @@ where
     T::decode(buff).map(|(v, _n)| Event::from(v))
 }
 
-impl<'a> Event {
+impl Event {
     /// In-place initialisation
+    /// # Safety
+    /// This is safe as long as the pointer is valid
     pub unsafe fn init(p: *mut Self) {
         p.write(Self::None);
     }
 
     /// Parse an incoming APDU to engine event
     #[cfg_attr(feature = "noinline", inline(never))]
-    pub fn parse(ins: u8, buff: &'a [u8]) -> Result<Self, ApduError> {
+    pub fn parse(ins: u8, buff: &[u8]) -> Result<Self, ApduError> {
         match ins {
             WalletKeyReq::INS => decode_event::<WalletKeyReq>(buff),
             SubaddressKeyReq::INS => decode_event::<SubaddressKeyReq>(buff),
@@ -319,7 +321,7 @@ impl<'a> Event {
     }
 }
 
-impl<'a> From<WalletKeyReq> for Event {
+impl From<WalletKeyReq> for Event {
     fn from(a: WalletKeyReq) -> Self {
         Event::GetWalletKeys {
             account_index: a.account_index,
@@ -327,7 +329,7 @@ impl<'a> From<WalletKeyReq> for Event {
     }
 }
 
-impl<'a> From<SubaddressKeyReq> for Event {
+impl From<SubaddressKeyReq> for Event {
     fn from(a: SubaddressKeyReq) -> Self {
         Event::GetSubaddressKeys {
             account_index: a.account_index,
@@ -336,7 +338,7 @@ impl<'a> From<SubaddressKeyReq> for Event {
     }
 }
 
-impl<'a> From<KeyImageReq> for Event {
+impl From<KeyImageReq> for Event {
     fn from(a: KeyImageReq) -> Self {
         Event::GetKeyImage {
             account_index: a.account_index,
@@ -346,7 +348,7 @@ impl<'a> From<KeyImageReq> for Event {
     }
 }
 
-impl<'a> From<RandomReq> for Event {
+impl From<RandomReq> for Event {
     fn from(_: RandomReq) -> Self {
         Event::GetRandom
     }
@@ -357,18 +359,18 @@ impl<'a> From<IdentSignReq<'a>> for Event {
         Event::IdentSign {
             ident_index: i.identity_index,
             ident_uri: heapless::String::from(i.identity_uri),
-            challenge: heapless::Vec::from_slice(&i.challenge).unwrap(),
+            challenge: heapless::Vec::from_slice(i.challenge).unwrap(),
         }
     }
 }
 
-impl<'a> From<IdentGetReq> for Event {
+impl From<IdentGetReq> for Event {
     fn from(_i: IdentGetReq) -> Self {
         Event::IdentGet
     }
 }
 
-impl<'a> From<TxInit> for Event {
+impl From<TxInit> for Event {
     fn from(a: TxInit) -> Self {
         Event::TxInit {
             account_index: a.account_index,
@@ -377,7 +379,7 @@ impl<'a> From<TxInit> for Event {
     }
 }
 
-impl<'a> From<TxMemoSign> for Event {
+impl From<TxMemoSign> for Event {
     fn from(a: TxMemoSign) -> Self {
         Event::TxSignMemo {
             subaddress_index: a.subaddress_index,
@@ -390,7 +392,7 @@ impl<'a> From<TxMemoSign> for Event {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryInit> for Event {
+impl From<TxSummaryInit> for Event {
     fn from(a: TxSummaryInit) -> Self {
         Event::TxSummaryInit {
             message: a.message,
@@ -402,7 +404,7 @@ impl<'a> From<TxSummaryInit> for Event {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryAddTxOut> for Event {
+impl From<TxSummaryAddTxOut> for Event {
     fn from(a: TxSummaryAddTxOut) -> Self {
         Event::TxSummaryAddOutput {
             masked_amount: a.masked_amount(),
@@ -414,7 +416,7 @@ impl<'a> From<TxSummaryAddTxOut> for Event {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryAddTxOutUnblinding> for Event {
+impl From<TxSummaryAddTxOutUnblinding> for Event {
     fn from(a: TxSummaryAddTxOutUnblinding) -> Self {
         Event::TxSummaryAddOutputUnblinding {
             unmasked_amount: UnmaskedAmount {
@@ -430,7 +432,7 @@ impl<'a> From<TxSummaryAddTxOutUnblinding> for Event {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryAddTxIn> for Event {
+impl From<TxSummaryAddTxIn> for Event {
     fn from(a: TxSummaryAddTxIn) -> Self {
         let input_rules_digest = match a.flags.contains(AddTxInFlags::HAS_INPUT_RULES) {
             true => Some(a.input_rules_digest),
@@ -446,7 +448,7 @@ impl<'a> From<TxSummaryAddTxIn> for Event {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryBuild> for Event {
+impl From<TxSummaryBuild> for Event {
     fn from(a: TxSummaryBuild) -> Self {
         Event::TxSummaryBuild {
             fee: Amount {
@@ -458,7 +460,7 @@ impl<'a> From<TxSummaryBuild> for Event {
     }
 }
 
-impl<'a> From<TxRingInit> for Event {
+impl From<TxRingInit> for Event {
     fn from(a: TxRingInit) -> Self {
         let onetime_private_key = match a.flags.contains(TxRingInitFlags::HAS_ONETIME_PRIVATE_KEY) {
             true => Some(a.onetime_private_key),
@@ -476,7 +478,7 @@ impl<'a> From<TxRingInit> for Event {
     }
 }
 
-impl<'a> From<TxSetBlinding> for Event {
+impl From<TxSetBlinding> for Event {
     fn from(a: TxSetBlinding) -> Self {
         Event::TxSetBlinding {
             blinding: a.blinding,
@@ -491,7 +493,7 @@ impl<'a> From<TxSetMessage<'a>> for Event {
     }
 }
 
-impl<'a> From<TxAddTxOut> for Event {
+impl From<TxAddTxOut> for Event {
     fn from(a: TxAddTxOut) -> Self {
         let commitment: &CompressedRistretto = a.commitment.as_ref();
 
@@ -506,19 +508,19 @@ impl<'a> From<TxAddTxOut> for Event {
     }
 }
 
-impl<'a> From<TxRingSign> for Event {
+impl From<TxRingSign> for Event {
     fn from(_: TxRingSign) -> Self {
         Event::TxSign
     }
 }
 
-impl<'a> From<TxGetKeyImage> for Event {
+impl From<TxGetKeyImage> for Event {
     fn from(_: TxGetKeyImage) -> Self {
         Event::TxGetKeyImage {}
     }
 }
 
-impl<'a> From<TxGetResponse> for Event {
+impl From<TxGetResponse> for Event {
     fn from(a: TxGetResponse) -> Self {
         Event::TxGetResponse {
             index: a.ring_index,
@@ -526,13 +528,13 @@ impl<'a> From<TxGetResponse> for Event {
     }
 }
 
-impl<'a> From<TxComplete> for Event {
+impl From<TxComplete> for Event {
     fn from(_: TxComplete) -> Self {
         Event::TxComplete
     }
 }
 
-impl<'a> From<TxInfoReq> for Event {
+impl From<TxInfoReq> for Event {
     fn from(_: TxInfoReq) -> Self {
         Event::TxGetInfo
     }

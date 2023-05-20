@@ -609,8 +609,8 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         );
 
         Output::KeyImage {
-            account_index: account_index,
-            subaddress_index: subaddress_index,
+            account_index,
+            subaddress_index,
             key_image: KeyImage::from(&onetime_private_key),
         }
     }

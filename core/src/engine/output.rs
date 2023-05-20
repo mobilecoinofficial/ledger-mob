@@ -87,6 +87,8 @@ pub enum Output {
 
 impl Output {
     /// Initialise an [Output] pointer without allocation
+    /// # Safety
+    /// This is safe as long as the pointer is valid
     pub unsafe fn init(ptr: *mut Self) {
         ptr.write(Output::None);
     }
