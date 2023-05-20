@@ -25,7 +25,7 @@ use nanos_ui::{
 
 use ledger_mob_core::{
     apdu::{self, app_info::AppFlags},
-    engine::{Engine, Error, Event, State, Output},
+    engine::{Engine, Error, Event, Output, State},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
 
@@ -469,4 +469,3 @@ fn platform_tests(comm: &mut io::Comm) {
         drop(v);
     }
 }
-

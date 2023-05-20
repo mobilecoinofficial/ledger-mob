@@ -105,5 +105,7 @@ pub extern "C" fn print_stack() {
     let s = 30720 - (a & 0xFFFF);
 
     // Set context for a syscall, allows this to be printed under speculos
-    unsafe { nanos_sdk::bindings::try_context_set( s as *mut try_context_s ); }
+    unsafe {
+        nanos_sdk::bindings::try_context_set(s as *mut try_context_s);
+    }
 }
