@@ -37,6 +37,10 @@ pub const MENU_STATES: &[MenuState] = &[
 ];
 
 impl UiMenu {
+    pub const fn new() -> Self {
+        Self { i: 0 }
+    }
+
     fn next(&mut self) {
         self.i = (self.i + 1) % MENU_STATES.len()
     }

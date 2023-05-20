@@ -957,10 +957,10 @@ mod test {
         pub static ref PRIVATE_KEY: RistrettoPrivate = RistrettoPrivate::from_random(&mut OsRng{});
 
         /// Mocked out test values, only for state tests
-        pub static ref TESTS: [(State, Event<'static>); 4] = [
+        pub static ref TESTS: [(State, Event); 4] = [
             (State::Init, Event::TxInit{ account_index: 0, num_rings: 13 }),
 
-            (State::SetMessage, Event::TxSetMessage(&[0xaa, 0xbb, 0xcc])),
+            (State::SetMessage, Event::TxSetMessage(heapless::Vec::from_slice(&[0xaa, 0xbb, 0xcc]).unwrap())),
 
             (State::Ready, Event::TxRingInit{ ring_size: RING_SIZE as u8, value: 100, token_id: 10, real_index: 3, subaddress_index: 8, onetime_private_key: None }),
 
@@ -1138,7 +1138,7 @@ mod test {
         };
 
         // Set message (shared between rings)
-        let evt = Event::TxSetMessage(&params.message);
+        let evt = Event::TxSetMessage(heapless::Vec::from_slice(&params.message).unwrap());
         let r = engine.update(&evt).expect("Set message");
 
         assert_eq!(

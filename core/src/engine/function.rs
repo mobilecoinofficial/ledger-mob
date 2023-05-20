@@ -200,6 +200,7 @@ impl Function {
 
     /// Initialise identity function
     #[cfg(feature = "ident")]
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn ident_init(
         &mut self,
         identity_index: u32,
@@ -229,6 +230,7 @@ impl Function {
     }
 
     /// Clear context, executing drop if required
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn clear(&mut self) {
         match &mut self.inner {
             #[cfg(feature = "mlsag")]

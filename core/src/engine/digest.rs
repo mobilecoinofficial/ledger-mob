@@ -67,7 +67,7 @@ impl TxDigest {
     // TODO: what if we apply an event but lose the response, will the client retry..?
     // TODO: swap to tree approach, cache prior event and skip updates to allow retries
     // TODO: could use [Digestible], though this adds dependencies for implementers?
-    pub fn update(&mut self, evt: &Event<'_>) -> &Self {
+    pub fn update(&mut self, evt: &Event) -> &Self {
         // Build and update digest
         let mut d = Sha512_256::new();
 

@@ -25,7 +25,7 @@ use nanos_ui::{
 
 use ledger_mob_core::{
     apdu::{self, app_info::AppFlags},
-    engine::{Engine, Error, Event, State},
+    engine::{Engine, Error, Event, State, Output},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
 
@@ -51,6 +51,8 @@ static mut APP_CTX: MaybeUninit<AppCtx> = MaybeUninit::uninit();
 struct AppCtx {
     engine: Engine<LedgerDriver, LedgerRng>,
     ui: Ui,
+    event: Event,
+    output: Output,
 }
 
 // Setup ledger panic handler
@@ -81,13 +83,15 @@ extern "C" fn sample_main() {
     platform::allocator::init();
 
     // Initialise and bind globally allocated contexts
-    let (engine, ui) = unsafe {
+    let (engine, ui, event, output) = unsafe {
         let p = &mut *APP_CTX.as_mut_ptr();
 
         Engine::init(&mut p.engine, LedgerDriver {}, LedgerRng {});
         Ui::init(&mut p.ui);
+        Event::init(&mut p.event);
+        Output::init(&mut p.output);
 
-        (&mut p.engine, &mut p.ui)
+        (&mut p.engine, &mut p.ui, &mut p.event, &mut p.output)
     };
 
     // Developer mode / pending review popup
@@ -135,7 +139,7 @@ extern "C" fn sample_main() {
             }
             // Handle incoming APDUs
             io::Event::Command(hdr) => {
-                if handle_apdu(engine, &mut comm, ui, hdr.ins) {
+                if handle_apdu(engine, &mut comm, ui, hdr.ins, event, output) {
                     redraw = true;
                 }
             }
@@ -280,6 +284,8 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     comm: &mut io::Comm,
     ui: &mut Ui,
     i: u8,
+    evt: &mut Event,
+    output: &mut Output,
 ) -> bool {
     use apdu::*;
 
@@ -314,7 +320,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     // Handle engine / transaction commands
 
     // Decode APDUs to engine events
-    let evt = match Event::parse(i, &comm.apdu_buffer[APDU_HEADER_LEN..]) {
+    *evt = match Event::parse(i, &comm.apdu_buffer[APDU_HEADER_LEN..]) {
         Ok(v) => v,
         Err(_e) => {
             comm.reply(SyscallError::InvalidParameter);
@@ -344,7 +350,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     }
 
     // Update engine
-    let r = match engine.update(&evt) {
+    *output = match engine.update(&evt) {
         Ok(v) => v,
         Err(e) => {
             let r = 0x6d00 | (e as u8) as u16;
@@ -412,7 +418,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     }
 
     // Encode engine output to response APDU
-    let n = match r.encode(&mut comm.apdu_buffer) {
+    let n = match output.encode(&mut comm.apdu_buffer) {
         Ok(v) => v,
         Err(_e) => {
             comm.reply(SyscallError::Overflow);

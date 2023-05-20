@@ -86,6 +86,11 @@ pub enum Output {
 }
 
 impl Output {
+    /// Initialise an [Output] pointer without allocation
+    pub unsafe fn init(ptr: *mut Self) {
+        ptr.write(Output::None);
+    }
+
     /// Encode an [`Output`] object to a response [APDU]
     #[cfg_attr(feature = "noinline", inline(never))]
     pub fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
