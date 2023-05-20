@@ -5,7 +5,7 @@ VERSION=$(shell git describe --dirty=+)
 NANOSP_ARGS=
 NANOX_ARGS=
 
-SPECULOS_ARGS=--zoom=4 -t
+SPECULOS_ARGS=--zoom=4
 ifdef MNEMONIC
 	SPECULOS_ARGS+=--seed "$(MNEMONIC)"
 endif
@@ -79,11 +79,11 @@ speculos:
 
 # Run firmware under speculos with QEMU debug connection
 nanosplus-debug:
-	cd fw && speculos.py --model nanosp --display qt -k 1.0 --apdu-port 1237 --seed="$(MNEMONIC)" -d target/nanosplus/release/ledger-mob-fw
+	cd fw && speculos.py --model nanosp --display qt -a 1 --apdu-port 1237 $(SPECULOS_ARGS) -d target/nanosplus/release/ledger-mob-fw
 
 # Launch GDB connecting to speculos QEMU
 nanosplus-gdb:
-	cd fw && rust-gdb --tui fw/target/nanosplus/debug/ledger-mob-fw
+	cd fw && rust-gdb fw/target/nanosplus/release/ledger-mob-fw
 
 # Objdump to show disassembly of sample_main (see `sp` for stack allocation)
 objdump:
