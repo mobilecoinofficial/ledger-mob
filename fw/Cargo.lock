@@ -2190,11 +2190,3 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "mc-account-keys"
-version = "4.1.0-pre0"
-
-[[patch.unused]]
-name = "mc-util-serial"
-version = "4.1.0-pre0"

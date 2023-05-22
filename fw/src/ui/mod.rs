@@ -111,11 +111,16 @@ impl UiState {
 
 impl Ui {
     /// Create a new [Ui] instance
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             state: UiState::Menu,
-            menu: UiMenu::default(),
+            menu: UiMenu::new(),
         }
+    }
+
+    /// Initialise a UI instance without double stack allocations
+    pub unsafe fn init(p: *mut Self) {
+        core::ptr::write(p, Self::new());
     }
 
     /// Render the [Ui] using the current state

@@ -250,20 +250,13 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     return Err(Error::ApprovalPending);
                 }
 
-                let account = self.get_account(*account_index);
-                let subaddress = account.subaddress(*subaddress_index);
-
-                let onetime_private_key = recover_onetime_private_key(
+                let r = self.get_key_image(
+                    *account_index,
+                    *subaddress_index,
                     txout_public_key.as_ref(),
-                    account.view_private_key().as_ref(),
-                    subaddress.spend_private_key().as_ref(),
                 );
 
-                return Ok(Output::KeyImage {
-                    account_index: *account_index,
-                    subaddress_index: *subaddress_index,
-                    key_image: KeyImage::from(&onetime_private_key),
-                });
+                return Ok(r);
             }
 
             // Fetch a random value
@@ -301,31 +294,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // Derive identity and sign the provided challenge
             #[cfg(feature = "ident")]
             (State::Ident(s), Event::IdentGet) => {
-                // Retrieve identity context
-                let ident = match self.function.ident_ref() {
-                    Some(v) => v,
-                    None => {
-                        self.state = State::Error;
-                        return Err(Error::InvalidState);
-                    }
-                };
-
-                #[cfg(feature = "log")]
-                log::debug!("ident get, state: {:?}", s);
-
-                // Ensure identity request has been approved
-                if s != IdentState::Approved {
-                    return Err(Error::ApprovalPending);
-                }
-
-                // Compute identity object
-                let path = ident.path();
-                let private_key = self.drv.slip10_derive_ed25519(&path);
-                let r = ident.compute(&private_key);
-
-                // Reset engine state
-                self.function.clear();
-                self.state = State::Init;
+                let r = self.get_signed_ident(s);
 
                 // Return result
                 return r;
@@ -623,6 +592,29 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         self.function.ident_ref()
     }
 
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn get_key_image(
+        &self,
+        account_index: u32,
+        subaddress_index: u64,
+        txout_public_key: &RistrettoPublic,
+    ) -> Output {
+        let account = self.get_account(account_index);
+        let subaddress = account.subaddress(subaddress_index);
+
+        let onetime_private_key = recover_onetime_private_key(
+            txout_public_key,
+            account.view_private_key().as_ref(),
+            subaddress.spend_private_key().as_ref(),
+        );
+
+        Output::KeyImage {
+            account_index,
+            subaddress_index,
+            key_image: KeyImage::from(&onetime_private_key),
+        }
+    }
+
     /// Approve or deny a pending identity request
     #[cfg(feature = "ident")]
     pub fn ident_approve(&mut self, approve: bool) {
@@ -634,6 +626,38 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 self.state = State::Init;
             }
         }
+    }
+
+    #[cfg(feature = "ident")]
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn get_signed_ident(&mut self, s: IdentState) -> Result<Output, Error> {
+        // Retrieve identity context
+        let ident = match self.function.ident_ref() {
+            Some(v) => v,
+            None => {
+                self.state = State::Error;
+                return Err(Error::InvalidState);
+            }
+        };
+
+        #[cfg(feature = "log")]
+        log::debug!("ident get, state: {:?}", s);
+
+        // Ensure identity request has been approved
+        if s != IdentState::Approved {
+            return Err(Error::ApprovalPending);
+        }
+
+        // Compute identity object
+        let path = ident.path();
+        let private_key = self.drv.slip10_derive_ed25519(&path);
+        let r = ident.compute(&private_key);
+
+        // Reset engine state
+        self.function.clear();
+        self.state = State::Init;
+
+        r
     }
 
     // Sign the provided memo, returning an `Output::MemoHmac` on success
@@ -933,10 +957,10 @@ mod test {
         pub static ref PRIVATE_KEY: RistrettoPrivate = RistrettoPrivate::from_random(&mut OsRng{});
 
         /// Mocked out test values, only for state tests
-        pub static ref TESTS: [(State, Event<'static>); 4] = [
+        pub static ref TESTS: [(State, Event); 4] = [
             (State::Init, Event::TxInit{ account_index: 0, num_rings: 13 }),
 
-            (State::SetMessage, Event::TxSetMessage(&[0xaa, 0xbb, 0xcc])),
+            (State::SetMessage, Event::TxSetMessage(heapless::Vec::from_slice(&[0xaa, 0xbb, 0xcc]).unwrap())),
 
             (State::Ready, Event::TxRingInit{ ring_size: RING_SIZE as u8, value: 100, token_id: 10, real_index: 3, subaddress_index: 8, onetime_private_key: None }),
 
@@ -1114,7 +1138,7 @@ mod test {
         };
 
         // Set message (shared between rings)
-        let evt = Event::TxSetMessage(&params.message);
+        let evt = Event::TxSetMessage(heapless::Vec::from_slice(&params.message).unwrap());
         let r = engine.update(&evt).expect("Set message");
 
         assert_eq!(

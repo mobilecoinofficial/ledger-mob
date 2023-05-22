@@ -160,7 +160,7 @@ impl RingSigner {
     #[cfg_attr(feature = "noinline", inline(never))]
     pub fn update(
         &mut self,
-        evt: &Event<'_>,
+        evt: &Event,
         rng: impl RngCore + CryptoRng,
     ) -> Result<(RingState, Output), Error> {
         #[cfg(feature = "log")]
