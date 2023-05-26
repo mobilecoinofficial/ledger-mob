@@ -2,11 +2,23 @@
 
 //! Ledger MobileCoin Platform Support
 
-use ledger_mob_core::engine::Driver;
 use nanos_sdk::{
     bindings::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10},
     ecc,
+    Pic,
+    nvm::{AtomicStorage, SingleStorage},
 };
+
+use ledger_mob_core::{
+    engine::{Driver},
+    apdu::tx::{FogId, FOG_IDS},
+};
+
+/// Fog ID for address display
+/// Note NVM is not available under speculos so accessing this page will fault.
+#[link_section=".nvm_data"]
+static mut FOG: Pic<AtomicStorage<u32>> =
+    Pic::new(AtomicStorage::new(&(FogId::MobMain as u32)));
 
 /// Ledger platform driver
 pub struct LedgerDriver {}
@@ -31,6 +43,24 @@ impl Driver for LedgerDriver {
         };
 
         key
+    }
+}
+
+/// Fetch fog ID from platform persistent storage
+pub fn platform_get_fog_id() -> FogId {
+    let i = unsafe { *FOG.get_ref().get_ref() } as usize;
+    if i < FOG_IDS.len() {
+        FOG_IDS[i]
+    } else {
+        FogId::MobMain
+    }
+}
+
+/// Update fog ID in platform persistent storage
+pub fn platform_set_fog_id(fog_id: &FogId) {
+    unsafe {
+        let f = FOG.get_mut();
+        f.update(&(*fog_id as u32));
     }
 }
 

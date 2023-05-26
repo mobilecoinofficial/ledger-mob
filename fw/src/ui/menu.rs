@@ -20,6 +20,7 @@ pub enum MenuState {
     Hello,
     Address,
     Version,
+    Settings,
     Exit,
 }
 
@@ -33,6 +34,7 @@ pub const MENU_STATES: &[MenuState] = &[
     MenuState::Hello,
     MenuState::Address,
     MenuState::Version,
+    MenuState::Settings,
     MenuState::Exit,
 ];
 
@@ -90,6 +92,9 @@ impl UiMenu {
             }
             MenuState::Version => {
                 "App Info".place(Location::Middle, Layout::Centered, false);
+            }
+            MenuState::Settings => {
+                "Settings".place(Location::Middle, Layout::Centered, false);
             }
             MenuState::Exit => "Exit".place(Location::Middle, Layout::Centered, false),
         }

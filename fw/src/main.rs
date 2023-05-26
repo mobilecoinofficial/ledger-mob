@@ -189,6 +189,10 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                         ));
                     }
                     MenuState::Version => ui.state = UiState::AppInfo(AppInfo::new()),
+                    MenuState::Settings => {
+                        let fog_id = platform_get_fog_id();
+                        ui.state = UiState::Settings(Settings::new(fog_id))
+                    },
                     MenuState::Exit => nanos_sdk::exit_app(0),
                     _ => (),
                 }
@@ -247,6 +251,10 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
             })
         }
         UiState::AppInfo(ref mut a) => a.update(btn),
+        UiState::Settings(ref mut a) => a.update(btn).map_exit(|fog_id| {
+            // Update fog id
+            platform_set_fog_id(fog_id);
+        }),
     };
 
     // Handle ui results
@@ -257,6 +265,7 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
         | UiState::Progress(..)
         | UiState::Message(..)
         | UiState::AppInfo(..)
+        | UiState::Settings(..)
             if r.is_exit() =>
         {
             ui.state = UiState::Menu;
