@@ -24,7 +24,7 @@ use nanos_ui::{
 };
 
 use ledger_mob_core::{
-    apdu::{self, app_info::AppFlags},
+    apdu::{self, app_info::AppFlags, tx::FogId},
     engine::{Engine, Error, Event, Output, State},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
@@ -81,6 +81,10 @@ extern "C" fn sample_main() {
 
     #[cfg(feature = "alloc")]
     platform::allocator::init();
+
+    // non-nvm fog ID global must be pre-initialised
+    #[cfg(not(feature = "nvm"))]
+    platform::platform_set_fog_id(&FogId::MobMain);
 
     // Initialise and bind globally allocated contexts
     let (engine, ui, event, output) = unsafe {
@@ -179,7 +183,8 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                 match v {
                     MenuState::Address => {
                         // Fetch subaddress from engine
-                        let s = engine.get_subaddress(0, DEFAULT_SUBADDRESS_INDEX);
+                        let fog_id = platform_get_fog_id();
+                        let s = engine.get_subaddress(0, DEFAULT_SUBADDRESS_INDEX, fog_id);
 
                         // Set UI state to display subaddress
                         ui.state = UiState::Address(Address::new(
@@ -192,7 +197,7 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                     MenuState::Settings => {
                         let fog_id = platform_get_fog_id();
                         ui.state = UiState::Settings(Settings::new(fog_id))
-                    },
+                    }
                     MenuState::Exit => nanos_sdk::exit_app(0),
                     _ => (),
                 }

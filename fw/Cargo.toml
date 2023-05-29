@@ -29,6 +29,7 @@ memo = [ "ledger-mob-core/memo" ]
 ident = [ "ledger-mob-core/ident" ]
 summary = [ "alloc", "ledger-mob-core/summary" ]
 pre-release = []
+nvm = []
 
 alloc = [ "embedded-alloc", "critical-section", "ledger-mob-core/alloc" ]
 noinline = [ "ledger-mob-core/noinline" ]

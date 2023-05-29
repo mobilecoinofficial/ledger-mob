@@ -1,5 +1,5 @@
 //! Settings page for application UI
-//! 
+//!
 
 use rand_core::{CryptoRng, RngCore};
 
@@ -11,8 +11,8 @@ use nanos_ui::{
 };
 
 use ledger_mob_core::{
-    engine::{Driver, Engine},
     apdu::tx::{FogId, FOG_IDS},
+    engine::{Driver, Engine},
 };
 
 use super::{clear_screen, UiResult};
@@ -26,9 +26,7 @@ pub struct Settings {
 impl Settings {
     pub fn new(fog_id: FogId) -> Self {
         let fog_id_index = fog_id as usize;
-        Self{
-            fog_id_index
-        }
+        Self { fog_id_index }
     }
 
     pub fn update(&mut self, btn: &ButtonEvent) -> UiResult<FogId> {
@@ -40,11 +38,11 @@ impl Settings {
             ButtonEvent::LeftButtonRelease if self.fog_id_index > 0 => {
                 self.fog_id_index -= 1;
                 UiResult::Update
-            },
+            }
             ButtonEvent::RightButtonRelease if self.fog_id_index < 4 => {
                 self.fog_id_index += 1;
                 UiResult::Update
-            },
+            }
 
             // Otherwise, no change
             _ => UiResult::None,
