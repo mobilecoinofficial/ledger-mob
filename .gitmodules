@@ -1,6 +1,3 @@
-[submodule "vendor/rs"]
-	path = vendor/rs
-	url = ../../ryankurte/ledger-rs.git
 [submodule "vendor/mob"]
 	path = vendor/mob
 	url = ../../mobilecoinfoundation/mobilecoin.git

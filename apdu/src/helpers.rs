@@ -1,9 +1,12 @@
-#![allow(unused)]
+//! APDU encode/decode helpers
+//!
 // Copyright (c) 2022-2023 The MobileCoin Foundation
+#![allow(unused)]
 
 /// encdec helper module for scalars
 pub(crate) mod scalar {
-    use ledger_apdu::ApduError;
+    use ledger_proto::ApduError;
+
     use mc_crypto_ring_signature::Scalar;
 
     pub fn enc(s: &Scalar, buff: &mut [u8]) -> Result<usize, ApduError> {
@@ -39,7 +42,7 @@ pub(crate) mod scalar {
 
 /// encdec helper module for public keys
 pub(crate) mod pub_key {
-    use ledger_apdu::ApduError;
+    use ledger_proto::ApduError;
 
     use mc_crypto_keys::RistrettoPublic;
 
@@ -81,7 +84,7 @@ pub(crate) mod pub_key {
 /// encdec helper module for private keys
 
 pub(crate) mod pri_key {
-    use ledger_apdu::ApduError;
+    use ledger_proto::ApduError;
 
     use mc_crypto_keys::RistrettoPrivate;
 
@@ -123,7 +126,7 @@ pub(crate) mod pri_key {
 /// encdec helper module for compressed points
 pub(crate) mod pt {
     use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-    use ledger_apdu::ApduError;
+    use ledger_proto::ApduError;
     use mc_crypto_keys::CompressedRistrettoPublic;
 
     pub fn enc<P: AsRef<[u8; 32]>>(p: P, buff: &mut [u8]) -> Result<usize, ApduError> {
@@ -161,7 +164,7 @@ pub(crate) mod pt {
 
 /// encdec helper module for key images
 pub(crate) mod ki {
-    use ledger_apdu::ApduError;
+    use ledger_proto::ApduError;
     use mc_crypto_ring_signature::KeyImage;
 
     pub fn enc(p: &KeyImage, buff: &mut [u8]) -> Result<usize, ApduError> {

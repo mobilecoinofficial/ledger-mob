@@ -28,7 +28,7 @@ noinline = []
 
 std = [
     "thiserror",
-    "ledger-apdu/std",
+#    "ledger-apdu/std",
 ]
 default = [
     "mlsag",
@@ -51,7 +51,7 @@ hkdf = { version = "0.12.3", default_features = false }
 rand_core = { version = "0.6.4", default_features = false, features = [ "getrandom" ] }
 strum = { version = "0.24.1", default_features = false, features = [ "derive" ] }
 static_assertions = "1.1.0"
-encdec = { version = "0.8.0", default_features = false }
+encdec = { version = "0.9.0", default_features = false }
 thiserror = { version = "1.0.38", optional = true }
 emstr = { version = "0.2.0", default_features = false }
 prost = { version = "0.11.0", default_features = false, features = [ "prost-derive" ] }
@@ -66,9 +66,9 @@ sha2 = { version = "0.10.6", default_features = false }
 bs58 = { version = "0.4.0", default_features = false }
 const-decoder = "0.3.0"
 
-ledger-apdu = { version = "0.10.0", default_features = false }
 ledger-mob-apdu = { path = "../apdu", default_features = false }
 
+ledger-proto = { version = "0.1.0", default_features = false }
 
 mc-core = { version = "4.1.0-pre0", default_features = false, features = [ "internals" ] }
 mc-crypto-digestible = { version = "4.1.0-pre0", default_features = false }
@@ -107,4 +107,4 @@ mc-account-keys = { version = "4.1.0-pre0", default_features = false, features =
 mc-api = { version = "4.1.0-pre0", default_features = false }
 mc-util-test-helper = { path = "../vendor/mob/util/test-helper", default_features = false }
 ledger-mob-tests = { path = "../tests", default_features = false }
-ledger-transport = { path = "../vendor/rs/ledger-transport" }
+ledger-lib = { version = "0.1.0", default_features =  false }

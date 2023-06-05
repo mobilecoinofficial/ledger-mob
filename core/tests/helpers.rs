@@ -1,9 +1,11 @@
 #![allow(unused)]
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use bip39::Seed;
+use ledger_proto::{ApduBase, ApduReq};
 use log::{debug, trace};
 
 use ledger_mob_core::engine::{Driver, Engine, Error, Event};
@@ -34,24 +36,23 @@ impl TestEngine {
 }
 
 #[async_trait]
-impl ledger_transport::Exchange for TestEngine {
-    type Error = ledger_mob_tests::Error;
+impl ledger_lib::Device for TestEngine {
+    async fn request<'a, 'b, RESP: ApduBase<'b>>(
+        &mut self,
+        request: impl ApduReq<'a> + Send,
+        buff: &'b mut [u8],
+        timeout: Duration,
+    ) -> Result<RESP, ledger_lib::Error> {
+        let h = request.header();
 
-    async fn exchange<'a, 'c, ANS: ledger_apdu::ApduBase<'a>>(
-        &self,
-        command: impl ledger_apdu::ApduCmd<'c>,
-        buff: &'a mut [u8],
-    ) -> Result<ANS, Self::Error> {
-        let h = command.header();
-
-        debug!("cmd: {:?}", command);
+        debug!("cmd: {:?}", request);
 
         // Encode command to APDU (skipping header)
-        let n = command.encode(buff).unwrap();
+        let n = request.encode(buff).unwrap();
 
         assert!(
             n < 250,
-            "encoded command maximum length exceeded for: {command:?} ({n} bytes)"
+            "encoded command maximum length exceeded for: {request:?} ({n} bytes)"
         );
 
         trace!("encoded: {:02x?}", &buff[..n]);
@@ -77,7 +78,7 @@ impl ledger_transport::Exchange for TestEngine {
         );
 
         // Decode response APDU
-        let (a, _) = ANS::decode(&buff[..n]).unwrap();
+        let (a, _) = RESP::decode(&buff[..n]).unwrap();
 
         debug!("resp: {:?}", a);
 

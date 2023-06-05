@@ -4,7 +4,7 @@
 use core::str::FromStr;
 
 use encdec::{Decode, DecodeOwned, Encode};
-use ledger_apdu::ApduStatic;
+use ledger_proto::ApduStatic;
 
 use mc_core::{
     account::{PublicSubaddress, RingCtAddress, ShortAddressHash},

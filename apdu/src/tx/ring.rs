@@ -3,7 +3,7 @@
 use curve25519_dalek::ristretto::CompressedRistretto;
 use encdec::{Decode, Encode};
 
-use ledger_apdu::ApduStatic;
+use ledger_proto::ApduStatic;
 
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, KeyImage, ReducedTxOut, Scalar};

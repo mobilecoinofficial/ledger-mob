@@ -1,14 +1,22 @@
-use std::{path::PathBuf, str::FromStr, time::Duration};
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    path::PathBuf,
+    str::FromStr,
+    time::Duration,
+};
 
 use log::{debug, LevelFilter};
 use portpicker::pick_unused_port;
 use simplelog::SimpleLogger;
 
-use ledger_mob::transport::{GenericTransport, TcpOptions, TransportTcp};
+use ledger_lib::{
+    transport::{GenericDevice, TcpInfo, TcpTransport},
+    Transport,
+};
 use ledger_sim::*;
 
 // Setup speculos instance and TCP connector with an optional seed
-pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, GenericTransport) {
+pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, GenericDevice) {
     // Setup logging
     let log_level = match std::env::var("LOG_LEVEL").map(|v| LevelFilter::from_str(&v)) {
         Ok(Ok(l)) => l,
@@ -17,6 +25,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
 
     let log_cfg = simplelog::ConfigBuilder::new()
         .add_filter_ignore_str("bollard")
+        .add_filter_ignore_str("reqwest")
         .build();
 
     let _ = SimpleLogger::init(log_level, log_cfg);
@@ -93,14 +102,14 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     println!("Launching speculos (http port: {http_port} apdu port: {apdu_port})");
 
     // Start simulator and wait for a moment for launch
-    let d = match driver_mode {
+    let driver = match driver_mode {
         DriverMode::Local => GenericDriver::Local(LocalDriver::new()),
         DriverMode::Docker => {
             GenericDriver::Docker(DockerDriver::new().expect("Failed to setup docker driver"))
         }
     };
 
-    let s = d
+    let s = driver
         .run(app_path.to_str().unwrap(), speculos_opts)
         .await
         .expect("Simulator launch failed");
@@ -111,17 +120,15 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     tokio::time::sleep(Duration::from_millis(3000)).await;
 
     // Setup ADPU connector
-    let adpu_opts = TcpOptions {
-        port: apdu_port,
-        timeout_ms: 2 * 1000,
-        ..Default::default()
+    let info = TcpInfo {
+        addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
     };
 
     // Connect to simulator APDU socket
     debug!("Connecting TCP APDU transport");
-    let t = TransportTcp::new(adpu_opts)
-        .await
-        .expect("APDU connection failed");
+    let mut t = TcpTransport::new().expect("APDU connection failed");
+
+    let device = t.connect(info).await.unwrap();
 
     // Press _something_ to dismiss `Review Pending` message
     // TODO: remove this from reviewed code? feature gate perhaps?
@@ -133,7 +140,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         tokio::time::sleep(Duration::from_millis(1000)).await;
     }
 
-    (d, s, t.into())
+    (driver, s, device.into())
 }
 
 /// Run unlock UI where required for tests

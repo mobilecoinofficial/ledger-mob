@@ -130,7 +130,7 @@ impl<'a> Decode<'a> for IdentSignReq<'a> {
 
         // Read identity URI
         let identity_uri =
-            core::str::from_utf8(&buff[index..][..uri_len]).map_err(|_| ApduError::Utf8)?;
+            core::str::from_utf8(&buff[index..][..uri_len]).map_err(|_| ApduError::InvalidUtf8)?;
         index += uri_len;
 
         let challenge = &buff[index..][..challenge_len];

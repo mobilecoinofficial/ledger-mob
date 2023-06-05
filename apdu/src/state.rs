@@ -4,7 +4,7 @@
 //!
 
 use encdec::{DecodeOwned, Encode};
-use ledger_apdu::ApduError;
+use ledger_proto::ApduError;
 use num_enum::TryFromPrimitive;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest as _, Sha512_256};

@@ -8,15 +8,14 @@ use log::debug;
 use ledger_mob_apdu::subaddress_keys::{SubaddressKeyReq, SubaddressKeyResp};
 use mc_core::{account::ViewSubaddress, subaddress::Subaddress};
 
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
-use crate::{Error, TransactionHandle};
+use super::{Error, TransactionHandle};
 
-// -technically- you should be able to implement `mc_core::Subaddress` with an
-// `Output` type that impls Future, but, it raises some Big Lifetime Problems
-// that i haven't been able to work out in a reasonable manner
-
-impl<T: Exchange<Error = Error> + Send + Sync> Subaddress for TransactionHandle<T> {
+/// Sync [Subaddress] implementation for [TransactionHandle]
+///
+/// Note: this MUST be called from a tokio context
+impl<T: Device> Subaddress for TransactionHandle<T> {
     type Output = Result<ViewSubaddress, Error>;
 
     /// Fetch view subaddress by subaddress index,
@@ -26,7 +25,7 @@ impl<T: Exchange<Error = Error> + Send + Sync> Subaddress for TransactionHandle<
     }
 }
 
-impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
+impl<T: Device> TransactionHandle<T> {
     /// Asynchronously fetch a view subaddress by subaddress index,
     /// inheriting the account index from the transaction context.
     ///
@@ -34,12 +33,14 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
     pub async fn view_subaddress(&self, index: u64) -> Result<ViewSubaddress, Error> {
         debug!("Fetching view subaddress keys for index: {}", index);
 
-        let ctx = self.ctx.lock().await;
-
         let mut buff = [0u8; 256];
-        let req = SubaddressKeyReq::new(ctx.info.account_index, index);
+        let req = SubaddressKeyReq::new(self.info.account_index, index);
 
-        let resp = ctx.exchange::<SubaddressKeyResp>(req, &mut buff).await?;
+        let mut t = self.t.lock().await;
+
+        let resp = t
+            .request::<SubaddressKeyResp>(req, &mut buff, self.info.request_timeout)
+            .await?;
 
         Ok(ViewSubaddress {
             view_private: resp.view_private,

@@ -8,7 +8,7 @@ use futures::executor::block_on;
 use log::{debug, info};
 use rand_core::CryptoRngCore;
 
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CurveScalar, RingMLSAG, Scalar};
@@ -20,9 +20,12 @@ use ledger_mob_apdu::{state::TxState, tx::*};
 
 use crate::tx::check_state;
 
-use super::{Error, TransactionContext, TransactionHandle};
+use super::{Error, TransactionHandle};
 
-impl<T: Exchange<Error = Error> + Send + Sync> RingSigner for TransactionHandle<T> {
+/// Sync [RingSigner] implementation for [TransactionHandle]
+///
+/// Note: this MUST be called from a tokio context
+impl<T: Device> RingSigner for TransactionHandle<T> {
     /// Execute ring signing operation on ledger hw
     fn sign(
         &self,
@@ -34,8 +37,7 @@ impl<T: Exchange<Error = Error> + Send + Sync> RingSigner for TransactionHandle<
         // Wrap async to avoid hefty codebase changes
         tokio::task::block_in_place(|| {
             block_on(async {
-                let mut ctx = self.ctx.lock().await;
-                ctx.ring_sign(message, signable_ring, pseudo_output_blinding)
+                self.ring_sign(message, signable_ring, pseudo_output_blinding)
                     .await
             })
             .map_err(|e| {
@@ -47,18 +49,20 @@ impl<T: Exchange<Error = Error> + Send + Sync> RingSigner for TransactionHandle<
     }
 }
 
-impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
+impl<T: Device> TransactionHandle<T> {
     /// Asynchronously execute a ring signing operation on ledger hardware.
     ///  
     /// See [RingSigner] trait for public / blocking API
     pub async fn ring_sign(
-        &mut self,
+        &self,
         // TODO: message is per-transaction, not per-ring
         _message: &[u8],
         signable_ring: &SignableInputRing,
         pseudo_output_blinding: Scalar,
     ) -> Result<RingMLSAG, Error> {
         let mut buff = [0u8; 256];
+
+        let mut t = self.t.lock().await;
 
         let ring_size = signable_ring.members.len();
         let real_index = signable_ring.real_input_index;
@@ -83,7 +87,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
             *signable_ring.input_secret.amount.token_id,
             onetime_key,
         );
-        let r = self.exchange::<TxInfo>(tx_init, &mut buff).await?;
+        let r = t
+            .request::<TxInfo>(tx_init, &mut buff, self.info.request_timeout)
+            .await?;
 
         // TODO: onetime_private_key looks to be per-ring?
         // (must be to correlate with real_input.target_key..?)
@@ -97,7 +103,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
             blinding: signable_ring.input_secret.blinding,
             output_blinding: pseudo_output_blinding,
         };
-        let r = self.exchange::<TxInfo>(tx_set_blinding, &mut buff).await?;
+        let r = t
+            .request::<TxInfo>(tx_set_blinding, &mut buff, self.info.request_timeout)
+            .await?;
 
         debug!("Ring state: {:?}", r);
 
@@ -115,7 +123,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
                 CompressedRistrettoPublic::from(tx_out.commitment.point),
             );
 
-            let r = self.exchange::<TxInfo>(tx_add_txout, &mut buff).await?;
+            let r = t
+                .request::<TxInfo>(tx_add_txout, &mut buff, self.info.request_timeout)
+                .await?;
 
             debug!("State: {:?}", r);
         }
@@ -123,14 +133,16 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
         info!("Signing ring");
 
         // Generate signature
-        let r = self.exchange::<TxInfo>(TxRingSign, &mut buff).await?;
+        let r = t
+            .request::<TxInfo>(TxRingSign, &mut buff, self.info.request_timeout)
+            .await?;
         check_state::<T>(r.state, TxState::RingComplete)?;
 
         debug!("Requesting key image");
 
         // Retrieve key image
-        let TxKeyImage { key_image, c_zero } = self
-            .exchange::<TxKeyImage>(TxGetKeyImage {}, &mut buff)
+        let TxKeyImage { key_image, c_zero } = t
+            .request::<TxKeyImage>(TxGetKeyImage {}, &mut buff, self.info.request_timeout)
             .await?;
 
         debug!("Key image: {} c_zero: {:?}", key_image, c_zero);
@@ -144,8 +156,12 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
         for i in 0..ring_size * 2 {
             debug!("Requesting response {}", i);
 
-            let resp = self
-                .exchange::<TxResponse>(TxGetResponse::new(i as u8), &mut buff)
+            let resp = t
+                .request::<TxResponse>(
+                    TxGetResponse::new(i as u8),
+                    &mut buff,
+                    self.info.request_timeout,
+                )
                 .await
                 .unwrap();
 
@@ -165,7 +181,11 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
             key_image,
         };
 
-        self.ring_count += 1;
+        // Update ring count
+        {
+            let mut state = self.state.borrow_mut();
+            state.ring_count += 1;
+        }
 
         Ok(ring)
     }

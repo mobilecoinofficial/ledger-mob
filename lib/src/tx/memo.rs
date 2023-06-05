@@ -5,18 +5,21 @@
 //!
 
 use futures::executor::block_on;
+use ledger_lib::Device;
 use ledger_mob_apdu::{
-    state::TxState,
+    state::{Digest, TxState},
     tx::{TxMemoSig, TxMemoSign},
 };
-use ledger_transport::Exchange;
 
 use mc_core::{account::PublicSubaddress, keys::TxOutPublic};
 use mc_transaction_signer::traits::MemoHmacSigner;
 
-use super::{check_digest, check_state, Error, TransactionContext, TransactionHandle};
+use super::{check_digest, check_state, Error, TransactionHandle};
 
-impl<T: Exchange<Error = Error> + Send + Sync> MemoHmacSigner for TransactionHandle<T> {
+/// Sync [MemoHmacSigner] implementation for [TransactionHandle]
+///
+/// Note: this MUST be called from a tokio context
+impl<T: Device> MemoHmacSigner for TransactionHandle<T> {
     type Error = Error;
 
     /// Compute the HMAC signature for the provided memo and target address
@@ -30,8 +33,7 @@ impl<T: Exchange<Error = Error> + Send + Sync> MemoHmacSigner for TransactionHan
     ) -> Result<[u8; 16], Self::Error> {
         tokio::task::block_in_place(|| {
             block_on(async {
-                let mut ctx = self.ctx.lock().await;
-                ctx.memo_sign(
+                self.memo_sign(
                     sender_subaddress_index,
                     tx_public_key,
                     target_subaddress,
@@ -44,13 +46,13 @@ impl<T: Exchange<Error = Error> + Send + Sync> MemoHmacSigner for TransactionHan
     }
 }
 
-impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
+impl<T: Device> TransactionHandle<T> {
     /// Asynchronously compute the HMAC signature for the provided memo
     /// and target address.
     ///
     /// See [MemoHmacSigner] for the public blocking API.
     pub async fn memo_sign(
-        &mut self,
+        &self,
         sender_subaddress_index: u64,
         tx_public_key: &TxOutPublic,
         target_subaddress: PublicSubaddress,
@@ -62,6 +64,8 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
         // TODO: device state has tx_out_private_key,
         // other memo keys recoverable from target_subaddress,
         // though this doesn't match proposed API?
+
+        let mut t = self.t.lock().await;
 
         // TODO: check transaction / engine state is correct for memo signing
 
@@ -75,17 +79,25 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
         );
 
         // Update transaction digest
-        self.digest.update(&tx_memo_sign.hash());
+        let digest = {
+            let mut state = self.state.borrow_mut();
+            Digest::update(&mut state.digest, &tx_memo_sign.hash()).clone()
+        };
 
         // Execute memo signing
-        let r = self.exchange::<TxMemoSig>(tx_memo_sign, &mut buff).await?;
+        let r = t
+            .request::<TxMemoSig>(tx_memo_sign, &mut buff, self.info.request_timeout)
+            .await?;
 
         // Check state and expected digest
         check_state::<T>(r.state, TxState::SignMemos)?;
-        check_digest::<T>(&r.digest, &self.digest)?;
+        check_digest::<T>(&r.digest, &digest)?;
 
         // Update submitted memo count
-        self.memo_count += 1;
+        {
+            let mut state = self.state.borrow_mut();
+            state.memo_count += 1;
+        }
 
         Ok(r.hmac)
     }

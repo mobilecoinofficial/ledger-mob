@@ -2,10 +2,10 @@
 
 //! Command line utility for interacting with the Ledger MobileCoin NanoApp
 
-use std::path::Path;
+use std::{path::Path, time::Duration};
 
 use clap::Parser;
-use ledger_transport::Exchange;
+use ledger_lib::{Device, Filters, LedgerProvider, Transport};
 use log::{debug, error, info, LevelFilter};
 use mc_transaction_extra::UnsignedTx;
 use serde::{de::DeserializeOwned, Serialize};
@@ -16,9 +16,7 @@ use mc_transaction_signer::{
     Operations,
 };
 
-use ledger_mob::{
-    transport::GenericTransport, Connect, DeviceHandle, Error, Filter, LedgerProvider,
-};
+use ledger_mob::DeviceHandle;
 use ledger_mob_apdu::random::{RandomReq, RandomResp};
 
 mod helpers;
@@ -29,7 +27,7 @@ use helpers::*;
 struct Options {
     /// Supported transports for ledger discovery
     #[clap(long, value_enum, default_value = "any")]
-    target: Filter,
+    target: Filters,
 
     /// Device index (where more than one device is available)
     #[clap(long, default_value = "0")]
@@ -118,12 +116,12 @@ async fn main() -> anyhow::Result<()> {
     simplelog::SimpleLogger::init(args.log_level, simplelog::Config::default()).unwrap();
 
     // Connect to ledger device
-    let p = LedgerProvider::new()?;
+    let mut p = LedgerProvider::init().await;
 
     debug!("Using transport: {:?}", args.target);
 
     // List available devices
-    let devices = p.list_devices(args.target).await;
+    let devices = p.list(args.target).await?;
     if devices.is_empty() {
         return Err(anyhow::anyhow!("No devices found"));
     }
@@ -153,8 +151,8 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // Connect to device
-    let t = match Connect::<GenericTransport>::connect(&p, &devices[args.device_index]).await {
-        Ok(v) => v,
+    let t = match p.connect(devices[args.device_index].clone()).await {
+        Ok(v) => v.into(),
         Err(e) => {
             error!(
                 "Failed to connect to device: {:04x?}",
@@ -175,10 +173,9 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// Execute a command with the provided transport
-async fn execute<T, E>(t: DeviceHandle<T>, cmd: Actions) -> anyhow::Result<()>
+async fn execute<T>(mut t: DeviceHandle<T>, cmd: Actions) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E> + Sync + Send,
-    Error: From<E>,
+    T: Device + Send,
 {
     let mut buff = [0u8; 1024];
 
@@ -234,7 +231,9 @@ where
         Actions::GetRandom => {
             info!("requesting random value");
 
-            let r = t.exchange::<RandomResp>(RandomReq {}, &mut buff).await?;
+            let r = t
+                .request::<RandomResp>(RandomReq {}, &mut buff, Duration::from_secs(2))
+                .await?;
 
             info!("value: {:x?}", r.value);
         }

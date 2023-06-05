@@ -1,12 +1,12 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
 use clap::Parser;
-use log::{debug, error, info, LevelFilter};
 use strum::{Display, EnumString, EnumVariantNames};
+use tracing::{debug, error, info, metadata::LevelFilter};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use ledger_transport::Exchange;
+use ledger_lib::{Device, Filters, LedgerProvider, Transport};
 
-use ledger_mob::{transport::GenericTransport, Connect, Error, Filter, LedgerProvider};
 use ledger_mob_tests::transaction::TransactionExpectation;
 use mc_core::slip10::{Language, Mnemonic};
 
@@ -18,7 +18,7 @@ pub struct Opts {
 
     /// Target for test execution
     #[clap(long, value_enum, default_value = "tcp", env)]
-    pub target: Filter,
+    pub target: Filters,
 
     /// Device index (where more than one device is available)
     #[clap(long, default_value = "0")]
@@ -78,19 +78,27 @@ async fn main() -> anyhow::Result<()> {
     let opts = Opts::parse();
 
     // Setup logging
-    let mut c = simplelog::ConfigBuilder::new();
-    if !opts.log_transports {
-        c.add_filter_ignore_str("ledger_transport_tcp");
-    }
-    let _ = simplelog::SimpleLogger::init(opts.log_level, c.build());
+    // Setup logging
+    let filter = EnvFilter::from_default_env()
+        .add_directive("hyper=warn".parse()?)
+        .add_directive("rocket=warn".parse()?)
+        .add_directive("btleplug=warn".parse()?)
+        .add_directive(opts.log_level.into());
+
+    let _ = FmtSubscriber::builder()
+        .compact()
+        .without_time()
+        .with_max_level(opts.log_level)
+        .with_env_filter(filter)
+        .try_init();
 
     info!("Running test '{}` via {}", opts.test, opts.target);
 
     // Connect to ledger device
-    let p = LedgerProvider::new()?;
+    let mut p = LedgerProvider::init().await;
 
     // List available devices
-    let devices = p.list_devices(opts.target).await;
+    let devices = p.list(opts.target).await?;
     if devices.is_empty() {
         return Err(anyhow::anyhow!("No devices found"));
     }
@@ -120,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // Connect to device
-    let t = match Connect::<GenericTransport>::connect(&p, &devices[opts.device_index]).await {
+    let t = match p.connect(devices[opts.device_index].clone()).await {
         Ok(v) => v,
         Err(e) => {
             error!(
@@ -138,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
         return Err(anyhow::anyhow!("test failed"));
     }
 
-    log::info!("Test OK!");
+    info!("Test OK!");
 
     Ok(())
 }
@@ -146,7 +154,7 @@ async fn main() -> anyhow::Result<()> {
 /// Execute a test with the provided transport
 async fn execute<T>(target: T, opts: Opts) -> anyhow::Result<()>
 where
-    T: Exchange<Error = Error> + Send + Sync,
+    T: Device + Send,
 {
     use ledger_mob_tests::*;
 

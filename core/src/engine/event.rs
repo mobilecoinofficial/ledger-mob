@@ -14,11 +14,11 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, CurveScalar, ReducedTxOut, Scalar};
 use mc_transaction_types::{Amount, MaskedAmount, UnmaskedAmount};
 
-use ledger_apdu::{ApduError, ApduStatic};
 use ledger_mob_apdu::{
     prelude::*,
     tx::{AddTxInFlags, FogId, TxOnetimeKey, TxRingInitFlags},
 };
+use ledger_proto::{ApduError, ApduStatic};
 
 /// [`Engine`][super::Engine] input events, typically decoded from request [APDUs][crate::apdu]
 #[derive(Clone, Debug)]

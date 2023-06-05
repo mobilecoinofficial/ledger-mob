@@ -13,6 +13,10 @@ pub enum Error {
     #[error("no device found")]
     NoDevice,
 
+    /// Ledger transport error
+    #[error("Transport error {0}")]
+    Transport(#[from] ledger_lib::Error),
+
     /// HID Init Error
     #[error("could not create HidApi instance")]
     HidInit,
@@ -72,7 +76,7 @@ pub enum Error {
 
     /// APDU error
     #[error("APDU error")]
-    Apdu(#[from] ledger_apdu::ApduError),
+    Apdu(#[from] ledger_proto::ApduError),
 
     /// Ring CT error
     #[error("Ring CT error: {0}")]
