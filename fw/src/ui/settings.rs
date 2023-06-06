@@ -39,7 +39,7 @@ impl Settings {
                 self.fog_id_index -= 1;
                 UiResult::Update
             }
-            ButtonEvent::RightButtonRelease if self.fog_id_index < 4 => {
+            ButtonEvent::RightButtonRelease if self.fog_id_index < FOG_IDS.len() - 1 => {
                 self.fog_id_index += 1;
                 UiResult::Update
             }
@@ -57,7 +57,7 @@ impl Settings {
         if self.fog_id_index > 0 {
             LEFT_ARROW.shift_v(0).display();
         }
-        if self.fog_id_index < 4 {
+        if self.fog_id_index < FOG_IDS.len() - 1 {
             RIGHT_ARROW.shift_v(0).display();
         }
 
