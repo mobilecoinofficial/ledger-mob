@@ -47,7 +47,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         apdu_port: Some(apdu_port),
         seed,
         model,
-        api_level: Some("1".to_string()),
+        api_level: Some("5".to_string()),
         //display: Display::Headless,
         ..Default::default()
     };
