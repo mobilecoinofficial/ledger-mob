@@ -270,7 +270,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // Request identity proof
             #[cfg(feature = "ident")]
             (
-                State::Init,
+                State::Init | State::Ident(_),
                 Event::IdentSign {
                     ident_index,
                     ident_uri,
@@ -295,6 +295,8 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             #[cfg(feature = "ident")]
             (State::Ident(s), Event::IdentGet) => {
                 let r = self.get_signed_ident(s);
+
+                self.state = State::Init;
 
                 // Return result
                 return r;
