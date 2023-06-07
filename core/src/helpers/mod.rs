@@ -64,9 +64,10 @@ pub fn fmt_token_val(value: i64, token_id: TokenId, buff: &mut [u8]) -> &str {
     }
 
     // Write token type
-    let r = match token_id {
+    let r = match token_id.deref() {
         // NOTE THAT NAMES STRINGS MUST BE HARDCODED TO AVOID PIC issues with the ledger
-        TokenId::MOB => emstr::write!(&mut buff[n..], " MOB"),
+        0 => emstr::write!(&mut buff[n..], " MOB"),
+        1 => emstr::write!(&mut buff[n..], " eUSD"),
         _ => emstr::write!(&mut buff[n..], " (", token_id.deref(), ')'),
     };
     match r {
