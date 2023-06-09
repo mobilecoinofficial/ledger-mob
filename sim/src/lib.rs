@@ -91,6 +91,10 @@ pub struct Options {
     /// Speculos root (used to configure python paths if set)
     #[clap(long, env = "SPECULOS_ROOT")]
     pub root: Option<String>,
+
+    /// Trace syscalls
+    #[clap(long)]
+    pub trace: bool,
 }
 
 impl Default for Options {
@@ -105,6 +109,7 @@ impl Default for Options {
             apdu_port: None,
             debug: false,
             root: None,
+            trace: false,
         }
     }
 }
@@ -137,6 +142,10 @@ impl Options {
 
         if self.debug {
             args.push("--debug".to_string());
+        }
+
+        if self.trace {
+            args.push("-t".to_string());
         }
 
         args

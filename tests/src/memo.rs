@@ -55,6 +55,7 @@ where
     );
 
     // Initialise transaction
+    debug!("Initialise transaction");
     let tx_init = TxInit::new(0, 1);
     let r = t.exchange::<TxInfo>(tx_init, &mut buff).await.unwrap();
 
@@ -71,6 +72,8 @@ where
         [0, 1],
         payload,
     );
+
+    debug!("Request memo sign");
     let r = t
         .exchange::<TxMemoSig>(tx_memo_sign, &mut buff)
         .await
