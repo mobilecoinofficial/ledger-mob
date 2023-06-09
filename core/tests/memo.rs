@@ -8,7 +8,7 @@ mod helpers;
 use helpers::*;
 
 #[tokio::test(flavor = "multi_thread")]
-async fn hmac_sign() -> anyhow::Result<()> {
+async fn memo_sign() -> anyhow::Result<()> {
     let _ = simplelog::SimpleLogger::init(log::LevelFilter::Debug, Default::default());
 
     let mnemonic = Mnemonic::from_phrase(MNEMONIC, Language::English)?;

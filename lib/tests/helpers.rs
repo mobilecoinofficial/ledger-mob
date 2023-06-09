@@ -39,6 +39,14 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         _ => DriverMode::Docker,
     };
 
+    // Select API level
+    // TODO: find a canonical source for these
+    let api_level = match model {
+        Model::NanoSP => "1".to_string(),
+        Model::NanoX => "5".to_string(),
+        Model::NanoS => panic!("unsupported model"),
+    };
+
     println!("Using model: {model} ({driver_mode} driver)");
 
     // Setup simulator
@@ -47,7 +55,8 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         apdu_port: Some(apdu_port),
         seed,
         model,
-        api_level: Some("5".to_string()),
+        api_level: Some(api_level),
+        //trace: true,
         //display: Display::Headless,
         ..Default::default()
     };
