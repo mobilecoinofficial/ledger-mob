@@ -309,6 +309,15 @@ const FOG_SIGNAL_MAINNET_URI: &str = "fog://fog-rpt-prd.namda.net";
 
 /// TODO: support old signal fog URLs
 
+/// List of supported fogs for iteration and display
+pub const FOG_IDS: &[FogId] = &[
+    FogId::None,
+    FogId::MobMain,
+    FogId::MobTest,
+    FogId::SignalMain,
+    FogId::SignalTest,
+];
+
 impl Encode for FogId {
     type Error = encdec::Error;
 
@@ -714,5 +723,13 @@ mod test {
 
         let mut buff = [0u8; 256];
         encode_decode_apdu(&mut buff, &apdu);
+    }
+
+    /// Ensure [FogId] enum values match order of [FOG_ID] list
+    #[test]
+    fn fog_id_match() {
+        for (i, f) in FOG_IDS.iter().enumerate() {
+            assert_eq!(i, *f as usize);
+        }
     }
 }

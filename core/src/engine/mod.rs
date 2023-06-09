@@ -478,12 +478,14 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 
     /// Fetch a Subaddress instance for a given wallet and subaddress index
     #[cfg_attr(feature = "noinline", inline(never))]
-    pub fn get_subaddress(&self, account_index: u32, subaddress_index: u64) -> OutputAddress {
+    pub fn get_subaddress(
+        &self,
+        account_index: u32,
+        subaddress_index: u64,
+        fog_id: FogId,
+    ) -> OutputAddress {
         let account = self.get_account(account_index);
         let s = account.subaddress(subaddress_index);
-
-        // TODO: Enable FogId selection when stack issue with HC-128 is resolved
-        let fog_id = FogId::MobTest;
 
         let sig: Option<[u8; 64]> = match fog_id {
             FogId::None => None,

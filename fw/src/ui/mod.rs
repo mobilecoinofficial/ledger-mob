@@ -31,6 +31,9 @@ pub use address::*;
 mod app_info;
 pub use app_info::*;
 
+mod settings;
+pub use settings::*;
+
 #[cfg(feature = "summary")]
 mod tx_summary_approver;
 #[cfg(feature = "summary")]
@@ -79,6 +82,9 @@ pub enum UiState {
 
     /// App information
     AppInfo(AppInfo),
+
+    /// Settings
+    Settings(Settings),
 }
 
 impl UiState {
@@ -138,6 +144,7 @@ impl Ui {
             UiState::Progress(a) => a.render(engine),
             UiState::Message(a) => a.render(engine),
             UiState::AppInfo(a) => a.render(engine),
+            UiState::Settings(a) => a.render(engine),
         }
     }
 }
