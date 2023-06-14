@@ -36,8 +36,6 @@ pub async fn approve_ident(h: &GenericHandle) {
         Button::Right,
         // Right button to move to challenge screen
         Button::Right,
-        // Right button to move to deny screen
-        Button::Right,
         // Right button to move to allow screen
         Button::Right,
         // Both buttons to approve ident
