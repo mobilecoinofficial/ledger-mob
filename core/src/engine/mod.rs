@@ -520,6 +520,11 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         self.unlocked = true;
     }
 
+    /// Lock the engine (requires approval for key requests and scanning)
+    pub fn lock(&mut self) {
+        self.unlocked = false;
+    }
+
     /// Approve a pending transaction (advances state to `State::Ready`)
     pub fn approve(&mut self) {
         if let State::Pending = self.state {

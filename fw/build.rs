@@ -55,11 +55,13 @@ fn generate_manifest(target: &str, version: &str) -> anyhow::Result<()> {
 
     // Set flags depending on target:
     // For Nano X, need to enable access to `os_setting_get`.
-    // This will not be necessary anymore in a future upgrade.
-    tmpl = match target {
-        "nanox" => tmpl.replace("FLAGS", "0x200"),
-        _ => tmpl.replace("FLAGS", "0"),
+    // This will not be necessary in a future upgrade.
+    // For all platforms allow global pin request.
+    let flags = match target {
+        "nanox" => 0x240,
+        _ => 0x040,
     };
+    tmpl = tmpl.replace("FLAGS", &format!("0x{flags:04x}"));
 
     // Replace manifest components
     tmpl = tmpl.replace("FW", "ledger-mob-fw.hex");

@@ -127,4 +127,4 @@ mc-transaction-summary = { path ="../vendor/mob/transaction/summary" }
 # patch nanos_sdk so nanos_ui uses the same version
 # hack to avoid cargo#5478 https://github.com/rust-lang/cargo/issues/5478
 [patch."https://github.com/LedgerHQ/ledger-nanos-sdk"]
-nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk?rev=master" }
+nanos_sdk = { git = "https://github.com//LedgerHQ/ledger-nanos-sdk.git", branch = "master" }

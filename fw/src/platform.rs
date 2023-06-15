@@ -10,6 +10,7 @@ use ledger_proto::{apdus::DeviceInfoResp, ApduError};
 use nanos_sdk::{
     bindings::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10},
     ecc,
+    uxapp::UxEvent,
 };
 #[cfg(feature = "nvm")]
 use nanos_sdk::{
@@ -136,16 +137,9 @@ pub(crate) mod allocator {
     }
 }
 
-/// Timeout and request pin validation to unlock
-// TODO: replace app exit with this behaviour
-// TODO: timeout should also clear app auth flag for key operations
-#[cfg(nyet)]
-fn request_pin_validation() {
-    let mut params = nanos_sdk::bindings::bolos_ux_params_t::default();
-    params.ux_id = nanos_sdk::bindings::BOLOS_UX_VALIDATE_PIN;
-    unsafe {
-        nanos_sdk::bindings::os_ux(&params as *mut nanos_sdk::bindings::bolos_ux_params_t);
-    }
+/// Blocking request for pin validation to unlock
+pub fn request_pin_validation() {
+    UxEvent::ValidatePIN.request();
 }
 
 pub fn fetch_encode_device_info(buff: &mut [u8]) -> Result<usize, ApduError> {

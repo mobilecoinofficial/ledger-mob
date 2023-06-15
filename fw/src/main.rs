@@ -175,9 +175,16 @@ extern "C" fn sample_main() {
                     engine.reset();
                 }
 
-                // Exit (to be _lock_) on lock timeout
-                if ticks >= lock_timeout {
-                    nanos_sdk::exit_app(13)
+                // Request pin entry after lock timeout
+                if ticks == lock_timeout {
+                    // Clear engine approval flag
+                    engine.lock();
+
+                    // Execute lock syscall (blocks on pin entry)
+                    request_pin_validation();
+
+                    // Reset timeout on re-entry
+                    lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);
                 }
             }
         };
@@ -437,7 +444,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     }
 
     // Update engine
-    *output = match engine.update(&evt) {
+    *output = match engine.update(evt) {
         Ok(v) => v,
         Err(e) => {
             let r = 0x6d00 | (e as u8) as u16;
