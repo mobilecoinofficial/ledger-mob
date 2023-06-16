@@ -9,14 +9,12 @@ publish = false
 
 [features]
 cli = []
-transport_hid = [ "hidapi", "ledger-transport-hid" ]
-transport_tcp = [ "ledger-transport-tcp" ]
 
 prost = [ "dep:prost" ]
 summary = []
 ident = []
 
-default = [ "cli", "prost", "summary", "ident", "transport_tcp", "transport_hid" ]
+default = [ "cli", "prost", "summary", "ident" ]
 
 [dependencies]
 async-trait = "0.1.57"
@@ -24,11 +22,10 @@ anyhow = "1.0.58"
 base64 = "0.21.0"
 clap = { version = "4.0.26", features = [ "derive" ] }
 ed25519-dalek = { version = "2.0.0-pre.1", default_features = false }
-encdec = "0.8.3"
+encdec = "0.9.0"
 strum = { version = "0.24.1", features = [ "derive" ] }
 tokio = { version = "1.20.1", features = [ "full" ] }
 hex = "0.4.3"
-hidapi = { version = "2.2.2", optional = true, default_features = false }
 thiserror = "1.0.37"
 lazy_static = "1.4.0"
 log = "0.4.17"
@@ -43,10 +40,8 @@ serde_json = { version = "*" }
 prost = { version = "0.11.2", optional = true }
 zeroize = { version = "*" }
 
-ledger-apdu = { path = "../vendor/rs/ledger-apdu" }
-ledger-transport = { path = "../vendor/rs/ledger-transport" }
-ledger-transport-tcp = { path = "../vendor/rs/ledger-transport-tcp", optional = true, features = [ "clap" ] }
-ledger-transport-hid = { path = "../vendor/rs/ledger-transport-hid", optional = true }
+ledger-lib = { version = "0.1.0", features = [ "clap" ] }
+ledger-proto = { version = "0.1.0" }
 
 ledger-mob-apdu = { path = "../apdu" }
 
@@ -59,22 +54,13 @@ mc-transaction-extra = { version = "4.1.0-pre0" }
 mc-transaction-signer = { version = "4.1.0-pre0" }
 mc-transaction-summary = { version = "4.1.0-pre0" }
 
-# Use statically linked hidapi for linux
-[target.'cfg(target_os = "linux")'.dependencies]
-hidapi = { version = "2.2.2", optional = true, default_features = false, features = [ "linux-static-hidraw" ] }
-
-# Support shared HID device use on macos
-[target.'cfg(target_os = "macos")'.dependencies]
-hidapi = { version = "2.2.2", optional = true, default_features = false, features = [ "macos-shared-device" ] }
-
-
 [dev-dependencies]
 toml = "0.5.9"
 tiny-bip39 = "1.0"
 portpicker = "0.1.1"
 serde = { version = "1.0.144", features = [ "derive" ] }
 
-ledger-sim = { path = "../sim" }
+ledger-sim = "0.1.0"
 ledger-mob-tests = { path = "../tests", default_features = false }
 
 curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }
@@ -89,4 +75,4 @@ mc-util-from-random = { version = "4.1.0-pre0", default-features = false }
 [[bin]]
 name = "ledger-mob-cli"
 path = "src/cli/main.rs"
-required_features = [ "cli" ]
+required-features = [ "cli" ]

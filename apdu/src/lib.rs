@@ -19,7 +19,7 @@
 
 use core::fmt::Debug;
 
-pub use ledger_apdu::{ApduBase, ApduCmd, ApduError, ApduStatic};
+pub use ledger_proto::{ApduError, ApduReq, ApduStatic};
 
 pub mod app_info;
 pub mod digest;
@@ -146,10 +146,15 @@ macro_rules! encdec_bitflags {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use encdec::EncDec;
+
     use super::*;
 
     /// Helper for APDU encode / decode tests
-    pub fn encode_decode_apdu<'a, A: ApduBase<'a>>(buff: &'a mut [u8], apdu: &A) -> usize {
+    pub fn encode_decode_apdu<'a, A: EncDec<'a, ApduError> + PartialEq>(
+        buff: &'a mut [u8],
+        apdu: &A,
+    ) -> usize {
         // Encode APDU
         let n = apdu.encode(buff).expect("encode failed");
 

@@ -3,27 +3,27 @@
 use log::warn;
 use std::ops::Deref;
 
+use ledger_lib::Device;
+
 use mc_core::account::ShortAddressHash;
 use mc_transaction_core::{BlockVersion, TxSummary};
 use mc_transaction_summary::TxSummaryUnblindingData;
 
 use ledger_mob_apdu::{state::TxState, tx::*};
-use ledger_transport::Exchange;
 
 use super::{check_state, TransactionHandle};
 use crate::Error;
 
-impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
+impl<T: Device + Send> TransactionHandle<T> {
     /// Load tx summary for signing operation, alternative to `set_message` for block versions > 3
     pub async fn set_tx_summary(
-        &self,
+        &mut self,
         block_version: BlockVersion,
         message: &[u8],
         summary: &TxSummary,
         unblinding: &TxSummaryUnblindingData,
     ) -> Result<(), Error> {
         let mut buff = [0u8; 256];
-        let ctx = self.ctx.lock().await;
 
         warn!("Loading TX summary");
 
@@ -39,7 +39,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
             num_inputs: summary.inputs.len() as u32,
             num_outputs: summary.outputs.len() as u32,
         };
-        let resp = ctx.exchange::<TxInfo>(init, &mut buff).await?;
+        let resp = self
+            .request::<TxInfo>(init, &mut buff, self.info.request_timeout)
+            .await?;
 
         // Check state and expected digest
         check_state::<T>(resp.state, TxState::SummaryInit)?;
@@ -64,7 +66,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
             );
 
             // Submit tx out summary
-            let resp = ctx.exchange::<TxInfo>(tx_out_summary, &mut buff).await?;
+            let resp = self
+                .request::<TxInfo>(tx_out_summary, &mut buff, self.info.request_timeout)
+                .await?;
 
             // Check state and expected digest
             check_state::<T>(resp.state, TxState::SummaryAddTxOut)?;
@@ -96,7 +100,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
             )?;
 
             // Submit tx out unblinding
-            let resp = ctx.exchange::<TxInfo>(tx_out_unblinding, &mut buff).await?;
+            let resp = self
+                .request::<TxInfo>(tx_out_unblinding, &mut buff, self.info.request_timeout)
+                .await?;
 
             // Check state and expected digest
             let expected_state = match n < summary.outputs.len() - 1 {
@@ -131,7 +137,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
             );
 
             // Submit tx out unblinding
-            let resp = ctx.exchange::<TxInfo>(tx_in_summary, &mut buff).await?;
+            let resp = self
+                .request::<TxInfo>(tx_in_summary, &mut buff, self.info.request_timeout)
+                .await?;
 
             // Check state and expected digest
             let expected_state = match n < summary.inputs.len() - 1 {
@@ -151,7 +159,9 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
         };
 
         // Submit summary build request
-        let resp = ctx.exchange::<TxInfo>(b, &mut buff).await?;
+        let resp = self
+            .request::<TxInfo>(b, &mut buff, self.info.request_timeout)
+            .await?;
 
         check_state::<T>(resp.state, TxState::Pending)?;
         //check_digest::<T>(&resp.digest, &ctx.digest)?;

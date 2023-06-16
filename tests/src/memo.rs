@@ -2,10 +2,12 @@
 
 //! Memo signing tests
 
+use std::time::Duration;
+
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use log::{debug, info};
 use mc_crypto_memo_mac::compute_category1_hmac;
 use rand_core::{OsRng, RngCore};
+use tracing::{debug, info};
 
 use mc_core::{
     account::{Account, RingCtAddress},
@@ -17,15 +19,14 @@ use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPri
 use mc_crypto_ring_signature::onetime_keys::create_tx_out_public_key;
 use mc_util_from_random::FromRandom;
 
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
 use ledger_mob_apdu::tx::*;
 
 /// Test memo HMAC signing and verification
-pub async fn hmac<T, E>(t: T, mnemonic: Mnemonic, _ring_size: usize) -> anyhow::Result<()>
+pub async fn hmac<T>(mut t: T, mnemonic: Mnemonic, _ring_size: usize) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E>,
-    E: std::error::Error + Sync + Send + 'static,
+    T: Device,
 {
     let mut buff = [0u8; 256];
 
@@ -57,7 +58,10 @@ where
     // Initialise transaction
     debug!("Initialise transaction");
     let tx_init = TxInit::new(0, 1);
-    let r = t.exchange::<TxInfo>(tx_init, &mut buff).await.unwrap();
+    let r = t
+        .request::<TxInfo>(tx_init, &mut buff, Duration::from_secs(1))
+        .await
+        .unwrap();
 
     debug!("State: {:?}", r);
 
@@ -75,7 +79,7 @@ where
 
     debug!("Request memo sign");
     let r = t
-        .exchange::<TxMemoSig>(tx_memo_sign, &mut buff)
+        .request::<TxMemoSig>(tx_memo_sign, &mut buff, Duration::from_secs(1))
         .await
         .unwrap();
 

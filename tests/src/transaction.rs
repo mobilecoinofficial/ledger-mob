@@ -1,26 +1,29 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
+use std::{sync::Arc, time::Duration};
+
 use bip39::Mnemonic;
-use log::{debug, error, info, trace};
+
+use ledger_lib::Device;
+use rand_core::OsRng;
+use std::future::Future;
+use tokio::sync::Mutex;
+use tracing::{debug, error, info, trace};
+
 use mc_core::{
     account::{Account, PublicSubaddress},
     consts::CHANGE_SUBADDRESS_INDEX,
     slip10::Slip10KeyGenerator,
     subaddress::Subaddress,
 };
-use mc_transaction_summary::verify_tx_summary;
-use rand_core::OsRng;
-use std::future::Future;
-
 use mc_transaction_core::tx::Tx;
 use mc_transaction_core::validation::validate_signature;
 use mc_transaction_signer::types::{TxSignReq, TxSignResp};
-
-use ledger_transport::Exchange;
+use mc_transaction_summary::verify_tx_summary;
 
 use ledger_mob::{
     tx::{TransactionHandle, TxConfig},
-    DeviceHandle, Error,
+    DeviceHandle,
 };
 
 pub struct TransactionExpectation<'a> {
@@ -73,7 +76,7 @@ pub async fn test<'a, T, F>(
     tx: &TransactionExpectation<'a>,
 ) -> anyhow::Result<()>
 where
-    T: Exchange<Error = Error> + Send + Sync,
+    T: Device + Send,
     F: Future<Output = ()>,
 {
     // Load account and unsigned transaction
@@ -89,13 +92,15 @@ where
     info!("Starting transaction");
 
     // Initialise transaction
-    let signer = TransactionHandle::new(
+    let mut signer = TransactionHandle::new(
         TxConfig {
             account_index: 0,
             num_memos: 0,
             num_rings: req.rings.len(),
+            request_timeout: Duration::from_millis(500),
+            user_timeout: Duration::from_secs(3),
         },
-        &d,
+        Arc::new(Mutex::new(d)),
     )
     .await?;
 
@@ -175,7 +180,7 @@ where
     // Signal transaction is complete
     signer.complete().await?;
 
-    info!("Transaction complete!");
+    info!("Transaction complete! validating signature");
 
     // Validate generated transaction signature
     validate_signature(req.block_version, &resp.tx, &mut OsRng {}).unwrap();

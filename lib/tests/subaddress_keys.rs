@@ -1,5 +1,6 @@
 use log::info;
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use bip39::{Language, Mnemonic, Seed};
 
 use ledger_mob_tests::subaddress;
@@ -17,7 +18,7 @@ async fn mob_default_subaddress() -> anyhow::Result<()> {
     let seed = Seed::new(&mnemonic, "");
 
     info!("using mnemonic: '{}'", mnemonic.phrase());
-    info!("seed: '{}'", base64::encode(&seed));
+    info!("seed: '{}'", STANDARD.encode(&seed));
 
     // Setup simulator
     let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;

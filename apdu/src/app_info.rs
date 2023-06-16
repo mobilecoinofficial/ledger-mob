@@ -156,12 +156,13 @@ impl<'a> Decode<'a> for AppInfoResp<'a> {
         index += 4;
 
         // Fetch name string
-        let name = core::str::from_utf8(&buff[index..][..name_len]).map_err(|_| ApduError::Utf8)?;
+        let name =
+            core::str::from_utf8(&buff[index..][..name_len]).map_err(|_| ApduError::InvalidUtf8)?;
         index += name_len;
 
         // Fetch version string
-        let version =
-            core::str::from_utf8(&buff[index..][..version_len]).map_err(|_| ApduError::Utf8)?;
+        let version = core::str::from_utf8(&buff[index..][..version_len])
+            .map_err(|_| ApduError::InvalidUtf8)?;
         index += version_len;
 
         // Fetch flags

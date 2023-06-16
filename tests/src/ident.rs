@@ -4,11 +4,11 @@
 //!
 //!
 
-use std::future::Future;
+use std::{future::Future, time::Duration};
 
 use bip39::{Language, Mnemonic, Seed};
 use ed25519_dalek::{Signature, VerifyingKey};
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
 use ledger_mob_apdu::{
     ident::{IdentGetReq, IdentResp, IdentSignReq},
@@ -75,11 +75,10 @@ pub const VECTORS: &[Vector] = &[
 ];
 
 /// Test identity requests
-pub async fn test<T, F, E>(t: T, approve: impl Fn() -> F, v: &Vector) -> anyhow::Result<()>
+pub async fn test<T, F>(mut t: T, approve: impl Fn() -> F, v: &Vector) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E>,
+    T: Device,
     F: Future<Output = ()>,
-    E: std::error::Error + Sync + Send + 'static,
 {
     let mut buff = [0u8; 256];
 
@@ -88,7 +87,7 @@ where
     let req = IdentSignReq::new(v.index, v.uri, &challenge);
 
     let resp = t
-        .exchange::<TxInfo>(req, &mut buff)
+        .request::<TxInfo>(req, &mut buff, Duration::from_secs(1))
         .await
         .expect("TxInfo APDU exchange failed");
 
@@ -99,7 +98,10 @@ where
     approve().await;
 
     // Check approval state
-    let resp = t.exchange::<TxInfo>(TxInfoReq, &mut buff).await.unwrap();
+    let resp = t
+        .request::<TxInfo>(TxInfoReq, &mut buff, Duration::from_secs(1))
+        .await
+        .unwrap();
     assert_eq!(
         resp.state,
         TxState::IdentApproved,
@@ -108,7 +110,7 @@ where
 
     // Fetch identity response
     let resp = t
-        .exchange::<IdentResp>(IdentGetReq, &mut buff)
+        .request::<IdentResp>(IdentGetReq, &mut buff, Duration::from_secs(1))
         .await
         .unwrap();
 

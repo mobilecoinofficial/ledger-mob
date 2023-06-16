@@ -2,7 +2,7 @@
 
 use encdec::Encode;
 
-use ledger_apdu::ApduError;
+use ledger_proto::ApduError;
 use mc_core::keys::{
     RootSpendPublic, RootViewPrivate, SubaddressSpendPublic, SubaddressViewPrivate,
 };

@@ -4,39 +4,28 @@
 //!
 //!
 
+use async_trait::async_trait;
 use log::debug;
-use std::{sync::Arc, time::Duration};
-
+use std::{cell::RefCell, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
-use ledger_apdu::{ApduBase, ApduCmd};
+use ledger_lib::Device;
+use ledger_proto::{ApduBase, ApduReq};
+
 use ledger_mob_apdu::{
     state::{Digest, TxState},
     tx::{TxComplete, TxInfo, TxInfoReq, TxInit, TxSetMessage},
 };
-use ledger_transport::Exchange;
 
 use crate::Error;
 
 mod key_image;
-
 mod memo;
-
 mod ring;
-
 mod subaddress;
-
 mod summary;
 
-/// Handle to a hardware wallet configured for transaction execution
-///
-/// See [DeviceHandle::transaction][super::DeviceHandle::transaction] to
-/// create a [TransactionHandle]
-#[derive(Clone)]
-pub struct TransactionHandle<T: Exchange<Error = Error> + Sync + Send> {
-    ctx: Arc<Mutex<TransactionContext<T>>>,
-}
-
+/// Configuration for a transaction operation
 #[derive(Clone, Debug, PartialEq)]
 pub struct TxConfig {
     /// Account index for key derivation
@@ -47,14 +36,30 @@ pub struct TxConfig {
 
     /// Number of rings
     pub num_rings: usize,
+
+    /// APDU request timeout
+    pub request_timeout: Duration,
+
+    /// User interaction timeout
+    pub user_timeout: Duration,
 }
 
-struct TransactionContext<T: Exchange<Error = Error> + Sync + Send> {
-    t: T,
+/// Handle to a hardware wallet configured for transaction execution
+///
+/// See [DeviceHandle::transaction][super::DeviceHandle::transaction] to
+/// create a [TransactionHandle]
+pub struct TransactionHandle<T: Device> {
+    /// Device for communication
+    t: Arc<Mutex<T>>,
 
     /// General transaction configuration
     info: TxConfig,
 
+    /// Transaction state information
+    state: RefCell<TransactionState>,
+}
+
+struct TransactionState {
     /// Digest computed over transaction inputs
     digest: Digest,
 
@@ -65,60 +70,71 @@ struct TransactionContext<T: Exchange<Error = Error> + Sync + Send> {
     ring_count: usize,
 }
 
-//unsafe impl<T: Exchange + Send + Sync> Send for TransactionHandle<T> {}
-
-impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
+impl<T: Device + Send> TransactionHandle<T> {
     /// Initialise a new transaction over the provided device
-    pub async fn new(info: TxConfig, transport: T) -> Result<Self, Error> {
+    pub async fn new(info: TxConfig, transport: Arc<Mutex<T>>) -> Result<Self, Error> {
         let mut buff = [0u8; 256];
 
         // Setup transaction
         let tx_init = TxInit::new(info.account_index, info.num_rings as u8);
-        let r = transport.exchange::<TxInfo>(tx_init, &mut buff).await?;
+        let mut t = transport.lock().await;
 
+        let r = t
+            .request::<TxInfo>(tx_init, &mut buff, info.request_timeout)
+            .await?;
+        drop(t);
+
+        // TODO: Check the device has entered the Init state
         //Self::check_state(r.state, TxState::Init)?;
 
         // Return transaction handle
         Ok(Self {
-            ctx: Arc::new(Mutex::new(TransactionContext {
-                info,
-                t: transport,
+            info,
+            t: transport,
+            state: RefCell::new(TransactionState {
                 digest: r.digest,
-                ring_count: 0,
                 memo_count: 0,
-            })),
+                ring_count: 0,
+            }),
         })
     }
 
     /// Set message for transaction
-    pub async fn set_message(&self, m: &[u8]) -> Result<(), Error> {
+    pub async fn set_message(&mut self, m: &[u8]) -> Result<(), Error> {
         let mut buff = [0u8; 256];
-        let mut ctx = self.ctx.lock().await;
 
         // Build request
         let req = TxSetMessage::new(m);
 
         // Update transaction digest
-        ctx.digest.update(&req.hash());
+
+        let digest = {
+            let mut state = self.state.borrow_mut();
+            Digest::update(&mut state.digest, &req.hash()).clone()
+        };
+        let mut t = self.t.lock().await;
 
         // Issue request
-        let resp = ctx.exchange::<TxInfo>(req, &mut buff).await?;
+        let resp = t
+            .request::<TxInfo>(req, &mut buff, self.info.request_timeout)
+            .await?;
 
         // Check state and expected digest
         check_state::<T>(resp.state, TxState::Pending)?;
-        check_digest::<T>(&resp.digest, &ctx.digest)?;
+        check_digest::<T>(&resp.digest, &digest)?;
 
         Ok(())
     }
 
     /// Await on-device transaction approval
-    pub async fn await_approval(&self, timeout_s: u32) -> Result<(), Error> {
+    pub async fn await_approval(&mut self, timeout_s: u32) -> Result<(), Error> {
         let mut buff = [0u8; 256];
-        let ctx = self.ctx.lock().await;
 
         for _i in 0..timeout_s {
             // Issue TxInfo request
-            let r = ctx.exchange::<TxInfo>(TxInfoReq {}, &mut buff).await;
+            let r = self
+                .request::<TxInfo>(TxInfoReq {}, &mut buff, self.info.request_timeout)
+                .await;
 
             debug!("awaiting tx approval (state: {:?})", r);
 
@@ -140,18 +156,19 @@ impl<T: Exchange<Error = Error> + Send + Sync> TransactionHandle<T> {
     }
 
     /// Signal transaction completion
-    pub async fn complete(self) -> Result<(), Error> {
+    pub async fn complete(mut self) -> Result<(), Error> {
         let mut buff = [0u8; 256];
-        let ctx = self.ctx.lock().await;
 
-        let _r = ctx.exchange::<TxInfo>(TxComplete, &mut buff).await?;
+        let _r = self
+            .request::<TxInfo>(TxComplete, &mut buff, self.info.request_timeout)
+            .await?;
 
         Ok(())
     }
 }
 
 /// Helper to check state when executing transactions
-pub(crate) fn check_state<T: Exchange>(actual: TxState, expected: TxState) -> Result<(), Error> {
+pub(crate) fn check_state<T: Device>(actual: TxState, expected: TxState) -> Result<(), Error> {
     if actual != expected {
         Err(Error::InvalidState(actual, expected))
     } else {
@@ -160,7 +177,7 @@ pub(crate) fn check_state<T: Exchange>(actual: TxState, expected: TxState) -> Re
 }
 
 /// Helper to check digest when executing transactions
-pub(crate) fn check_digest<T: Exchange>(actual: &Digest, expected: &Digest) -> Result<(), Error> {
+pub(crate) fn check_digest<T: Device>(actual: &Digest, expected: &Digest) -> Result<(), Error> {
     if expected != actual {
         Err(Error::DigestMismatch)
     } else {
@@ -169,13 +186,15 @@ pub(crate) fn check_digest<T: Exchange>(actual: &Digest, expected: &Digest) -> R
 }
 
 /// Exchange impl on transaction context
-impl<T: Exchange<Error = Error> + Send + Sync> TransactionContext<T> {
+#[async_trait]
+impl<T: Device + Send> Device for TransactionHandle<T> {
     /// Helper for executing transactions with the device
-    pub(crate) async fn exchange<'b, 'c, R: ApduBase<'b>>(
-        &self,
-        req: impl ApduCmd<'c>,
+    async fn request<'a, 'b, RESP: ApduBase<'b>>(
+        &mut self,
+        request: impl ApduReq<'a> + Send,
         buff: &'b mut [u8],
-    ) -> Result<R, Error> {
-        self.t.exchange(req, buff).await
+        timeout: Duration,
+    ) -> Result<RESP, ledger_lib::Error> {
+        self.t.lock().await.request(request, buff, timeout).await
     }
 }

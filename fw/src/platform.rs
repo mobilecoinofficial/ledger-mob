@@ -7,14 +7,18 @@ use core::mem::MaybeUninit;
 use nanos_sdk::{
     bindings::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10},
     ecc,
+};
+
+#[cfg(feature = "nvm")]
+use nanos_sdk::{
     nvm::{AtomicStorage, SingleStorage},
     Pic,
 };
 
-use ledger_mob_core::{
-    apdu::tx::{FogId, FOG_IDS},
-    engine::Driver,
-};
+use ledger_mob_core::{apdu::tx::FogId, engine::Driver};
+
+#[cfg(feature = "nvm")]
+use ledger_mob_core::apdu::tx::FOG_IDS;
 
 /// Fog ID for address display
 /// Note NVM is not available under speculos so accessing this page will fault.

@@ -3,8 +3,8 @@
 //! Subaddress key tests
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use log::info;
 use std::future::Future;
+use tracing::info;
 
 use mc_core::{
     account::{Account, RingCtAddress},
@@ -12,21 +12,20 @@ use mc_core::{
     subaddress::Subaddress,
 };
 
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
-use ledger_mob::{DeviceHandle, Error};
+use ledger_mob::DeviceHandle;
 
 /// Generate and fetch subaddress keys for the provided mnemonic
-pub async fn test<T, F, E>(
+pub async fn test<T, F>(
     t: T,
     approve: impl Fn() -> F,
     mnemonic: Mnemonic,
     n: u64,
 ) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E> + Send + Sync,
+    T: Device + Send,
     F: Future<Output = ()>,
-    Error: From<E>,
 {
     info!("using mnemonic: '{}'", mnemonic.phrase());
 
@@ -36,7 +35,7 @@ where
 
     let account_key = Account::from(&slip10key);
 
-    let d = DeviceHandle::from(t);
+    let mut d = DeviceHandle::from(t);
 
     for index in 0..n {
         info!("fetch subaddress {}", index);

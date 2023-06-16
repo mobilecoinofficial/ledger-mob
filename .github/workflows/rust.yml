@@ -35,7 +35,7 @@ jobs:
       run: echo "RUST_TARGET_PATH=${GITHUB_WORKSPACE}/fw/" >> $GITHUB_ENV
 
     - name: Install cross toolchain, libraries
-      run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev protobuf-compiler protobuf-c-compiler 
+      run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev protobuf-compiler protobuf-c-compiler
 
     - name: Restore core cache
       uses: actions/cache/restore@v3
@@ -69,7 +69,7 @@ jobs:
         override: true
 
     - name: Install protobuf tools
-      run: sudo apt update && sudo apt install -y protobuf-compiler protobuf-c-compiler 
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev protobuf-compiler protobuf-c-compiler
 
     - name: Restore core cache
       uses: actions/cache/restore@v3
@@ -144,7 +144,7 @@ jobs:
     
     - name: Install libusb (apt native)
       if: ${{ matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu' }}
-      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev
 
     - name: Cache vcpkg
       if: ${{ matrix.os == 'windows-latest' }}
@@ -305,7 +305,7 @@ jobs:
           ./target
 
     - name: Install libusb / hidapi / libudev
-      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev
 
     - name: Build library / simulator tests
       uses: actions-rs/cargo@v1
@@ -355,6 +355,9 @@ jobs:
         toolchain: nightly-2023-01-04
         override: true
     
+    - name: Install libusb / hidapi / libudev
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev
+
     - name: Restore cache from test build
       uses: actions/cache/restore@v3
       with:
@@ -377,7 +380,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --manifest-path=lib/Cargo.toml --no-default-features --features=transport_tcp,summary,ident
+        args: --manifest-path=lib/Cargo.toml
 
   # Package firmware for distribution
   package-fw:
@@ -470,7 +473,7 @@ jobs:
             ./target
 
       - name: Install libusb / libudev / protoc
-        run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev protobuf-compiler protobuf-c-compiler 
+        run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev protobuf-compiler protobuf-c-compiler 
 
       - name: Build documentation
         uses: actions-rs/cargo@v1
