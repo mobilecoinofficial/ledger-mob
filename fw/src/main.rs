@@ -2,6 +2,7 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 #![no_main]
 #![cfg_attr(feature = "alloc", feature(alloc_error_handler))]
+#![feature(cstr_from_bytes_until_nul)]
 
 extern crate rlibc;
 
@@ -13,7 +14,7 @@ use core::mem::MaybeUninit;
 use encdec::Encode;
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp};
+use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp, DeviceInfoReq};
 use nanos_sdk::{
     buttons::ButtonEvent,
     io::{self, ApduHeader, Reply, SyscallError},
@@ -355,13 +356,31 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
             return false;
         }
+        // Ledger standard device info
+        (DeviceInfoReq::CLA, DeviceInfoReq::INS) => {
+            match fetch_encode_device_info(&mut comm.apdu_buffer) {
+                Ok(n) => {
+                    comm.tx = n;
+                    comm.reply_ok();
+                }
+                Err(_e) => {
+                    let r = 0x6d00 | (Error::EncodingFailed as u8) as u16;
+                    comm.reply(Reply(r));
+                }
+            }
+
+            return false;
+        }
+        // Ledger exit app command
+        (0xb0, 0xa7) => {
+            nanos_sdk::exit_app(0);
+        }
         // MobileCoin application info
         (MobAppInfoReq::CLA, MobAppInfoReq::INS) => {
             let mut flags = app_flags();
             flags.set(MobAppFlags::UNLOCKED, engine.is_unlocked());
 
             let r = MobAppInfoResp::new(MOB_PROTO_VERSION, APP_NAME, APP_VERSION, flags);
-
             match r.encode(&mut comm.apdu_buffer) {
                 Ok(n) => {
                     comm.tx = n;
@@ -380,6 +399,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
     // Return error for other unhandled APDUs
     if cla != MOB_APDU_CLA {
+        comm.tx = 0;
         comm.reply(SyscallError::NotSupported);
         return false;
     }
