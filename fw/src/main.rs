@@ -341,7 +341,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     // Handle generic and ledger standard commands
     match (cla, ins) {
         // Ledger standard application info
-        (AppInfoReq::CLA, AppInfoReq::INS) => {
+        (AppInfoReq::CLA | 0, AppInfoReq::INS) => {
             let r = AppInfoResp::new(APP_NAME, APP_VERSION, AppFlags::empty());
             match r.encode(&mut comm.apdu_buffer) {
                 Ok(n) => {
