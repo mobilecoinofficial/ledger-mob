@@ -10,8 +10,8 @@ use nanos_ui::{
     screen_util,
 };
 
-use ledger_mob_core::engine::{Driver, Engine, State};
 use super::{clear_screen, UiResult};
+use ledger_mob_core::engine::{Driver, Engine, State};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Progress {
@@ -21,7 +21,7 @@ pub struct Progress {
 impl Progress {
     /// Create a new [Progress] instance
     pub fn new() -> Self {
-        Self{ init: false }
+        Self { init: false }
     }
 
     pub fn update(&mut self, btn: &ButtonEvent) -> UiResult<bool> {
