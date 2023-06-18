@@ -2,6 +2,7 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 #![no_main]
 #![cfg_attr(feature = "alloc", feature(alloc_error_handler))]
+#![feature(cstr_from_bytes_until_nul)]
 
 extern crate rlibc;
 
@@ -13,6 +14,7 @@ use core::mem::MaybeUninit;
 use encdec::Encode;
 use rand_core::{CryptoRng, RngCore};
 
+use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp, DeviceInfoReq};
 use nanos_sdk::{
     buttons::ButtonEvent,
     io::{self, ApduHeader, Reply, SyscallError},
@@ -24,7 +26,13 @@ use nanos_ui::{
 };
 
 use ledger_mob_core::{
-    apdu::{self, app_info::AppFlags, tx::FogId},
+    apdu::{
+        self,
+        app_info::{
+            AppFlags as MobAppFlags, AppInfoReq as MobAppInfoReq, AppInfoResp as MobAppInfoResp,
+        },
+        tx::FogId,
+    },
     engine::{Engine, Error, Event, Output, State},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
@@ -328,26 +336,71 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     }
 
     // Read class and instruction
-    let (_cla, ins) = (comm.apdu_buffer[0], comm.apdu_buffer[1]);
+    let (cla, ins) = (comm.apdu_buffer[0], comm.apdu_buffer[1]);
 
-    // Handle generic commands
-    if ins == app_info::AppInfoReq::INS {
-        let mut flags = app_flags();
-        flags.set(AppFlags::UNLOCKED, engine.is_unlocked());
-
-        let i = app_info::AppInfoResp::new(MOB_PROTO_VERSION, APP_NAME, APP_VERSION, flags);
-
-        match i.encode(&mut comm.apdu_buffer) {
-            Ok(n) => {
-                comm.tx = n;
-                comm.reply_ok();
+    // Handle generic and ledger standard commands
+    match (cla, ins) {
+        // Ledger standard application info
+        (AppInfoReq::CLA | 0, AppInfoReq::INS) => {
+            let r = AppInfoResp::new(APP_NAME, APP_VERSION, AppFlags::empty());
+            match r.encode(&mut comm.apdu_buffer) {
+                Ok(n) => {
+                    comm.tx = n;
+                    comm.reply_ok();
+                }
+                Err(_e) => {
+                    let r = 0x6d00 | (Error::EncodingFailed as u8) as u16;
+                    comm.reply(Reply(r));
+                }
             }
-            Err(_e) => {
-                let r = 0x6d00 | (Error::EncodingFailed as u8) as u16;
-                comm.reply(Reply(r));
-            }
+
+            return false;
         }
+        // Ledger standard device info
+        (DeviceInfoReq::CLA, DeviceInfoReq::INS) => {
+            match fetch_encode_device_info(&mut comm.apdu_buffer) {
+                Ok(n) => {
+                    comm.tx = n;
+                    comm.reply_ok();
+                }
+                Err(_e) => {
+                    let r = 0x6d00 | (Error::EncodingFailed as u8) as u16;
+                    comm.reply(Reply(r));
+                }
+            }
 
+            return false;
+        }
+        // Ledger exit app command
+        (0xb0, 0xa7) => {
+            nanos_sdk::exit_app(0);
+        }
+        // MobileCoin application info
+        (MobAppInfoReq::CLA, MobAppInfoReq::INS) => {
+            let mut flags = app_flags();
+            flags.set(MobAppFlags::UNLOCKED, engine.is_unlocked());
+
+            let r = MobAppInfoResp::new(MOB_PROTO_VERSION, APP_NAME, APP_VERSION, flags);
+            match r.encode(&mut comm.apdu_buffer) {
+                Ok(n) => {
+                    comm.tx = n;
+                    comm.reply_ok();
+                }
+                Err(_e) => {
+                    let r = 0x6d00 | (Error::EncodingFailed as u8) as u16;
+                    comm.reply(Reply(r));
+                }
+            }
+
+            return false;
+        }
+        _ => (),
+    }
+
+    // Return error for other unhandled APDUs
+    if cla != MOB_APDU_CLA {
+        comm.tx = 0;
+        comm.reply(SyscallError::NotSupported);
         return false;
     }
 
@@ -478,7 +531,7 @@ fn platform_tests(comm: &mut io::Comm) {
     let mut b = [0xFE; 32];
     LedgerRng {}.fill_bytes(&mut b);
 
-    if b == [0xFE; 32] || b == [0x00; 32] {
+    if b == [0xFE; 32] || b == [0x00; 32] || b[0] == 0xFE && b[31] == 0xFE {
         "ERROR".place(Location::Top, Layout::Centered, true);
         "RNG UNAVAILABLE".place(Location::Middle, Layout::Centered, false);
         "EXIT?".place(Location::Bottom, Layout::Centered, false);

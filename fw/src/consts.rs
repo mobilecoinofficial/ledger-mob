@@ -10,7 +10,7 @@ use nanos_ui::bitmaps::Glyph;
 use ledger_mob_core::apdu::app_info::AppFlags;
 
 /// App Information
-pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
+pub const APP_NAME: &str = "MobileCoin";
 pub const APP_VERSION: &str = env!("GIT_TAG");
 pub const BUILD_TIME: &str = env!("BUILD_TIME");
 

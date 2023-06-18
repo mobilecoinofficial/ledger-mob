@@ -2,13 +2,15 @@
 
 //! Ledger MobileCoin Platform Support
 
-use core::mem::MaybeUninit;
+use core::{ffi::CStr, mem::MaybeUninit};
 
+use encdec::Encode;
+
+use ledger_proto::{apdus::DeviceInfoResp, ApduError};
 use nanos_sdk::{
     bindings::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10},
     ecc,
 };
-
 #[cfg(feature = "nvm")]
 use nanos_sdk::{
     nvm::{AtomicStorage, SingleStorage},
@@ -144,4 +146,42 @@ fn request_pin_validation() {
     unsafe {
         nanos_sdk::bindings::os_ux(&params as *mut nanos_sdk::bindings::bolos_ux_params_t);
     }
+}
+
+pub fn fetch_encode_device_info(buff: &mut [u8]) -> Result<usize, ApduError> {
+    // Fetch information from OS
+    let mut mcu_version_raw = [0u8; 32];
+    let mut se_version_raw = [0u8; 32];
+    let flags;
+    unsafe {
+        flags = nanos_sdk::bindings::os_flags();
+        nanos_sdk::bindings::os_version(mcu_version_raw.as_mut_ptr(), se_version_raw.len() as u32);
+        nanos_sdk::bindings::os_seph_version(
+            se_version_raw.as_mut_ptr(),
+            se_version_raw.len() as u32,
+        );
+    }
+
+    // Convert to rust strings
+    let mcu_version = match CStr::from_bytes_until_nul(&mcu_version_raw).map(|c| c.to_str()) {
+        Ok(Ok(v)) => v,
+        _ => "unknown",
+    };
+    let se_version = match CStr::from_bytes_until_nul(&se_version_raw).map(|c| c.to_str()) {
+        Ok(Ok(v)) => v,
+        _ => "unknown",
+    };
+    let f = flags.to_be_bytes();
+
+    // Select target information
+    #[cfg(target_os = "nanosplus")]
+    let target_id: u32 = 0x33100004;
+    #[cfg(target_os = "nanox")]
+    let target_id: u32 = 0x33000004;
+
+    // Build DeviceInfo APDU
+    let r = DeviceInfoResp::new(target_id.to_be_bytes(), se_version, mcu_version, &f);
+
+    // Encode APDU to buffer
+    r.encode(buff)
 }
