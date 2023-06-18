@@ -71,6 +71,13 @@ fn generate_manifest(target: &str, version: &str) -> anyhow::Result<()> {
     };
     tmpl = tmpl.replace("TARGET", target_id);
 
+    let api_level = match target {
+        "nanosplus" => "1",
+        "nanox" => "5",
+        _ => panic!("Unrecognised target: {target}"),
+    };
+    tmpl = tmpl.replace("API_LEVEL", api_level);
+
     tmpl = tmpl.replace("VERSION", version);
 
     // Write new manifest

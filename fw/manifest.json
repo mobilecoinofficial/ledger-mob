@@ -15,5 +15,5 @@
     "name": "MobileCoin",
     "targetId": "TARGET",
     "version": "VERSION",
-    "apiLevel": "1"
+    "apiLevel": "API_LEVEL"
 }
