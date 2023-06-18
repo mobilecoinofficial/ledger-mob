@@ -43,7 +43,7 @@ const APDU_HEADER_LEN: usize = 5;
 /// Engine context is global to mitigate stack-related issues in current ledger OS.
 /// (in current releases if you use >8k of _stack_ on the nanosplus syscalls will
 /// fail while on the nanox all memory access will fail)
-/// This is exascerbated by rust/llvm failing to support NRVO or copy-elision
+/// This is exacerbated by rust/llvm failing to support NRVO or copy-elision
 /// expect this to be resolved in the OS in future but, the workaround is not egregious...
 static mut APP_CTX: MaybeUninit<AppCtx> = MaybeUninit::uninit();
 
@@ -75,7 +75,8 @@ extern "C" fn sample_main() {
     let mut comm = io::Comm::new();
 
     let mut ticks = 0u32;
-    let mut timeout = TIMEOUT_S * TICKS_PER_S;
+    let mut lock_timeout = LOCK_TIMEOUT_S * TICKS_PER_S;
+    let mut message_timeout = 0;
 
     let mut redraw = true;
 
@@ -130,20 +131,24 @@ extern "C" fn sample_main() {
         // Wait for next event
         let evt = comm.next_event::<ApduHeader>();
 
+        let last_state_is_message = ui.state.is_message();
+
         // Handle input events and update UI state
         match &evt {
             // Handle button presses
             io::Event::Button(btn) => {
-                if handle_btn(engine, &mut comm, ui, btn) {
+                if handle_btn(engine, ui, btn) {
+                    // Set redraw flag on changes
                     redraw = true
                 }
 
                 // Update timeout on button press
-                timeout = ticks.wrapping_add(TIMEOUT_S * TICKS_PER_S);
+                lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);
             }
             // Handle incoming APDUs
-            io::Event::Command(hdr) => {
-                if handle_apdu(engine, &mut comm, ui, hdr.ins, event, output) {
+            io::Event::Command(_hdr) => {
+                if handle_apdu(engine, &mut comm, ui, event, output) {
+                    // Set redraw flags on changes
                     redraw = true;
                 }
             }
@@ -152,12 +157,27 @@ extern "C" fn sample_main() {
                 // Update tick counter
                 ticks = ticks.wrapping_add(1);
 
-                // Exit on timeout
-                if ticks == timeout {
+                // Return to menu state after message timeout
+                if ui.state.is_message() && ticks >= message_timeout {
+                    // Reset to menu state
+                    ui.state = UiState::Menu;
+                    redraw = true;
+
+                    // Reset engine to init state
+                    engine.reset();
+                }
+
+                // Exit (to be _lock_) on lock timeout
+                if ticks >= lock_timeout {
                     nanos_sdk::exit_app(13)
                 }
             }
         };
+
+        // Set message timer on state entry
+        if !last_state_is_message && ui.state.is_message() {
+            message_timeout = ticks.wrapping_add(MESSAGE_TIMEOUT_S * TICKS_PER_S);
+        }
 
         // Redraw UI on state change
         if redraw {
@@ -171,7 +191,6 @@ extern "C" fn sample_main() {
 #[cfg_attr(feature = "noinline", inline(never))]
 fn handle_btn<RNG: RngCore + CryptoRng>(
     engine: &mut Engine<LedgerDriver, RNG>,
-    _comm: &mut io::Comm,
     ui: &mut Ui,
     btn: &ButtonEvent,
 ) -> bool {
@@ -291,13 +310,11 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
 }
 
 /// Handle APDU commands, returning true if UI should be redrawn
-//#[inline]
 #[cfg_attr(feature = "noinline", inline(never))]
 fn handle_apdu<RNG: RngCore + CryptoRng>(
     engine: &mut Engine<LedgerDriver, RNG>,
     comm: &mut io::Comm,
     ui: &mut Ui,
-    i: u8,
     evt: &mut Event,
     output: &mut Output,
 ) -> bool {
@@ -305,13 +322,16 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
     let mut render = false;
 
-    // Skip empty APDUs
-    if comm.rx == 0 {
+    // Skip empty / short APDUs
+    if comm.rx < APDU_HEADER_LEN {
         return false;
     }
 
+    // Read class and instruction
+    let (_cla, ins) = (comm.apdu_buffer[0], comm.apdu_buffer[1]);
+
     // Handle generic commands
-    if i == app_info::AppInfoReq::INS {
+    if ins == app_info::AppInfoReq::INS {
         let mut flags = app_flags();
         flags.set(AppFlags::UNLOCKED, engine.is_unlocked());
 
@@ -334,7 +354,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     // Handle engine / transaction commands
 
     // Decode APDUs to engine events
-    *evt = match Event::parse(i, &comm.apdu_buffer[APDU_HEADER_LEN..]) {
+    *evt = match Event::parse(ins, &comm.apdu_buffer[APDU_HEADER_LEN..]) {
         Ok(v) => v,
         Err(_e) => {
             comm.reply(SyscallError::InvalidParameter);
