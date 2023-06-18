@@ -24,7 +24,10 @@ pub fn app_flags() -> AppFlags {
 }
 
 /// Application timeout (exit after no user input)
-pub const TIMEOUT_S: u32 = 5 * 60;
+pub const LOCK_TIMEOUT_S: u32 = 5 * 60;
+
+/// Message timeout (return to home screen)
+pub const MESSAGE_TIMEOUT_S: u32 = 5;
 
 /// Ticks per second for calculating application timeouts
 pub const TICKS_PER_S: u32 = 10;
