@@ -50,7 +50,7 @@ encdec = { version = "0.9.0", default_features = false }
 emstr = { version = "0.2.0", default_features = false }
 heapless = "0.7.16"
 
-mc-core = { version = "4.1.0-pre0", default-features = false }
+mc-core = { version = "5", default-features = false }
 ledger-mob-core = { path = "../core", default_features = false }
 
 curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }

@@ -45,14 +45,14 @@ ledger-proto = { version = "0.1.0" }
 
 ledger-mob-apdu = { path = "../apdu" }
 
-mc-core = { version = "4.1.0-pre0", features = [ "serde" ] }
-mc-crypto-keys = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-ring-signature = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-ring-signature-signer = { version = "4.1.0-pre0", default_features = false }
-mc-transaction-core = { version = "4.1.0-pre0" }
-mc-transaction-extra = { version = "4.1.0-pre0" }
-mc-transaction-signer = { version = "4.1.0-pre0" }
-mc-transaction-summary = { version = "4.1.0-pre0" }
+mc-core = { version = "5", features = [ "serde" ] }
+mc-crypto-keys = { version = "5", default_features = false }
+mc-crypto-ring-signature = { version = "5", default_features = false }
+mc-crypto-ring-signature-signer = { version = "5", default_features = false }
+mc-transaction-core = { version = "5" }
+mc-transaction-extra = { version = "5" }
+mc-transaction-signer = { version = "5" }
+mc-transaction-summary = { version = "5" }
 
 [dev-dependencies]
 toml = "0.5.9"
@@ -67,10 +67,10 @@ curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }
 x25519-dalek = { version = "2.0.0-pre.2", default_features = false }
 ed25519-dalek = { version = "2.0.0-pre.0", default_features = false }
 
-mc-core = { version = "4.1.0-pre0", features = [ "bip39" ] }
-mc-crypto-keys = { version = "4.1.0-pre0", default-features = false }
-mc-crypto-ring-signature = { version = "4.1.0-pre0", default-features = false }
-mc-util-from-random = { version = "4.1.0-pre0", default-features = false }
+mc-core = { version = "5", features = [ "bip39" ] }
+mc-crypto-keys = { version = "5", default-features = false }
+mc-crypto-ring-signature = { version = "5", default-features = false }
+mc-util-from-random = { version = "5", default-features = false }
 
 [[bin]]
 name = "ledger-mob-cli"
