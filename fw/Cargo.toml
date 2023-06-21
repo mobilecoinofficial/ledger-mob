@@ -71,7 +71,7 @@ clear_on_drop = { version = "0.2", default-features = false, features = [ "no_cc
 image = "0.24.3"
 anyhow = "1.0.64"
 quote = "1.0.21"
-chrono = "0.4.23"
+chrono = { version = "0.4.26", default_features = false, features = [ "clock" ] }
 
 [dev-dependencies]
 
