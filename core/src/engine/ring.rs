@@ -22,7 +22,7 @@ pub const RING_SIZE: usize = 11;
 pub const RESP_SIZE: usize = RING_SIZE * 2;
 
 /// Heapless based MlsagSignCtx
-pub type SignCtx = MlsagSignCtx<&'static mut [CurveScalar]>;
+pub type SignCtx = MlsagSignCtx<Vec<CurveScalar, RESP_SIZE>>;
 
 /// Ring signing states
 #[derive(Copy, Clone, PartialEq, Debug, EnumString, Display, EnumVariantNames, EnumIter)]
@@ -77,8 +77,7 @@ pub struct RingSigner {
 
     /// Counter for fetched responses (used for progress tracking)
     fetch_count: usize,
-
-    responses: [CurveScalar; RESP_SIZE],
+    //responses: [CurveScalar; RESP_SIZE],
 }
 
 /// Ring blindings container
@@ -113,7 +112,7 @@ impl RingSigner {
             blindings: None,
             ring_ctx: None,
             fetch_count: 0,
-            responses: [CurveScalar::from(Scalar::ZERO); RESP_SIZE],
+            //responses: [CurveScalar::from(Scalar::ZERO); RESP_SIZE],
         })
     }
 
@@ -344,22 +343,12 @@ impl RingSigner {
         };
 
         // Setup response storage, this _must_ be ring_size * 2 or init will fail
-        // TODO: work out push storage of this up to the global context to avoid Big Stack Use
-        //let mut responses = heapless::Vec::<_, RESP_SIZE>::new();
-
-        // UNSAFE: transmute responses to a static lifetime... this is okay because we
-        // know this is already allocated and the [MlsagSignCtx] cannot exist for longer
-        // than the [RingSigner] containing it, though any other contact with responses
-        // will invalidate this...
-        //
-        // TODO: work out whether we can replace this with lifetimes (or, refactor
-        // [MlsagSignContext] to take the response array as an argument to each call,
-        // which we _might_ be able to enforce is in the correct state via a types)
-        let responses = unsafe {
-            core::mem::transmute::<&'_ mut [CurveScalar], &'static mut [CurveScalar]>(
-                &mut self.responses[..self.ring_size * 2],
-            )
-        };
+        // NOTE: switched to this approach to avoid miri complaints, costs us ~1.5k of stack but, we have the headroom on the nanosplus and nanox support requires the stack fix anyway.
+        // TODO: work out whether we can push storage of this up to the global context to reduce stack use.
+        let mut responses = heapless::Vec::<_, RESP_SIZE>::new();
+        responses
+            .resize(self.ring_size * 2, CurveScalar::default())
+            .unwrap();
 
         match MlsagSignCtx::init(&sign_params, rng, responses) {
             Ok(ctx) => self.ring_ctx = Some(ctx),
@@ -458,6 +447,8 @@ impl RingSigner {
 
 #[cfg(test)]
 mod test {
+    use core::mem::MaybeUninit;
+
     use rand_core::OsRng;
 
     use mc_core::{account::RingCtAddress, subaddress::Subaddress};
@@ -492,20 +483,25 @@ mod test {
         let params =
             RingMLSAGParameters::random(&account, RING_SIZE - 1, pseudo_output_blinding, &mut rng);
 
-        // Start ring signing
-        let mut ring_signer = RingSigner::new(
-            RING_SIZE,
-            params.real_index,
-            account.view_private_key(),
-            account
-                .subaddress(params.target_subaddress_index)
-                .spend_private_key(),
-            params.value,
-            &params.message,
-            params.token_id,
-            None,
-        )
-        .unwrap();
+        // Setup ring signer
+        let mut r = MaybeUninit::uninit();
+        let mut ring_signer = unsafe {
+            RingSigner::init(
+                r.as_mut_ptr(),
+                RING_SIZE,
+                params.real_index,
+                account.view_private_key(),
+                account
+                    .subaddress(params.target_subaddress_index)
+                    .spend_private_key(),
+                params.value,
+                &params.message,
+                params.token_id,
+                None,
+            )
+            .unwrap();
+            r.assume_init()
+        };
 
         let progress_total = RING_SIZE * 3 + 2;
 
@@ -585,7 +581,7 @@ mod test {
         };
 
         // Fetch responses
-        let mut responses = vec![];
+        let mut responses = alloc::vec::Vec::new();
 
         for i in 0..RESP_SIZE {
             let (_state, output) = ring_signer
