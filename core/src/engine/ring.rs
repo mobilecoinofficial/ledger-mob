@@ -77,7 +77,6 @@ pub struct RingSigner {
 
     /// Counter for fetched responses (used for progress tracking)
     fetch_count: usize,
-    //responses: [CurveScalar; RESP_SIZE],
 }
 
 /// Ring blindings container
@@ -112,7 +111,6 @@ impl RingSigner {
             blindings: None,
             ring_ctx: None,
             fetch_count: 0,
-            //responses: [CurveScalar::from(Scalar::ZERO); RESP_SIZE],
         })
     }
 
@@ -338,8 +336,7 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            // TODO: is this important..?
-            check_value_is_preserved: false,
+            check_value_is_preserved: true,
         };
 
         // Setup response storage, this _must_ be ring_size * 2 or init will fail
