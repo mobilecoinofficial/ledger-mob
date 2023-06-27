@@ -49,11 +49,7 @@ impl Progress {
             // Fill progress bar + border
             RectFull::new().width(102).height(10).pos(13, 36).display();
             // Clear null-space based on progress
-            RectFull::new()
-                .width(100)
-                .height(8)
-                .pos(14 as i32, 37)
-                .erase();
+            RectFull::new().width(100).height(8).pos(14_i32, 37).erase();
 
             self.init = true;
         }
@@ -66,11 +62,7 @@ impl Progress {
                 message.place(Location::Custom(16), Layout::Centered, false);
 
                 // Fill progress bar and clear null-space based on progress
-                RectFull::new()
-                    .width(v)
-                    .height(8)
-                    .pos(14 as i32, 37)
-                    .display();
+                RectFull::new().width(v).height(8).pos(14_i32, 37).display();
                 RectFull::new()
                     .width(100 - v)
                     .height(8)
