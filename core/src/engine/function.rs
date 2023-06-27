@@ -245,3 +245,91 @@ impl Function {
         self.inner = FunctionType::None;
     }
 }
+
+#[cfg(test)]
+mod test {
+    use mc_core::account::{Account, PublicSubaddress};
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_transaction_types::BlockVersion;
+    use mc_util_from_random::FromRandom;
+    use rand::random;
+    use rand_core::OsRng;
+
+    use super::Function;
+
+    // Set function container to ident mode
+    fn ident_init(f: &mut Function) {
+        f.ident_init(0, "test.lol", &random::<[u8; 32]>()).unwrap();
+    }
+
+    // Set function container to summary generator mode
+    fn summary_init(f: &mut Function) {
+        let account = Account::new(
+            RistrettoPrivate::from_random(&mut OsRng {}).into(),
+            RistrettoPrivate::from_random(&mut OsRng {}).into(),
+        );
+
+        let change_view_private = RistrettoPrivate::from_random(&mut OsRng {});
+        let change_spend_private = RistrettoPrivate::from_random(&mut OsRng {});
+        let change = PublicSubaddress {
+            view_public: RistrettoPublic::from(&change_view_private).into(),
+            spend_public: RistrettoPublic::from(&change_spend_private).into(),
+        };
+
+        f.summarizer_init(
+            &[0u8; 32],
+            BlockVersion::THREE,
+            3,
+            2,
+            account.view_private_key(),
+            &change,
+        );
+    }
+
+    // Set function container to ring signing mode
+    fn ring_init(f: &mut Function) {
+        let account = Account::new(
+            RistrettoPrivate::from_random(&mut OsRng {}).into(),
+            RistrettoPrivate::from_random(&mut OsRng {}).into(),
+        );
+
+        let change_spend_private = RistrettoPrivate::from_random(&mut OsRng {});
+
+        let onetime_private_key = RistrettoPrivate::from_random(&mut OsRng {});
+
+        f.ring_signer_init(
+            11,
+            3,
+            account.view_private_key(),
+            &change_spend_private.into(),
+            random(),
+            &random::<[u8; 32]>(),
+            2,
+            Some(onetime_private_key.into()),
+        )
+        .unwrap();
+    }
+
+    fn clear(f: &mut Function) {
+        f.clear();
+    }
+
+    /// Miri test for function init / state changes
+    #[test]
+    fn miri_function_states() {
+        let mut f = Function::new();
+
+        // Collect state transition functions
+        let states = &[ident_init, summary_init, ring_init, clear];
+
+        // Iterate through possible state transitions
+        for i in 0..states.len() {
+            for j in 0..states.len() {
+                // Call first state
+                states[i](&mut f);
+                // Call next state
+                states[j](&mut f);
+            }
+        }
+    }
+}

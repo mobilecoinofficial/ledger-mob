@@ -942,6 +942,8 @@ fn compute_ring_progress(current: usize, ring: usize, total_rings: usize) -> usi
 mod test {
     extern crate std;
 
+    use core::mem::MaybeUninit;
+
     use rand_core::OsRng;
     use strum::IntoEnumIterator;
 
@@ -1126,7 +1128,12 @@ mod test {
         let params =
             RingMLSAGParameters::random(&account, RING_SIZE - 1, pseudo_output_blinding, &mut rng);
 
-        let mut engine = Engine::new_with_rng(drv, rng);
+        // Setup engine
+        let mut e = MaybeUninit::uninit();
+        let mut engine = unsafe {
+            Engine::init(e.as_mut_ptr(), drv, rng);
+            e.assume_init()
+        };
 
         // Initialise new transaction
         let r = engine

@@ -101,6 +101,8 @@ A top level [Makefile](Makefile) exposes common functions for building / testing
 - `make nanosplus-load` to build firmware and load onto a `nanosplus` device (it is not possible to sideload onto the `nanox`)
 - `make nanosplus-test` or `make nanox-test` to run integration tests via the simulator
 - `make lint` to check `cargo fmt` and `cargo clippy` lints
+- `make miri` to run miri tests over out-pointer based functions (extremely slow)  
+  **This requires `cargo-nextest` as well as disabling the `blake2/simd` feature in `vendor/mobilecoin/crypto/hashes/cargo.toml`**
 
 For more detail you might like to look at [`.github/workflows/rust.yml`](.github/workflows/rust.yml)
 

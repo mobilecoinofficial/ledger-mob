@@ -267,8 +267,6 @@ mod test {
             // Create random account without fog info
             let a = AccountKey::random(&mut OsRng {});
 
-            println!("A: {a:?}");
-
             // Test short address hashing
             let h1 = ShortAddressHash::from(&a.default_subaddress());
             let h2 = digest_public_address(a.default_subaddress(), "", &[]);

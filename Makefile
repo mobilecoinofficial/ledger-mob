@@ -118,6 +118,14 @@ clippy-fix:
 	cargo clippy --fix --allow-dirty -p ledger-mob -p ledger-mob-apdu -p ledger-mob-core -p ledger-mob-tests --no-deps -- -D warnings
 	cd fw && cargo clippy --fix --target nanosplus --allow-dirty -p ledger-mob-fw --no-deps -- -D warnings
 
+# Run MIRI checks
+# Notes:
+#   - this requires a patched `mc-crypto-hashes` to disable `simd`
+#   - `cargo clean` must be run to clear non-miri objects
+#   - only specific tests with miri support are enabled
+miri:
+	cd core && cargo miri nextest run --no-default-features --features alloc,mlsag,ident,memo,summary -j4 -- miri_function tx_summary ring_sign test_sign
+
 clean:
 	rm -rf target fw/target
 

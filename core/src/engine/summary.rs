@@ -350,6 +350,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
 
 #[cfg(test)]
 mod test {
+    use core::mem::MaybeUninit;
     use core::str::FromStr;
 
     use log::*;
@@ -376,6 +377,7 @@ mod test {
         let req = TRANSACTIONS[2].tx_req();
 
         // Fetch signing information
+        #[cfg(feature = "log")]
         debug!("Fetching signing data");
         let (signing_data, summary, unblinding, digest) =
             req.get_signing_data(&mut OsRng {}).unwrap();
@@ -400,15 +402,20 @@ mod test {
             "summary generated digest mismatch"
         );
 
-        // Run summariser
-        let mut s = Summarizer::<16>::new(
-            &extended_message_digest,
-            req.block_version,
-            summary.outputs.len(),
-            summary.inputs.len(),
-            account.view_private_key(),
-            &PublicSubaddress::from(&account.subaddress(CHANGE_SUBADDRESS_INDEX)),
-        );
+        // Setup summarizer
+        let mut s = MaybeUninit::<Summarizer<16>>::uninit();
+        let mut s = unsafe {
+            Summarizer::<16>::init(
+                s.as_mut_ptr(),
+                &extended_message_digest,
+                req.block_version,
+                summary.outputs.len(),
+                summary.inputs.len(),
+                account.view_private_key(),
+                &PublicSubaddress::from(&account.subaddress(CHANGE_SUBADDRESS_INDEX)),
+            );
+            s.assume_init()
+        };
 
         let progress_total = summary.inputs.len() + summary.outputs.len() + 1;
 
