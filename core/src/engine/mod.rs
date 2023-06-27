@@ -296,6 +296,8 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             (State::Ident(s), Event::IdentGet) => {
                 let r = self.get_signed_ident(s);
 
+                // Reset engine state
+                self.function.clear();
                 self.state = State::Init;
 
                 // Return result
@@ -624,7 +626,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         }
     }
 
-    /// Approve or deny a pending identity request
+    /// Approve or deny a pending identity request, updating the [IdentState]
     #[cfg(feature = "ident")]
     pub fn ident_approve(&mut self, approve: bool) {
         if let State::Ident(IdentState::Pending) = self.state {
@@ -644,7 +646,6 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         let ident = match self.function.ident_ref() {
             Some(v) => v,
             None => {
-                self.state = State::Error;
                 return Err(Error::InvalidState);
             }
         };
@@ -660,13 +661,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         // Compute identity object
         let path = ident.path();
         let private_key = self.drv.slip10_derive_ed25519(&path);
-        let r = ident.compute(&private_key);
-
-        // Reset engine state
-        self.function.clear();
-        self.state = State::Init;
-
-        r
+        ident.compute(&private_key)
     }
 
     // Sign the provided memo, returning an `Output::MemoHmac` on success
