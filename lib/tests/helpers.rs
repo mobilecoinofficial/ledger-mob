@@ -145,26 +145,25 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
 
 /// Run unlock UI where required for tests
 #[allow(unused)]
-pub async fn unlock(h: &GenericHandle) {
+pub async fn approve_wallet_sync(h: &GenericHandle) {
     debug!("UI: Unlock");
 
-    // TODO: we could pull events / screenshots to check we're in the right place?
+    let buttons = &[
+        // Right button to move from info to allow
+        Button::Right,
+        // Both buttons to select allow
+        Button::Both,
+    ];
 
-    // Right button to swap to allow screen
-    h.button(Button::Right, Action::PressAndRelease)
-        .await
-        .unwrap();
-
-    // Both buttons to select allow
-    h.button(Button::Both, Action::PressAndRelease)
-        .await
-        .unwrap();
+    for b in buttons {
+        h.button(*b, Action::PressAndRelease).await.unwrap();
+    }
 }
 
 /// Run transaction approval UI where required for tests
 // TODO: this will change with TxSummary support
 #[allow(unused)]
-pub async fn approve(h: &GenericHandle) {
+pub async fn approve_tx_blind(h: &GenericHandle) {
     debug!("UI: Approve");
 
     // TODO: we could pull events / screenshots to check we're in the right place?
