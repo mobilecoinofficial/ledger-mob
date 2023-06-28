@@ -88,8 +88,8 @@ impl SyncApprover {
             Info => {
                 "Sync Wallet?".place(Location::Custom(8), Layout::Centered, true);
                 let lines = [
-                    "Allows the connected",
-                    "application to view",
+                    "Allow the connected",
+                    "application to retrieve",
                     "account balances",
                 ];
 
