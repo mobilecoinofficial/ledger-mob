@@ -15,7 +15,7 @@ use ledger_mob_apdu::wallet_keys::{WalletKeyReq, WalletKeyResp};
 use ledger_mob_tests::wallet;
 
 mod helpers;
-use helpers::{approve, setup};
+use helpers::{approve_wallet_sync, setup};
 
 const MNEMONIC: &str = "duck deal pretty pen thunder economy wide common goose fit engine main aisle curtain choose cube claim snake enroll detect brief history float unit";
 
@@ -32,7 +32,7 @@ async fn mob_wallet_keys() -> anyhow::Result<()> {
     let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Test wallet key generation
-    wallet::test(t, || approve(&s), mnemonic).await?;
+    wallet::test(t, || approve_wallet_sync(&s), mnemonic).await?;
 
     // Exit simulator
     d.exit(s).await?;
@@ -120,7 +120,7 @@ async fn mob_mnemonic_derive(wallets: &[Wallet]) -> anyhow::Result<()> {
             // App requires approval
             Err(_) => {
                 // Set approved
-                approve(&s).await;
+                approve_wallet_sync(&s).await;
 
                 // Retry request (for some reason the simulator fails the first
                 // time this is re-requested, though the device does not..?)

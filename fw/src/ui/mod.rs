@@ -13,8 +13,8 @@ pub use helpers::*;
 mod menu;
 pub use menu::*;
 
-mod approver;
-pub use approver::*;
+mod sync_approver;
+pub use sync_approver::*;
 
 mod progress;
 pub use progress::*;
@@ -62,7 +62,7 @@ pub enum UiState {
     Address(Address<512>),
 
     /// Request for view keys, awaiting user input
-    KeyRequest(Approver),
+    KeyRequest(SyncApprover),
 
     /// Transaction request without summary, awaiting user input
     TxRequest(TxBlindApprover),

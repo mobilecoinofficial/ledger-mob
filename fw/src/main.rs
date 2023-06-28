@@ -431,7 +431,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
             if !engine.is_unlocked() && !ui.state.is_key_request() =>
         {
             // Update UI to key request acknowledge state
-            ui.state = UiState::KeyRequest(Approver::new(APPROVE_KEY_REQ));
+            ui.state = UiState::KeyRequest(SyncApprover::new());
 
             // Return empty APDU to signify late response
             // TODO: check on how other apps do this
@@ -527,8 +527,6 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     // Return render flag
     render
 }
-
-const APPROVE_KEY_REQ: &str = "Sync View Keys?";
 
 #[cfg_attr(feature = "noinline", inline(never))]
 fn platform_tests(comm: &mut io::Comm) {
