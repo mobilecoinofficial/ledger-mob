@@ -21,6 +21,9 @@ pub const RING_SIZE: usize = 11;
 /// Ring response size (2 * RING_SIZE)
 pub const RESP_SIZE: usize = RING_SIZE * 2;
 
+/// Maximum message size
+const MESSAGE_MAX: usize = 66;
+
 /// Heapless based MlsagSignCtx
 pub type SignCtx = MlsagSignCtx<Vec<CurveScalar, RESP_SIZE>>;
 
@@ -64,7 +67,7 @@ pub struct RingSigner {
     real_index: usize,
 
     /// Message for signing in ring
-    message: Vec<u8, 66>,
+    message: Vec<u8, MESSAGE_MAX>,
 
     /// Generator for the ring (derived from token_id)
     generator: PedersenGens,
@@ -98,6 +101,15 @@ impl RingSigner {
         token_id: u64,
         onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<Self, Error> {
+        // Check ring size and real index are valid
+        if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
+            return Err(Error::RingInitFailed);
+        }
+        // Check message length is valid
+        if message.len() > MESSAGE_MAX {
+            return Err(Error::RingInitFailed);
+        }
+
         Ok(Self {
             state: RingState::Init,
             ring_size,
@@ -114,6 +126,8 @@ impl RingSigner {
         })
     }
 
+    /// Create new RingSigner instance with provided params (out-pointer version)
+    ///
     /// out-pointer based init to avoid stack allocation
     /// used by `Function::ring_sign_init`
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
@@ -130,9 +144,17 @@ impl RingSigner {
         token_id: u64,
         onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<(), Error> {
+        // Check ring size and real inputs are valid
+        if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
+            return Err(Error::RingInitFailed);
+        }
+        // Check message length is valid
+        if message.len() > MESSAGE_MAX {
+            return Err(Error::RingInitFailed);
+        }
+
         // Per-field init to avoid allocating a whole object just for setup
         // (another stack use minimization hijink)
-        // TODO: get miri running over this
         addr_of_mut!((*p).state).write(RingState::Init);
         addr_of_mut!((*p).ring_size).write(ring_size);
         addr_of_mut!((*p).real_index).write(real_index);
@@ -204,7 +226,7 @@ impl RingSigner {
                 };
 
                 // Move on when we have enough ring entries
-                if n as usize == self.ring_size - 1 {
+                if (n + 1) as usize == self.ring_size {
                     self.state = RingState::Execute;
                 } else {
                     self.state = RingState::BuildRing(n + 1);
@@ -324,6 +346,7 @@ impl RingSigner {
         }
 
         // Store this for future computations
+        // NOTE: this must be _after_ failure paths
         self.onetime_private_key = Some(onetime_private_key);
 
         // Setup signing context
@@ -349,7 +372,12 @@ impl RingSigner {
 
         match MlsagSignCtx::init(&sign_params, rng, responses) {
             Ok(ctx) => self.ring_ctx = Some(ctx),
-            Err(_e) => return Err(Error::RingInitFailed),
+            Err(_e) => {
+                // Clear onetime private key
+                self.onetime_private_key = None;
+                // Fail out
+                return Err(Error::RingInitFailed);
+            }
         }
 
         Ok(())
@@ -383,7 +411,6 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            // TODO: is this important..?
             check_value_is_preserved: false,
         };
 

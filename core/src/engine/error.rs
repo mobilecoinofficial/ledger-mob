@@ -57,6 +57,10 @@ pub enum Error {
     #[cfg_attr(feature = "thiserror", error("pending user approval"))]
     ApprovalPending = 0x0c,
 
+    /// Summary initialisation failed
+    #[cfg_attr(feature = "thiserror", error("failed to start summary computation"))]
+    SummaryInitFailed = 0x0d,
+
     /// Unknown / not-yet defined error (placeholder)
     #[cfg_attr(feature = "thiserror", error("unknown"))]
     Unknown = 0xf0,

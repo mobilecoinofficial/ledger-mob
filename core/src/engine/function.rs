@@ -149,7 +149,7 @@ impl Function {
         num_inputs: usize,
         view_private_key: &RootViewPrivate,
         change_subaddress: &PublicSubaddress,
-    ) -> &mut Summarizer<MAX_RECORDS> {
+    ) -> Result<&mut Summarizer<MAX_RECORDS>, Error> {
         // Clear function prior to init (executes drop)
 
         self.clear();
@@ -164,7 +164,7 @@ impl Function {
         };
 
         // Initialise summarizer memory
-        unsafe {
+        if let Err(e) = unsafe {
             Summarizer::init(
                 p,
                 message,
@@ -174,10 +174,15 @@ impl Function {
                 view_private_key,
                 change_subaddress,
             )
-        };
+        } {
+            // Clear context and return error
+            self.clear();
+
+            return Err(e);
+        }
 
         // Return summarizer context
-        unsafe { &mut *p }
+        Ok(unsafe { &mut *p })
     }
 
     /// Fetch summarizer context
@@ -283,7 +288,8 @@ mod test {
             2,
             account.view_private_key(),
             &change,
-        );
+        )
+        .unwrap();
     }
 
     // Set function container to ring signing mode

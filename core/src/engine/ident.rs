@@ -3,6 +3,7 @@
 use heapless::{String, Vec};
 
 use byteorder::{ByteOrder, LittleEndian};
+use mc_core::slip10::Slip10Key;
 use sha2::{Digest, Sha256};
 use strum::{EnumIter, EnumString};
 
@@ -11,17 +12,13 @@ use super::{Error, Output};
 /// Identity challenge state
 #[derive(Copy, Clone, Debug, PartialEq, Default, EnumString, EnumIter)]
 pub enum IdentState {
+    /// Challenge loaded, pending approval
     #[default]
     Pending,
+    /// Challenge approved, signing allowed
     Approved,
+    /// Challenged rejected, return error
     Denied,
-    Error,
-}
-
-impl IdentState {
-    pub fn is_pending(&self) -> bool {
-        *self == IdentState::Pending
-    }
 }
 
 /// Identity challenge signing module
@@ -61,18 +58,22 @@ impl Ident {
     }
 
     /// Compute identity challenge signature using the provide private key
-    pub fn compute(&self, private_key: &[u8; 32]) -> Result<Output, Error> {
+    pub fn compute(&self, private_key: &Slip10Key) -> Output {
         #[cfg(feature = "log")]
         log::debug!("computing identity proof");
 
         // Convert to public key type
-        let keys = ed25519_dalek::SigningKey::from_bytes(private_key);
+        let keys = ed25519_dalek::SigningKey::try_from(private_key.as_ref()).unwrap();
         let signature = ed25519_dalek::Signer::sign(&keys, &self.challenge);
+        let verifying_key = keys.verifying_key();
 
-        Ok(Output::Identity {
-            public_key: keys.verifying_key().to_bytes(),
+        // Force drop and zeroize of private keys
+        drop(keys);
+
+        Output::Identity {
+            public_key: verifying_key.to_bytes(),
             signature: signature.to_bytes(),
-        })
+        }
     }
 }
 

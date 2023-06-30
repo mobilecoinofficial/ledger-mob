@@ -57,7 +57,7 @@ impl<const N: usize> Address<N> {
             ButtonEvent::BothButtonsRelease => return UiResult::Exit(()),
 
             // Page forward
-            ButtonEvent::RightButtonRelease if self.page < self.num_pages - 1 => self.page += 1,
+            ButtonEvent::RightButtonRelease if self.page + 1 < self.num_pages => self.page += 1,
 
             // Page back
             ButtonEvent::LeftButtonRelease if self.page > 0 => self.page -= 1,
@@ -93,7 +93,7 @@ impl<const N: usize> Address<N> {
         let mut rem = page.len().min(PAGE_LEN);
 
         for i in 0..NUM_LINES {
-            if rem <= 0 {
+            if rem == 0 {
                 continue;
             }
 
