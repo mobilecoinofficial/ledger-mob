@@ -18,10 +18,10 @@ use nanos_sdk::{
     Pic,
 };
 
-use ledger_mob_core::{apdu::tx::FogId, engine::Driver};
-
 #[cfg(feature = "nvm")]
 use ledger_mob_core::apdu::tx::FOG_IDS;
+use ledger_mob_core::{apdu::tx::FogId, engine::Driver};
+use mc_core::slip10::Slip10Key;
 
 /// Fog ID for address display
 /// Note NVM is not available under speculos so accessing this page will fault.
@@ -37,7 +37,7 @@ pub struct LedgerDriver {}
 
 impl Driver for LedgerDriver {
     /// SLIP-0010 ed25519 derivation from path via ledger syscall
-    fn slip10_derive_ed25519(&self, path: &[u32]) -> [u8; 32] {
+    fn slip10_derive_ed25519(&self, path: &[u32]) -> Slip10Key {
         let curve = ecc::CurvesId::Ed25519;
         let mut key = [0u8; 32];
 
@@ -54,7 +54,7 @@ impl Driver for LedgerDriver {
             )
         };
 
-        key
+        Slip10Key::from_raw(key)
     }
 }
 

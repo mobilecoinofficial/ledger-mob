@@ -5,6 +5,7 @@ use core::ptr::addr_of_mut;
 use heapless::Vec;
 use ledger_mob_apdu::tx::TxOnetimeKey;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
+use zeroize::Zeroize;
 
 use super::{Error, Event, Output};
 use mc_core::keys::{RootViewPrivate, SubaddressSpendPrivate};
@@ -20,6 +21,9 @@ pub const RING_SIZE: usize = 11;
 
 /// Ring response size (2 * RING_SIZE)
 pub const RESP_SIZE: usize = RING_SIZE * 2;
+
+/// Maximum message size
+const MESSAGE_MAX: usize = 66;
 
 /// Heapless based MlsagSignCtx
 pub type SignCtx = MlsagSignCtx<Vec<CurveScalar, RESP_SIZE>>;
@@ -64,7 +68,7 @@ pub struct RingSigner {
     real_index: usize,
 
     /// Message for signing in ring
-    message: Vec<u8, 66>,
+    message: Vec<u8, MESSAGE_MAX>,
 
     /// Generator for the ring (derived from token_id)
     generator: PedersenGens,
@@ -98,6 +102,15 @@ impl RingSigner {
         token_id: u64,
         onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<Self, Error> {
+        // Check ring size and real index are valid
+        if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
+            return Err(Error::RingInitFailed);
+        }
+        // Check message length is valid
+        if message.len() > MESSAGE_MAX {
+            return Err(Error::RingInitFailed);
+        }
+
         Ok(Self {
             state: RingState::Init,
             ring_size,
@@ -114,6 +127,8 @@ impl RingSigner {
         })
     }
 
+    /// Create new RingSigner instance with provided params (out-pointer version)
+    ///
     /// out-pointer based init to avoid stack allocation
     /// used by `Function::ring_sign_init`
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
@@ -130,9 +145,17 @@ impl RingSigner {
         token_id: u64,
         onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<(), Error> {
+        // Check ring size and real inputs are valid
+        if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
+            return Err(Error::RingInitFailed);
+        }
+        // Check message length is valid
+        if message.len() > MESSAGE_MAX {
+            return Err(Error::RingInitFailed);
+        }
+
         // Per-field init to avoid allocating a whole object just for setup
         // (another stack use minimization hijink)
-        // TODO: get miri running over this
         addr_of_mut!((*p).state).write(RingState::Init);
         addr_of_mut!((*p).ring_size).write(ring_size);
         addr_of_mut!((*p).real_index).write(real_index);
@@ -204,7 +227,7 @@ impl RingSigner {
                 };
 
                 // Move on when we have enough ring entries
-                if n as usize == self.ring_size - 1 {
+                if (n + 1) as usize == self.ring_size {
                     self.state = RingState::Execute;
                 } else {
                     self.state = RingState::BuildRing(n + 1);
@@ -312,7 +335,7 @@ impl RingSigner {
         };
 
         // Recover onetime_private_key for real txout
-        let onetime_private_key = recover_onetime_private_key(
+        let mut onetime_private_key = recover_onetime_private_key(
             &tx_out_public_key,
             self.root_view_private.as_ref(),
             self.subaddress_spend_private.as_ref(),
@@ -320,11 +343,10 @@ impl RingSigner {
 
         // Check this is the correct onetime private key for the txout
         if RistrettoPublic::from(&onetime_private_key) != tx_out_target_key {
+            // Zeroize recovered key on failure
+            onetime_private_key.zeroize();
             return Err(Error::OnetimeKeyRecoveryFailed);
         }
-
-        // Store this for future computations
-        self.onetime_private_key = Some(onetime_private_key);
 
         // Setup signing context
         let sign_params = MlsagSignParams {
@@ -348,8 +370,17 @@ impl RingSigner {
             .unwrap();
 
         match MlsagSignCtx::init(&sign_params, rng, responses) {
-            Ok(ctx) => self.ring_ctx = Some(ctx),
-            Err(_e) => return Err(Error::RingInitFailed),
+            Ok(ctx) => {
+                // Store context
+                self.onetime_private_key = Some(onetime_private_key);
+                self.ring_ctx = Some(ctx);
+            }
+            Err(_e) => {
+                // Clear onetime private key
+                onetime_private_key.zeroize();
+                // Fail out
+                return Err(Error::RingInitFailed);
+            }
         }
 
         Ok(())
@@ -383,7 +414,6 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            // TODO: is this important..?
             check_value_is_preserved: false,
         };
 

@@ -88,6 +88,11 @@ pub enum UiState {
 }
 
 impl UiState {
+    /// Create a new `Message` variant
+    pub fn message(value: &'static str) -> Self {
+        Self::Message(Message::new(value))
+    }
+
     pub fn is_key_request(&self) -> bool {
         matches!(self, UiState::KeyRequest(..))
     }

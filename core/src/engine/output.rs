@@ -204,6 +204,7 @@ impl From<(crate::engine::State, TxDigest)> for apdu::tx::TxInfo {
 }
 
 impl crate::engine::State {
+    /// Map [engine](crate::engine) states to [apdu][apdu::state::TxState] states for transmission
     pub fn state(&self) -> apdu::state::TxState {
         use crate::{apdu::state::TxState, engine::State};
 
@@ -214,7 +215,6 @@ impl crate::engine::State {
                 IdentState::Pending => TxState::IdentPending,
                 IdentState::Approved => TxState::IdentApproved,
                 IdentState::Denied => TxState::IdentDenied,
-                IdentState::Error => TxState::Error,
             },
             State::Ready => TxState::Ready,
             State::BuildMemos(_n) => TxState::SignMemos,

@@ -33,7 +33,7 @@ use ledger_mob_core::{
         },
         tx::FogId,
     },
-    engine::{Engine, Error, Event, Output, State},
+    engine::{Engine, Error, Event, IdentState, Output, State},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
 
@@ -455,11 +455,26 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
     // Update UI based on engine state changes
     match engine.state() {
-        // Update to identity approval on request
+        // Update to identity approver on request
         #[cfg(feature = "ident")]
-        State::Ident(s) if s.is_pending() && !ui.state.is_ident_request() => {
+        State::Ident(IdentState::Pending) if !ui.state.is_ident_request() => {
             ui.state = UiState::IdentRequest(IdentApprover::new());
             render = true;
+        }
+        // Show identity state on changes
+        #[cfg(feature = "ident")]
+        State::Ident(IdentState::Approved) => {
+            if !ui.state.is_message() {
+                ui.state = UiState::message("challenge approved");
+                render = true;
+            }
+        }
+        #[cfg(feature = "ident")]
+        State::Ident(IdentState::Denied) => {
+            if !ui.state.is_message() {
+                ui.state = UiState::message("challenge rejected");
+                render = true;
+            }
         }
 
         // Update to progress while loading transaction
@@ -493,13 +508,13 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
         // Set complete message when transaction is complete
         State::Complete if !ui.state.is_message() => {
-            ui.state = UiState::Message(Message::new("Transaction Complete"));
+            ui.state = UiState::message("Transaction Complete");
             render = true;
         }
 
         // Set cancelled message when transaction is aborted
         State::Deny if !ui.state.is_message() => {
-            ui.state = UiState::Message(Message::new("Transaction Cancelled"));
+            ui.state = UiState::message("Transaction Cancelled");
             render = true;
         }
 

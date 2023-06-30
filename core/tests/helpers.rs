@@ -9,6 +9,7 @@ use ledger_proto::{ApduBase, ApduReq};
 use log::{debug, trace};
 
 use ledger_mob_core::engine::{Driver, Engine, Error, Event};
+use mc_core::slip10::Slip10Key;
 
 pub const MNEMONIC: &str = "duck deal pretty pen thunder economy wide common goose fit engine main aisle curtain choose cube claim snake enroll detect brief history float unit";
 
@@ -102,8 +103,9 @@ impl TestDriver {
 }
 
 impl Driver for TestDriver {
-    fn slip10_derive_ed25519(&self, path: &[u32]) -> [u8; 32] {
-        slip10_ed25519::derive_ed25519_private_key(&self.seed, path)
+    fn slip10_derive_ed25519(&self, path: &[u32]) -> Slip10Key {
+        let d = slip10_ed25519::derive_ed25519_private_key(&self.seed, path);
+        Slip10Key::from_raw(d)
     }
 }
 

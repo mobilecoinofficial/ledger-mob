@@ -71,7 +71,12 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         num_inputs: usize,
         view_private_key: &RootViewPrivate,
         change_address: &PublicSubaddress,
-    ) -> Self {
+    ) -> Result<Self, Error> {
+        // Check we have some inputs / outputs
+        if num_inputs == 0 || num_outputs == 0 {
+            return Err(Error::SummaryInitFailed);
+        }
+
         // Setup verifier
         let verifier = Some(TxSummaryStreamingVerifierCtx::new(
             message,
@@ -84,7 +89,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
 
         let report = TxSummaryUnblindingReport::default();
 
-        Self {
+        Ok(Self {
             state: SummaryState::Init,
             verifier,
             report,
@@ -92,11 +97,12 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             tx_out_summary: None,
             num_outputs,
             num_inputs,
-        }
+        })
     }
 
     /// out-pointer based init to avoid stack allocation
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
+    // TODO: per-field init might improve headroom _if_ we continue to require this
     #[cfg_attr(feature = "noinline", inline(never))]
     pub unsafe fn init(
         p: *mut Self,
@@ -106,7 +112,12 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         num_inputs: usize,
         view_private_key: &RootViewPrivate,
         change_address: &PublicSubaddress,
-    ) {
+    ) -> Result<(), Error> {
+        // Check we have some inputs / outputs
+        if num_inputs == 0 || num_outputs == 0 {
+            return Err(Error::SummaryInitFailed);
+        }
+
         p.write(Self {
             state: SummaryState::Init,
             verifier: Some(TxSummaryStreamingVerifierCtx::new(
@@ -122,7 +133,9 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             tx_out_summary: None,
             num_outputs,
             num_inputs,
-        })
+        });
+
+        Ok(())
     }
 
     /// Add output information to the summary (must be followed by `add_output_unblinding`)
@@ -224,7 +237,9 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
 
         // Update state
         self.state = match self.state {
-            SummaryState::AddTxOut(n) if n >= self.num_outputs - 1 => SummaryState::AddTxIn(0),
+            // When we've added all outputs, swap to `AddTxIn` state
+            SummaryState::AddTxOut(n) if n + 1 == self.num_outputs => SummaryState::AddTxIn(0),
+            // Otherwise keep counting inputs
             SummaryState::AddTxOut(n) => SummaryState::AddTxOut(n + 1),
             _ => return Err(Error::InvalidState),
         };
@@ -275,7 +290,9 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
 
         // Update state
         self.state = match self.state {
-            SummaryState::AddTxIn(n) if n >= self.num_inputs - 1 => SummaryState::Ready,
+            // When we've added all inputs swap to `Ready` state
+            SummaryState::AddTxIn(n) if n + 1 == self.num_inputs => SummaryState::Ready,
+            // Otherwise keep counting inputs
             SummaryState::AddTxIn(n) => SummaryState::AddTxIn(n + 1),
             _ => return Err(Error::InvalidState),
         };
@@ -413,7 +430,8 @@ mod test {
                 summary.inputs.len(),
                 account.view_private_key(),
                 &PublicSubaddress::from(&account.subaddress(CHANGE_SUBADDRESS_INDEX)),
-            );
+            )
+            .unwrap();
             s.assume_init()
         };
 
