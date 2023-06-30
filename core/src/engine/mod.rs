@@ -306,8 +306,10 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             #[cfg(feature = "ident")]
             (State::Ident(s), Event::IdentGet) => {
                 // Check approval state
-                if s != IdentState::Approved {
-                    return Err(Error::ApprovalPending);
+                match s {
+                    IdentState::Pending => return Err(Error::ApprovalPending),
+                    IdentState::Denied => return Err(Error::IdentRejected),
+                    IdentState::Approved => (),
                 }
 
                 // Fetch signed identity

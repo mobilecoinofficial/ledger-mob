@@ -61,6 +61,10 @@ pub enum Error {
     #[cfg_attr(feature = "thiserror", error("failed to start summary computation"))]
     SummaryInitFailed = 0x0d,
 
+    /// Summary initialisation failed
+    #[cfg_attr(feature = "thiserror", error("identity request rejected"))]
+    IdentRejected = 0x0e,
+
     /// Unknown / not-yet defined error (placeholder)
     #[cfg_attr(feature = "thiserror", error("unknown"))]
     Unknown = 0xf0,
