@@ -5,6 +5,7 @@ use core::ptr::addr_of_mut;
 use heapless::Vec;
 use ledger_mob_apdu::tx::TxOnetimeKey;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
+use zeroize::Zeroize;
 
 use super::{Error, Event, Output};
 use mc_core::keys::{RootViewPrivate, SubaddressSpendPrivate};
@@ -334,7 +335,7 @@ impl RingSigner {
         };
 
         // Recover onetime_private_key for real txout
-        let onetime_private_key = recover_onetime_private_key(
+        let mut onetime_private_key = recover_onetime_private_key(
             &tx_out_public_key,
             self.root_view_private.as_ref(),
             self.subaddress_spend_private.as_ref(),
@@ -342,12 +343,10 @@ impl RingSigner {
 
         // Check this is the correct onetime private key for the txout
         if RistrettoPublic::from(&onetime_private_key) != tx_out_target_key {
+            // Zeroize recovered key on failure
+            onetime_private_key.zeroize();
             return Err(Error::OnetimeKeyRecoveryFailed);
         }
-
-        // Store this for future computations
-        // NOTE: this must be _after_ failure paths
-        self.onetime_private_key = Some(onetime_private_key);
 
         // Setup signing context
         let sign_params = MlsagSignParams {
@@ -371,10 +370,14 @@ impl RingSigner {
             .unwrap();
 
         match MlsagSignCtx::init(&sign_params, rng, responses) {
-            Ok(ctx) => self.ring_ctx = Some(ctx),
+            Ok(ctx) => {
+                // Store context
+                self.onetime_private_key = Some(onetime_private_key);
+                self.ring_ctx = Some(ctx);
+            },
             Err(_e) => {
                 // Clear onetime private key
-                self.onetime_private_key = None;
+                onetime_private_key.zeroize();
                 // Fail out
                 return Err(Error::RingInitFailed);
             }
