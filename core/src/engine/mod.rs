@@ -236,14 +236,19 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 }
 
                 let mut account = self.get_account(*account_index);
-                let subaddress = account.subaddress(*subaddress_index);
+                let mut subaddress = account.subaddress(*subaddress_index);
                 account.zeroize();
+
+                let spend_public = subaddress.spend_public_key();
+                let view_private = subaddress.view_private_key().clone();
+                subaddress.view_private.zeroize();
+                subaddress.spend_private.zeroize();
 
                 return Ok(Output::SubaddressKeys {
                     account_index: *account_index,
                     subaddress_index: *subaddress_index,
-                    spend_public: subaddress.spend_public_key(),
-                    view_private: subaddress.view_private_key().clone(),
+                    spend_public,
+                    view_private,
                 });
             }
 
