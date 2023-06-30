@@ -374,7 +374,7 @@ impl RingSigner {
                 // Store context
                 self.onetime_private_key = Some(onetime_private_key);
                 self.ring_ctx = Some(ctx);
-            },
+            }
             Err(_e) => {
                 // Clear onetime private key
                 onetime_private_key.zeroize();
