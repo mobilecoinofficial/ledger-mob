@@ -179,3 +179,37 @@ pub fn fetch_encode_device_info(buff: &mut [u8]) -> Result<usize, ApduError> {
     // Encode APDU to buffer
     r.encode(buff)
 }
+
+// Ensure RNGs are operating as expected
+pub fn test_rng() -> Result<(), rngcheck::Error> {
+    use crate::LedgerRng;
+    use rand_core::OsRng;
+
+    test_rng_internal(LedgerRng {})?;
+    test_rng_internal(OsRng {})?;
+
+    Ok(())
+}
+
+// Helper to test a single RNG
+fn test_rng_internal(mut rng: impl rand_core::RngCore) -> Result<(), rngcheck::Error> {
+    use rngcheck::{
+        helpers::BitIter,
+        nist::{nist_freq_block, nist_freq_monobit},
+    };
+
+    // Test LedgerRng
+    let mut a = [0xFF; 100];
+    rng.fill_bytes(&mut a);
+
+    // Check we filled -something- before attempting more in-depth tests
+    if &a[..2] == &[0xFF; 2] && &a[a.len() - 2..] == &[0xFF; 2] {
+        return Err(rngcheck::Error::RngFailed);
+    }
+
+    // Run NIST frequency checks
+    nist_freq_monobit(BitIter::new(&a))?;
+    nist_freq_block(BitIter::new(&a), 10)?;
+
+    Ok(())
+}

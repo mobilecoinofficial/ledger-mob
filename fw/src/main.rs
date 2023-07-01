@@ -548,10 +548,7 @@ fn platform_tests(comm: &mut io::Comm) {
     clear_screen();
 
     // Ensure RNG is operating as expected
-    let mut b = [0xFE; 32];
-    LedgerRng {}.fill_bytes(&mut b);
-
-    if b == [0xFE; 32] || b == [0x00; 32] || b[0] == 0xFE && b[31] == 0xFE {
+    if let Err(_e) = test_rng() {
         "ERROR".place(Location::Top, Layout::Centered, true);
         "RNG UNAVAILABLE".place(Location::Middle, Layout::Centered, false);
         "EXIT?".place(Location::Bottom, Layout::Centered, false);
