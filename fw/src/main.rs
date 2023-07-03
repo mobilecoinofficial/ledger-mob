@@ -1,5 +1,6 @@
-#![no_std]
 // Copyright (c) 2022-2023 The MobileCoin Foundation
+
+#![no_std]
 #![no_main]
 #![cfg_attr(feature = "alloc", feature(alloc_error_handler))]
 #![feature(cstr_from_bytes_until_nul)]

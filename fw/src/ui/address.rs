@@ -56,7 +56,7 @@ impl<const N: usize> Address<N> {
             // Exit on both buttons pressed/released
             ButtonEvent::BothButtonsRelease => return UiResult::Exit(()),
 
-            // Page forward
+            // Page forward (increment check to avoid integer overflow per MOB-06.5)
             ButtonEvent::RightButtonRelease if self.page + 1 < self.num_pages => self.page += 1,
 
             // Page back

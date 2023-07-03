@@ -67,7 +67,7 @@ impl Ident {
         let signature = ed25519_dalek::Signer::sign(&keys, &self.challenge);
         let verifying_key = keys.verifying_key();
 
-        // Force drop and zeroize of private keys
+        // Force drop and zeroize of private keys (MOB-01.1)
         drop(keys);
 
         Output::Identity {

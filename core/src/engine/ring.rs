@@ -102,7 +102,7 @@ impl RingSigner {
         token_id: u64,
         onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<Self, Error> {
-        // Check ring size and real index are valid
+        // Check ring size and real index are valid (MOB-06.4)
         if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
             return Err(Error::RingInitFailed);
         }
@@ -145,7 +145,7 @@ impl RingSigner {
         token_id: u64,
         onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<(), Error> {
-        // Check ring size and real inputs are valid
+        // Check ring size and real inputs are valid (MOB-06.4)
         if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
             return Err(Error::RingInitFailed);
         }
@@ -226,7 +226,7 @@ impl RingSigner {
                     return Err(e);
                 };
 
-                // Move on when we have enough ring entries
+                // Move on when we have enough ring entries (MOB-06.4)
                 if (n + 1) as usize == self.ring_size {
                     self.state = RingState::Execute;
                 } else {
@@ -272,8 +272,10 @@ impl RingSigner {
                     None => return Err(Error::UnexpectedEvent),
                 };
 
-                // Update last index for progress indication
-                self.fetch_count += 1;
+                // Update last index for progress indication (MOB-06.9)
+                if self.fetch_count < self.ring_size * 2 {
+                    self.fetch_count += 1;
+                }
 
                 return Ok((
                     self.state,
@@ -343,7 +345,7 @@ impl RingSigner {
 
         // Check this is the correct onetime private key for the txout
         if RistrettoPublic::from(&onetime_private_key) != tx_out_target_key {
-            // Zeroize recovered key on failure
+            // Zeroize recovered key on failure (MOB-01.3)
             onetime_private_key.zeroize();
             return Err(Error::OnetimeKeyRecoveryFailed);
         }
@@ -358,7 +360,7 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            check_value_is_preserved: true,
+            check_value_is_preserved: false,
         };
 
         // Setup response storage, this _must_ be ring_size * 2 or init will fail
@@ -392,7 +394,7 @@ impl RingSigner {
         // Check we have a signing context and blindings
         let ring_ctx = match self.ring_ctx.as_mut() {
             Some(v) => v,
-            None => return Err(Error::UnexpectedEvent),
+            None => return Err(Error::InvalidState),
         };
         let blindings = match &self.blindings {
             Some(b) => b,
@@ -423,7 +425,7 @@ impl RingSigner {
         // Add txout to ring
         ring_ctx
             .update(&sign_params, index, &tx_out)
-            .map_err(|_e| Error::SignError)?;
+            .map_err(|_e| Error::RingUpdateFailed)?;
 
         Ok(())
     }
@@ -433,17 +435,17 @@ impl RingSigner {
     fn ring_finalise(&mut self) -> Result<(KeyImage, CurveScalar), Error> {
         let ring_ctx = match self.ring_ctx.as_mut() {
             Some(v) => v,
-            None => return Err(Error::UnexpectedEvent),
+            None => return Err(Error::InvalidState),
         };
 
         let blindings = match &self.blindings {
             Some(b) => b,
-            _ => return Err(Error::UnexpectedEvent),
+            _ => return Err(Error::MissingBlindings),
         };
 
         let onetime_private_key = match &self.onetime_private_key {
             Some(k) => k,
-            _ => return Err(Error::UnexpectedEvent),
+            _ => return Err(Error::MissingOnetimePrivateKey),
         };
 
         let sign_params = MlsagSignParams {
@@ -455,7 +457,6 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            // TODO: is this important..?
             check_value_is_preserved: false,
         };
 
