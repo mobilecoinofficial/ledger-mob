@@ -1,5 +1,8 @@
 
-cargo-features = ["per-package-target"]
+cargo-features = ["per-package-target", "profile-rustflags"]
+
+[unstable]
+profile-rustflags = true
 
 [package]
 name = "ledger-mob-fw"
@@ -83,10 +86,12 @@ required-features = [ "applet" ]
 [profile.dev]
 #codegen-units = 1
 panic = "abort"
-debug = true
+debug = 2
 strip = "none"
 split-debuginfo = "off"
 opt-level = 'z'
+lto = 'fat'
+overflow-checks = true
 
 [profile.release]
 codegen-units = 1
@@ -96,14 +101,17 @@ strip = "none"
 split-debuginfo = "off"
 opt-level = 'z'
 lto = 'fat'
+overflow-checks = true
 
-# Rust/cargo bug precludes integer overflow checks
-# when using LTO, see:
-# https://github.com/rust-lang/rust/issues/108853
-#overflow-checks = true
+# Disable overflow checks for compiler_builtins
+# See:
+#  - https://github.com/rust-lang/cargo/issues/10118
+#  - https://github.com/rust-lang/rust/issues/108853
+[profile.release.package.compiler_builtins]
+debug-assertions = false
+overflow-checks = false
 
 [patch.crates-io]
-
 
 curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
 ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
