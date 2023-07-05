@@ -87,7 +87,7 @@ pub enum State {
     Ident(IdentState),
 
     /// Transaction init, building memos
-    BuildMemos(u8),
+    BuildMemos(usize),
     /// Ready to set transaction message
     SetMessage,
     /// Loading TxSummary for verification
@@ -310,7 +310,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // Derive identity and sign the provided challenge
             #[cfg(feature = "ident")]
             (State::Ident(s), Event::IdentGet) => {
-                // Check approval state
+                // Check approval state (MOB-02, MOB-05)
                 match s {
                     IdentState::Pending => return Err(Error::ApprovalPending),
                     IdentState::Denied => return Err(Error::IdentRejected),
@@ -380,6 +380,10 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 
                 // Update memo counter
                 self.state = State::BuildMemos(n + 1);
+
+                // There is no condition under which the application can
+                // sign enough memos for this to overflow (MOB-06.10)
+                assert_ne!(n + 1, usize::MAX);
 
                 // Return HMAC
                 return Ok(r);
@@ -502,7 +506,12 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     pub fn get_account(&self, account_index: u32) -> Account {
         let path = wallet_path(account_index);
         let seed = self.drv.slip10_derive_ed25519(&path);
-        Account::from(&seed)
+        let a = Account::from(&seed);
+
+        // Clear seed following use (MOB-01.4)
+        drop(seed);
+
+        a
     }
 
     /// Fetch a Subaddress instance for a given wallet and subaddress index
@@ -515,6 +524,8 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     ) -> OutputAddress {
         let mut account = self.get_account(account_index);
         let mut subaddress = account.subaddress(subaddress_index);
+
+        // Zeroize private account keys (MOB-01.x)
         account.zeroize();
 
         let sig: Option<[u8; 64]> = match fog_id {
@@ -524,7 +535,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 
         let p = PublicSubaddress::from(&subaddress);
 
-        // Zeroize keys
+        // Zeroize private subaddress keys (MOB-01.x)
         subaddress.view_private.zeroize();
         subaddress.spend_private.zeroize();
 
@@ -554,6 +565,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 
     /// Lock the engine (requires approval for key requests and scanning)
     pub fn lock(&mut self) {
+        // MOB-04 - lock engine on timeout
         self.unlocked = false;
     }
 
@@ -697,6 +709,8 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         let path = ident.path();
         let mut private_key = self.drv.slip10_derive_ed25519(&path);
         let resp = ident.compute(&private_key);
+
+        // Zeroize private key (MOB-01.5)
         private_key.zeroize();
 
         Ok(resp)
@@ -723,7 +737,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             receiver_view_public.as_ref(),
         );
 
-        // Zeroize keys
+        // Zeroize private keys (MOB-01.2)
         account.zeroize();
         sender_subaddr.view_private.zeroize();
         sender_subaddr.spend_private.zeroize();
@@ -775,7 +789,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             self.ring_count += 1;
 
             // There is no real-world condition where this -can- overflow
-            // as this would require a transaction containing 2^32 rings.
+            // as this would require a transaction containing 2^32 rings (MOB-06.1)
             assert!(self.ring_count < usize::MAX);
         }
 
@@ -995,7 +1009,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 }
 
 fn compute_ring_progress(current: usize, ring: usize, total_rings: usize) -> usize {
-    // Check to avoid divide by zero
+    // Check to avoid divide by zero (MOB-06.2)
     if (current == 0 && ring == 0) || total_rings == 0 {
         return 0;
     }

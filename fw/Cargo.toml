@@ -87,7 +87,6 @@ debug = true
 strip = "none"
 split-debuginfo = "off"
 opt-level = 'z'
-#lto = 'thin'
 
 [profile.release]
 codegen-units = 1
@@ -95,10 +94,13 @@ panic = "abort"
 debug = 2
 strip = "none"
 split-debuginfo = "off"
-
 opt-level = 'z'
 lto = 'fat'
 
+# Rust/cargo bug precludes integer overflow checks
+# when using LTO, see:
+# https://github.com/rust-lang/rust/issues/108853
+#overflow-checks = true
 
 [patch.crates-io]
 

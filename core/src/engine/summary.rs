@@ -113,7 +113,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         view_private_key: &RootViewPrivate,
         change_address: &PublicSubaddress,
     ) -> Result<(), Error> {
-        // Check we have some inputs / outputs
+        // Check we have some inputs / outputs (MOB-06.3)
         if num_inputs == 0 || num_outputs == 0 {
             return Err(Error::SummaryInitFailed);
         }
@@ -155,12 +155,13 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             associated_to_input_rules,
         };
 
-        // Attach for next computation
+        // Cache summary for next `add_output_unblinding` call.
         self.tx_out_summary = Some(tx_out_summary);
 
         // Update state
         self.state = match self.state {
             SummaryState::Init => SummaryState::AddTxOut(0),
+            // Increment only occurs from `add_output_unblinding`
             SummaryState::AddTxOut(n) => SummaryState::AddTxOut(n),
             _ => return Err(Error::InvalidState),
         };
@@ -177,16 +178,20 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         fog_info: Option<(FogId, &[u8; 64])>,
         tx_private_key: Option<&TxPrivateKey>,
     ) -> Result<SummaryState, Error> {
-        // TODO: check state
+        // Check state
+        match self.state {
+            SummaryState::AddTxOut(_) => (),
+            _ => return Err(Error::InvalidState),
+        }
 
-        // Fetch summary from prior step
+        // Fetch summary from prior step (and fail if this doesn't exist)
         let tx_out_summary = match self.tx_out_summary.take() {
             Some(v) => v,
             None => {
                 #[cfg(feature = "log")]
                 log::error!("add_output_unblinding missing output for unblinding");
 
-                return Err(Error::UnexpectedEvent);
+                return Err(Error::SummaryMissingOutput);
             }
         };
 
@@ -196,7 +201,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
                 #[cfg(feature = "log")]
                 log::error!("add_output_unblinding missing verifier");
 
-                return Err(Error::UnexpectedEvent);
+                return Err(Error::InvalidState);
             }
         };
 
@@ -237,7 +242,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
 
         // Update state
         self.state = match self.state {
-            // When we've added all outputs, swap to `AddTxIn` state
+            // When we've added all outputs, swap to `AddTxIn` state (MOB-06.3)
             SummaryState::AddTxOut(n) if n + 1 == self.num_outputs => SummaryState::AddTxIn(0),
             // Otherwise keep counting inputs
             SummaryState::AddTxOut(n) => SummaryState::AddTxOut(n + 1),

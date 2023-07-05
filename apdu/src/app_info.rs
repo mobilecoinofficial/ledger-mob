@@ -103,7 +103,10 @@ impl<'a> Encode for AppInfoResp<'a> {
     fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         let mut index = 0;
 
-        // TODO: check buffer length is viable
+        // Check buffer length is viable (MOB-06.6)
+        if buff.len() < self.encode_len()? {
+            return Err(ApduError::InvalidLength);
+        }
 
         // Set header
         buff[0] = self.proto;
@@ -146,7 +149,10 @@ impl<'a> Decode<'a> for AppInfoResp<'a> {
     fn decode(buff: &'a [u8]) -> Result<(Self, usize), ApduError> {
         let mut index = 0;
 
-        // TODO: check buffer length
+        // Check buffer length prior to header parsing (MOB-06.7)
+        if buff.len() < 4 {
+            return Err(ApduError::InvalidLength);
+        }
 
         // Fetch headers
         let proto = buff[0];
@@ -154,6 +160,11 @@ impl<'a> Decode<'a> for AppInfoResp<'a> {
         let version_len = buff[2] as usize;
         let flags_len = buff[3] as usize;
         index += 4;
+
+        // Check full buffer length (MOB-06.7)
+        if buff.len() < 4 + name_len + version_len + flags_len {
+            return Err(ApduError::InvalidLength);
+        }
 
         // Fetch name string
         let name =

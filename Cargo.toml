@@ -24,6 +24,13 @@ exclude = [
     "vendor/rs/ledger-transport-zemu",
 ]
 
+
+[profile.test]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
+
 [patch.crates-io]
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
