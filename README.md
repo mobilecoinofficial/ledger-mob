@@ -96,7 +96,7 @@ A top level [Makefile](Makefile) exposes common functions for building / testing
 
 - `make fw` to build `nanosplus` and `nanox` firmware
 - `make lib` to build the library and CLI
-- `make tests` to build and run all tests
+- `make test` to build and run all tests
 - `make nanosplus-run` or `make nanox-run` to build and run the firmware under speculos
 - `make nanosplus-load` to build firmware and load onto a `nanosplus` device (it is not possible to sideload onto the `nanox`)
 - `make nanosplus-test` or `make nanox-test` to run integration tests via the simulator
