@@ -1,6 +1,7 @@
 cargo-features = ["per-package-target"]
 
 [workspace]
+resolver = "2"
 
 members = [
     "apdu",
