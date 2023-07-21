@@ -9,6 +9,7 @@ runner = "speculos.py --model nanox --display qt -a 5 --apdu-port 1237 --zoom 2"
 target = "nanosplus"
 rustflags = [
     "-Z", "emit-stack-sizes",
+    "-Z", "share-generics=off",
     "-C", "link-args=-Map=/tmp/ledger-mob.map",
     '--cfg=curve25519_dalek_bits="32"'
 ]

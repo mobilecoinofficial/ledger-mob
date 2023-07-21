@@ -61,3 +61,6 @@ mc-util-from-random = { path = "./vendor/mob/util/from-random" }
 mc-util-test-helper = { path = "./vendor/mob/util/test-helper" }
 mc-util-serial = { path = "./vendor/mob/util/serial" }
 
+# patched to support ledger required 1.67.0 MSRV
+mc-rand = { path = "./vendor/mc-rand" }
+
