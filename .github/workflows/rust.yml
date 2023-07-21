@@ -358,7 +358,7 @@ jobs:
     - name: Install libusb / hidapi / libudev
       run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev
 
-    - name: Restore cache from test build
+    - name: Restore test cache
       uses: actions/cache/restore@v3
       with:
         key: sim
@@ -370,6 +370,10 @@ jobs:
       run: |
         docker pull ghcr.io/ledgerhq/speculos:latest
 
+    - name: Fetch nextest
+      run: |
+        curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
     - name: Fetch firmware artifacts
       uses: actions/download-artifact@v3
       with:
@@ -379,8 +383,8 @@ jobs:
     - name: Run simulator tests
       uses: actions-rs/cargo@v1
       with:
-        command: test
-        args: --manifest-path=lib/Cargo.toml
+        command: nextest
+        args: run --package ledger-mob
 
   # Package firmware for distribution
   package-fw:

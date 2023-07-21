@@ -121,6 +121,9 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
     };
 
+    // Wait so the simulator has a chance to launch
+    tokio::time::sleep(Duration::from_secs(3)).await;
+
     debug!("Connecting TCP APDU transport");
 
     // Connect to simulator APDU socket
@@ -128,9 +131,6 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     // until the simulator is available.
     let mut device = None;
     for i in 0..CONNECT_TIMEOUT_S {
-        // Wait first so the simulator has a chance to launch
-        tokio::time::sleep(Duration::from_secs(1)).await;
-
         // Attempt to connect to simulator
         match t.connect(info.clone()).await {
             Ok(v) => {
@@ -140,17 +140,21 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
             Err(_) if i < CONNECT_TIMEOUT_S - 1 => (),
             Err(e) => panic!("Failed to connect APDU socket {e:?}"),
         };
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
     let device = device.unwrap();
 
     // Press _something_ to dismiss `Review Pending` message
-    {
-        s.button(Button::Right, Action::PressAndRelease)
-            .await
-            .expect("Failed to exit review pending");
+    for i in 0..CONNECT_TIMEOUT_S {
+        match s.button(Button::Right, Action::PressAndRelease).await {
+            Ok(_) => break,
+            Err(_) if i < CONNECT_TIMEOUT_S - 1 => (),
+            Err(e) => panic!("Failed to exit review pending state {e:?}"),
+        }
 
-        tokio::time::sleep(Duration::from_millis(1000)).await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
     (driver, s, device.into())
