@@ -15,6 +15,8 @@ use ledger_lib::{
 };
 use ledger_sim::*;
 
+const CONNECT_TIMEOUT_S: usize = 10;
+
 // Setup speculos instance and TCP connector with an optional seed
 pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, GenericDevice) {
     // Setup logging
@@ -108,36 +110,51 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
             GenericDriver::Docker(DockerDriver::new().expect("Failed to setup docker driver"))
         }
     };
-
     let s = driver
         .run(app_path.to_str().unwrap(), speculos_opts)
         .await
         .expect("Simulator launch failed");
 
-    // Wait for sim to start listening
-    // TODO: this needs to be a while for CI but is very quick locally...
-    // could be a retry loop instead of worst-case blocking?
-    tokio::time::sleep(Duration::from_millis(3000)).await;
-
-    // Setup ADPU connector
+    // Setup TCP ADPU connector
+    let mut t = TcpTransport::new().expect("APDU connection failed");
     let info = TcpInfo {
         addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
     };
 
-    // Connect to simulator APDU socket
-    debug!("Connecting TCP APDU transport");
-    let mut t = TcpTransport::new().expect("APDU connection failed");
+    // Wait so the simulator has a chance to launch
+    tokio::time::sleep(Duration::from_secs(3)).await;
 
-    let device = t.connect(info).await.unwrap();
+    debug!("Connecting TCP APDU transport");
+
+    // Connect to simulator APDU socket
+    // This can take a variable amount of time in CI so we retry periodically
+    // until the simulator is available.
+    let mut device = None;
+    for i in 0..CONNECT_TIMEOUT_S {
+        // Attempt to connect to simulator
+        match t.connect(info.clone()).await {
+            Ok(v) => {
+                device = Some(v);
+                break;
+            }
+            Err(_) if i < CONNECT_TIMEOUT_S - 1 => (),
+            Err(e) => panic!("Failed to connect APDU socket {e:?}"),
+        };
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+
+    let device = device.unwrap();
 
     // Press _something_ to dismiss `Review Pending` message
-    // TODO: remove this from reviewed code? feature gate perhaps?
-    {
-        s.button(Button::Right, Action::PressAndRelease)
-            .await
-            .expect("Failed to exit review pending");
+    for i in 0..CONNECT_TIMEOUT_S {
+        match s.button(Button::Right, Action::PressAndRelease).await {
+            Ok(_) => break,
+            Err(_) if i < CONNECT_TIMEOUT_S - 1 => (),
+            Err(e) => panic!("Failed to exit review pending state {e:?}"),
+        }
 
-        tokio::time::sleep(Duration::from_millis(1000)).await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
     (driver, s, device.into())

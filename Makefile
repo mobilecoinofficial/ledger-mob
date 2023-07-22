@@ -23,13 +23,13 @@ lib:
 test: core-test nanosplus-test nanox-test
 
 core-test:
-	cargo test --package ledger-mob-core
+	cargo nextest run --package ledger-mob-core
 
 nanosplus-test: nanosplus
-	MODEL=nanosp cargo test --package ledger-mob $(NANOSP_ARGS)
+	MODEL=nanosp cargo nextest run --package ledger-mob $(NANOSP_ARGS)
 
 nanox-test: nanox
-	MODEL=nanox cargo test --package ledger-mob
+	MODEL=nanox cargo nextest run --package ledger-mob
 
 # Build docs
 docs:

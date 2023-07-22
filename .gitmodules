@@ -1,6 +1,11 @@
 [submodule "vendor/mob"]
 	path = vendor/mob
 	url = ../../mobilecoinfoundation/mobilecoin.git
+
+[submodule "vendor/mc-rand"]
+	path = vendor/mc-rand
+	url = ../../ryankurte/mc-rand
+
 [submodule "vendor/speculos"]
 	path = vendor/speculos
 	url = ../../LedgerHQ/speculos.git
