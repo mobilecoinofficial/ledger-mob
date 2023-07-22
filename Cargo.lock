@@ -1968,7 +1968,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2015,7 +2015,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-apdu"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "bitflags 1.3.2",
  "byteorder",
@@ -2041,7 +2041,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-core"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "aes 0.7.5",
  "anyhow",
@@ -2099,7 +2099,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-tests"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "base64 0.21.0",
