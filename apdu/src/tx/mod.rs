@@ -5,7 +5,7 @@
 //! See [crate::engine] for interaction and state machines
 
 use encdec::{Decode, Encode};
-use ledger_apdu::ApduStatic;
+use ledger_proto::ApduStatic;
 
 use crate::{
     state::{Digest, TxState},

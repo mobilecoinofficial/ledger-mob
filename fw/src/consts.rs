@@ -10,21 +10,24 @@ use nanos_ui::bitmaps::Glyph;
 use ledger_mob_core::apdu::app_info::AppFlags;
 
 /// App Information
-pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
+pub const APP_NAME: &str = "MobileCoin";
 pub const APP_VERSION: &str = env!("GIT_TAG");
 pub const BUILD_TIME: &str = env!("BUILD_TIME");
-pub const APP_FLAGS: AppFlags = app_flags();
 
-const fn app_flags() -> AppFlags {
+pub fn app_flags() -> AppFlags {
+    let mut f = AppFlags::empty();
+
     #[cfg(feature = "summary")]
-    return AppFlags::HAS_TX_SUMMARY;
+    f.set(AppFlags::HAS_TX_SUMMARY, true);
 
-    #[cfg(not(feature = "summary"))]
-    return AppFlags::empty();
+    f
 }
 
 /// Application timeout (exit after no user input)
-pub const TIMEOUT_S: u32 = 5 * 60;
+pub const LOCK_TIMEOUT_S: u32 = 5 * 60;
+
+/// Message timeout (return to home screen)
+pub const MESSAGE_TIMEOUT_S: u32 = 5;
 
 /// Ticks per second for calculating application timeouts
 pub const TICKS_PER_S: u32 = 10;

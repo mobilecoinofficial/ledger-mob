@@ -2,14 +2,12 @@
 
 //! Key image tests
 
-use std::error::Error;
-
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use log::info;
 use mc_crypto_ring_signature::onetime_keys::{
     create_tx_out_public_key, create_tx_out_target_key, recover_onetime_private_key,
 };
 use rand_core::OsRng;
+use tracing::info;
 
 use mc_core::{
     account::{Account, RingCtAddress},
@@ -20,15 +18,14 @@ use mc_crypto_keys::RistrettoPrivate;
 use mc_crypto_ring_signature::KeyImage;
 use mc_util_from_random::FromRandom;
 
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
 use ledger_mob::DeviceHandle;
 
 /// Test key image recovery via subaddress and tx_out_public_key
-pub async fn test<T, E>(t: T, mnemonic: Mnemonic) -> anyhow::Result<()>
+pub async fn test<T>(t: T, mnemonic: Mnemonic) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E> + Send + Sync,
-    E: Error + Sync + Send + 'static,
+    T: Device + Send,
 {
     info!("using mnemonic: '{}'", mnemonic.phrase());
 
@@ -42,7 +39,7 @@ where
     let subaddress_index = 102;
     let target_subaddr = account_key.subaddress(subaddress_index);
 
-    let d = DeviceHandle::from(t);
+    let mut d = DeviceHandle::from(t);
 
     // Synthesize transaction for key image recovery
 

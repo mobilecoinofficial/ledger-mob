@@ -4,21 +4,21 @@
 
 use encdec::{Decode, DecodeOwned, Encode};
 
-use super::{ApduError, ApduStatic, Instruction};
+use super::{ApduError, ApduStatic, Instruction, MOB_APDU_CLA};
 
 /// Fetch application info APDU
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
-pub struct AppInfoReq<const CLA: u8 = 0x00> {}
+pub struct AppInfoReq {}
 
-impl<const CLA: u8> ApduStatic for AppInfoReq<CLA> {
+impl ApduStatic for AppInfoReq {
     /// Application Info command APDU is class `0xb0`
-    const CLA: u8 = 0xb0;
+    const CLA: u8 = MOB_APDU_CLA;
 
     /// Application Info GET APDU is instruction `0x00`
     const INS: u8 = Instruction::GetAppInfo as u8;
 }
 
-impl<const CLA: u8> Encode for AppInfoReq<CLA> {
+impl Encode for AppInfoReq {
     type Error = ApduError;
 
     fn encode_len(&self) -> Result<usize, Self::Error> {
@@ -30,7 +30,7 @@ impl<const CLA: u8> Encode for AppInfoReq<CLA> {
     }
 }
 
-impl<const CLA: u8> DecodeOwned for AppInfoReq<CLA> {
+impl DecodeOwned for AppInfoReq {
     type Output = Self;
 
     type Error = ApduError;
@@ -103,7 +103,10 @@ impl<'a> Encode for AppInfoResp<'a> {
     fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         let mut index = 0;
 
-        // TODO: check buffer length is viable
+        // Check buffer length is viable (MOB-06.6)
+        if buff.len() < self.encode_len()? {
+            return Err(ApduError::InvalidLength);
+        }
 
         // Set header
         buff[0] = self.proto;
@@ -146,7 +149,10 @@ impl<'a> Decode<'a> for AppInfoResp<'a> {
     fn decode(buff: &'a [u8]) -> Result<(Self, usize), ApduError> {
         let mut index = 0;
 
-        // TODO: check buffer length
+        // Check buffer length prior to header parsing (MOB-06.7)
+        if buff.len() < 4 {
+            return Err(ApduError::InvalidLength);
+        }
 
         // Fetch headers
         let proto = buff[0];
@@ -155,13 +161,19 @@ impl<'a> Decode<'a> for AppInfoResp<'a> {
         let flags_len = buff[3] as usize;
         index += 4;
 
+        // Check full buffer length (MOB-06.7)
+        if buff.len() < 4 + name_len + version_len + flags_len {
+            return Err(ApduError::InvalidLength);
+        }
+
         // Fetch name string
-        let name = core::str::from_utf8(&buff[index..][..name_len]).map_err(|_| ApduError::Utf8)?;
+        let name =
+            core::str::from_utf8(&buff[index..][..name_len]).map_err(|_| ApduError::InvalidUtf8)?;
         index += name_len;
 
         // Fetch version string
-        let version =
-            core::str::from_utf8(&buff[index..][..version_len]).map_err(|_| ApduError::Utf8)?;
+        let version = core::str::from_utf8(&buff[index..][..version_len])
+            .map_err(|_| ApduError::InvalidUtf8)?;
         index += version_len;
 
         // Fetch flags
@@ -239,7 +251,7 @@ mod test {
 
     #[test]
     fn app_info_req_apdu() {
-        let apdu = AppInfoReq::<0x12>::default();
+        let apdu = AppInfoReq::default();
 
         let mut buff = [0u8; 128];
         encode_decode_apdu(&mut buff, &apdu);

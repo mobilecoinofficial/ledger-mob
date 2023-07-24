@@ -5,14 +5,14 @@
 use sha2::{Digest as _, Sha512_256};
 
 use mc_core::{
-    account::{PublicSubaddress, ShortAddressHash},
+    account::PublicSubaddress,
     keys::{SubaddressViewPublic, TxOutPublic},
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, ReducedTxOut, Scalar};
-use mc_transaction_types::unmasked_amount::UnmaskedAmount;
+use mc_transaction_types::UnmaskedAmount;
 
-use crate::tx::TxPrivateKey;
+use crate::tx::{TxOnetimeKey, TxPrivateKey};
 
 pub fn digest_tx_init(account_index: &u32, num_rings: u8) -> [u8; 32] {
     Sha512_256::new()
@@ -93,8 +93,10 @@ pub fn digest_tx_summary_add_output(
 
 pub fn digest_tx_summary_add_output_unblinding(
     unmasked_amount: &UnmaskedAmount,
-    address: Option<&(ShortAddressHash, PublicSubaddress)>,
+    address: Option<&PublicSubaddress>,
     tx_private_key: Option<&TxPrivateKey>,
+    fog_sig: Option<&[u8]>,
+    // TODO: add fog info here
 ) -> [u8; 32] {
     let mut d = Sha512_256::new()
         .chain_update("tx_summary_add_output_unblinding")
@@ -103,13 +105,16 @@ pub fn digest_tx_summary_add_output_unblinding(
         .chain_update(unmasked_amount.blinding.as_bytes());
 
     if let Some(a) = address {
-        d.update(a.0.as_ref());
-        d.update(a.1.view_public.to_bytes());
-        d.update(a.1.spend_public.to_bytes());
+        d.update(a.view_public.to_bytes());
+        d.update(a.spend_public.to_bytes());
     }
 
     if let Some(k) = tx_private_key {
         d.update(k.to_bytes());
+    }
+
+    if let Some(s) = fog_sig {
+        d.update(s);
     }
 
     d.finalize().into()
@@ -153,16 +158,21 @@ pub fn digest_ring_init(
     subaddress_index: &u64,
     value: &u64,
     token_id: &u64,
+    onetime_private_key: Option<&TxOnetimeKey>,
 ) -> [u8; 32] {
-    Sha512_256::new()
+    let mut h = Sha512_256::new()
         .chain_update("ring_init")
         .chain_update(ring_size.to_le_bytes())
         .chain_update(real_index.to_le_bytes())
         .chain_update(subaddress_index.to_le_bytes())
         .chain_update(value.to_le_bytes())
-        .chain_update(token_id.to_le_bytes())
-        .finalize()
-        .into()
+        .chain_update(token_id.to_le_bytes());
+
+    if let Some(k) = onetime_private_key {
+        h.update(k.to_bytes());
+    }
+
+    h.finalize().into()
 }
 
 pub fn digest_ring_set_blinding(blinding: &Scalar, output_blinding: &Scalar) -> [u8; 32] {

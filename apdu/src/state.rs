@@ -4,7 +4,7 @@
 //!
 
 use encdec::{DecodeOwned, Encode};
-use ledger_apdu::ApduError;
+use ledger_proto::ApduError;
 use num_enum::TryFromPrimitive;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest as _, Sha512_256};
@@ -82,6 +82,7 @@ impl Digest {
     }
 
     /// Reset state digest from random seed
+    #[inline(never)]
     pub fn from_random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         let mut b = [0u8; 32];
         rng.fill_bytes(&mut b);
@@ -96,6 +97,7 @@ impl Digest {
     // TODO: what if we apply an event but lose the response, will the client retry..?
     // TODO: swap to tree approach, cache prior event and skip updates to allow retries
     // TODO: could use [Digestible], though this adds dependencies for implementers?
+    #[inline(never)]
     pub fn update(&mut self, evt: &[u8; 32]) -> &Self {
         // Build and update digest
         let mut d = Sha512_256::new();

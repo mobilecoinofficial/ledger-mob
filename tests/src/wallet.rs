@@ -2,27 +2,25 @@
 
 //! Account key tests
 
-use std::error::Error;
 use std::future::Future;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use log::info;
+use tracing::info;
 
 use mc_core::{
     account::Account,
     slip10::{Mnemonic, Slip10KeyGenerator},
 };
 
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
 use ledger_mob::DeviceHandle;
 
 /// Generate and fetch account view keys for the provided mnemonic
-pub async fn test<T, F, E>(t: T, approve: impl Fn() -> F, mnemonic: Mnemonic) -> anyhow::Result<()>
+pub async fn test<T, F>(t: T, approve: impl Fn() -> F, mnemonic: Mnemonic) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E> + Sync + Send,
+    T: Device + Send,
     F: Future<Output = ()>,
-    E: Error + Sync + Send + 'static,
 {
     info!("using mnemonic: '{}'", mnemonic.phrase());
 
@@ -43,7 +41,7 @@ where
         account_key.spend_public_key()
     );
 
-    let d = DeviceHandle::from(t);
+    let mut d = DeviceHandle::from(t);
 
     // Fetch account keys from device
     let a = match d.account_keys(0).await {

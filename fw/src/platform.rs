@@ -2,18 +2,42 @@
 
 //! Ledger MobileCoin Platform Support
 
-use ledger_mob_core::engine::Driver;
+use core::{ffi::CStr, mem::MaybeUninit};
+
+use encdec::Encode;
+
+use ledger_proto::{apdus::DeviceInfoResp, ApduError};
 use nanos_sdk::{
     bindings::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10},
     ecc,
+    uxapp::UxEvent,
 };
+#[cfg(feature = "nvm")]
+use nanos_sdk::{
+    nvm::{AtomicStorage, SingleStorage},
+    Pic,
+};
+
+#[cfg(feature = "nvm")]
+use ledger_mob_core::apdu::tx::FOG_IDS;
+use ledger_mob_core::{apdu::tx::FogId, engine::Driver};
+use mc_core::slip10::Slip10Key;
+
+/// Fog ID for address display
+/// Note NVM is not available under speculos so accessing this page will fault.
+#[cfg(feature = "nvm")]
+#[cfg_attr(feature = "nvm", link_section = ".nvm_data")]
+static mut FOG: Pic<AtomicStorage<u32>> = Pic::new(AtomicStorage::new(&(FogId::MobMain as u32)));
+
+#[cfg(not(feature = "nvm"))]
+static mut FOG: MaybeUninit<FogId> = MaybeUninit::uninit();
 
 /// Ledger platform driver
 pub struct LedgerDriver {}
 
 impl Driver for LedgerDriver {
     /// SLIP-0010 ed25519 derivation from path via ledger syscall
-    fn slip10_derive_ed25519(&self, path: &[u32]) -> [u8; 32] {
+    fn slip10_derive_ed25519(&self, path: &[u32]) -> Slip10Key {
         let curve = ecc::CurvesId::Ed25519;
         let mut key = [0u8; 32];
 
@@ -30,8 +54,43 @@ impl Driver for LedgerDriver {
             )
         };
 
-        key
+        Slip10Key::from_raw(key)
     }
+}
+
+/// Fetch fog ID from platform persistent storage
+#[cfg(feature = "nvm")]
+pub fn platform_get_fog_id() -> FogId {
+    let i = unsafe { *FOG.get_ref().get_ref() } as usize;
+    if i < FOG_IDS.len() {
+        FOG_IDS[i]
+    } else {
+        FogId::MobMain
+    }
+}
+
+/// Update fog ID in platform persistent storage
+#[cfg(feature = "nvm")]
+pub fn platform_set_fog_id(fog_id: &FogId) {
+    unsafe {
+        let f = FOG.get_mut();
+        f.update(&(*fog_id as u32));
+    };
+}
+
+// `nvm` feature gate exists due to fault with nvm under
+// speculos _and_ currently on hw
+
+/// Fetch fog ID from local variable
+#[cfg(not(feature = "nvm"))]
+pub fn platform_get_fog_id() -> FogId {
+    unsafe { FOG.assume_init() }
+}
+
+/// Update fog ID in local variable
+#[cfg(not(feature = "nvm"))]
+pub fn platform_set_fog_id(fog_id: &FogId) {
+    unsafe { FOG.write(*fog_id) };
 }
 
 // Global allocator configuration
@@ -57,6 +116,7 @@ pub(crate) mod allocator {
     }
 
     /// Initialise allocator
+    #[inline(never)]
     pub fn init() {
         unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
     }
@@ -77,11 +137,79 @@ pub(crate) mod allocator {
     }
 }
 
-#[cfg(nyet)]
-fn request_pin_validation() {
-    let mut params = nanos_sdk::bindings::bolos_ux_params_t::default();
-    params.ux_id = nanos_sdk::bindings::BOLOS_UX_VALIDATE_PIN;
+/// Blocking request for pin validation to unlock
+pub fn request_pin_validation() {
+    UxEvent::ValidatePIN.request();
+}
+
+pub fn fetch_encode_device_info(buff: &mut [u8]) -> Result<usize, ApduError> {
+    // Fetch information from OS
+    let mut mcu_version_raw = [0u8; 32];
+    let mut se_version_raw = [0u8; 32];
+    let flags;
     unsafe {
-        nanos_sdk::bindings::os_ux(&params as *mut nanos_sdk::bindings::bolos_ux_params_t);
+        flags = nanos_sdk::bindings::os_flags();
+        nanos_sdk::bindings::os_version(mcu_version_raw.as_mut_ptr(), se_version_raw.len() as u32);
+        nanos_sdk::bindings::os_seph_version(
+            se_version_raw.as_mut_ptr(),
+            se_version_raw.len() as u32,
+        );
     }
+
+    // Convert to rust strings
+    let mcu_version = match CStr::from_bytes_until_nul(&mcu_version_raw).map(|c| c.to_str()) {
+        Ok(Ok(v)) => v,
+        _ => "unknown",
+    };
+    let se_version = match CStr::from_bytes_until_nul(&se_version_raw).map(|c| c.to_str()) {
+        Ok(Ok(v)) => v,
+        _ => "unknown",
+    };
+    let f = flags.to_be_bytes();
+
+    // Select target information
+    #[cfg(target_os = "nanosplus")]
+    let target_id: u32 = 0x33100004;
+    #[cfg(target_os = "nanox")]
+    let target_id: u32 = 0x33000004;
+
+    // Build DeviceInfo APDU
+    let r = DeviceInfoResp::new(target_id.to_be_bytes(), se_version, mcu_version, &f);
+
+    // Encode APDU to buffer
+    r.encode(buff)
+}
+
+// Ensure RNGs are operating as expected
+pub fn test_rng() -> Result<(), rngcheck::Error> {
+    use crate::LedgerRng;
+    use rand_core::OsRng;
+
+    test_rng_internal(LedgerRng {})?;
+    test_rng_internal(OsRng {})?;
+
+    Ok(())
+}
+
+// Helper to test a single RNG
+fn test_rng_internal(mut rng: impl rand_core::RngCore) -> Result<(), rngcheck::Error> {
+    use rngcheck::{
+        helpers::BitIter,
+        nist::{nist_freq_block, nist_freq_monobit},
+    };
+
+    // Test LedgerRng
+    let mut a = [0xFF; 100];
+    rng.fill_bytes(&mut a);
+
+    // Check we filled -something- before attempting more in-depth tests
+    if &a[..2] == &[0xFF; 2] && &a[a.len() - 2..] == &[0xFF; 2] {
+        return Err(rngcheck::Error::RngFailed);
+    }
+
+    // Run NIST frequency checks
+    nist_freq_monobit(BitIter::new(&a))?;
+    nist_freq_block(BitIter::new(&a), 10)?;
+
+    Ok(())
 }

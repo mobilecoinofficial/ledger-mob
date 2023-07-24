@@ -7,25 +7,32 @@ use rand_core::{CryptoRng, RngCore};
 
 use ledger_mob_core::engine::{Driver, Engine};
 
-use nanos_ui::{bagls::RectFull, layout::Draw, SCREEN_HEIGHT, SCREEN_WIDTH};
-
 mod helpers;
 pub use helpers::*;
 
 mod menu;
 pub use menu::*;
 
-mod approver;
-pub use approver::*;
+mod sync_approver;
+pub use sync_approver::*;
 
 mod progress;
 pub use progress::*;
 
-mod complete;
-pub use complete::*;
+mod message;
+pub use message::*;
 
 mod tx_blind_approver;
 pub use tx_blind_approver::*;
+
+mod address;
+pub use address::*;
+
+mod app_info;
+pub use app_info::*;
+
+mod settings;
+pub use settings::*;
 
 #[cfg(feature = "summary")]
 mod tx_summary_approver;
@@ -46,13 +53,16 @@ pub struct Ui {
     pub menu: UiMenu,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum UiState {
     /// Showing main menu
     Menu,
 
+    /// Showing a b58 address
+    Address(Address<512>),
+
     /// Request for view keys, awaiting user input
-    KeyRequest(Approver),
+    KeyRequest(SyncApprover),
 
     /// Transaction request without summary, awaiting user input
     TxRequest(TxBlindApprover),
@@ -67,11 +77,22 @@ pub enum UiState {
     /// Progress indicator
     Progress(Progress),
 
-    /// Transaction complete
-    Complete(Complete),
+    /// Messages (transaction complete, rejected, etc.)
+    Message(Message),
+
+    /// App information
+    AppInfo(AppInfo),
+
+    /// Settings
+    Settings(Settings),
 }
 
 impl UiState {
+    /// Create a new `Message` variant
+    pub fn message(value: &'static str) -> Self {
+        Self::Message(Message::new(value))
+    }
+
     pub fn is_key_request(&self) -> bool {
         matches!(self, UiState::KeyRequest(..))
     }
@@ -89,8 +110,8 @@ impl UiState {
         matches!(self, UiState::Progress(..))
     }
 
-    pub fn is_complete(&self) -> bool {
-        matches!(self, UiState::Complete(..))
+    pub fn is_message(&self) -> bool {
+        matches!(self, UiState::Message(..))
     }
 
     #[cfg(feature = "ident")]
@@ -101,18 +122,24 @@ impl UiState {
 
 impl Ui {
     /// Create a new [Ui] instance
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             state: UiState::Menu,
-            menu: UiMenu::default(),
+            menu: UiMenu::new(),
         }
+    }
+
+    /// Initialise a UI instance without double stack allocations
+    pub unsafe fn init(p: *mut Self) {
+        core::ptr::write(p, Self::new());
     }
 
     /// Render the [Ui] using the current state
     #[inline(never)]
-    pub fn render<D: Driver, R: RngCore + CryptoRng>(&self, engine: &Engine<D, R>) {
-        match self.state {
+    pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &Engine<D, R>) {
+        match &mut self.state {
             UiState::Menu => self.menu.render(engine),
+            UiState::Address(a) => a.render(engine),
             UiState::KeyRequest(a) => a.render(engine),
             UiState::TxRequest(a) => a.render(engine),
             #[cfg(feature = "summary")]
@@ -120,7 +147,9 @@ impl Ui {
             #[cfg(feature = "ident")]
             UiState::IdentRequest(a) => a.render(engine),
             UiState::Progress(a) => a.render(engine),
-            UiState::Complete(a) => a.render(engine),
+            UiState::Message(a) => a.render(engine),
+            UiState::AppInfo(a) => a.render(engine),
+            UiState::Settings(a) => a.render(engine),
         }
     }
 }
@@ -170,14 +199,4 @@ impl<R> UiResult<R> {
     pub fn is_exit(&self) -> bool {
         matches!(self, UiResult::Exit(..))
     }
-}
-
-/// Clear screen wrapper that works both on hardware and speculos
-/// (required as speculos doesn't support the full screen clear syscall,
-/// and we want to run _exactly_ the same code on both)
-pub fn clear_screen() {
-    RectFull::new()
-        .width(SCREEN_WIDTH as u32)
-        .height(SCREEN_HEIGHT as u32)
-        .erase();
 }

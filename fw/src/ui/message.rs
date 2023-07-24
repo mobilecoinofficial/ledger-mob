@@ -14,11 +14,13 @@ use ledger_mob_core::engine::{Driver, Engine};
 use super::{clear_screen, UiResult};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Complete;
+pub struct Message {
+    value: &'static str,
+}
 
-impl Complete {
-    pub fn new() -> Self {
-        Self
+impl Message {
+    pub fn new(value: &'static str) -> Self {
+        Self { value }
     }
 
     pub fn update(&mut self, btn: &ButtonEvent) -> UiResult<bool> {
@@ -35,7 +37,7 @@ impl Complete {
         clear_screen();
 
         // Render transaction information
-        "Transaction Complete".place(Location::Middle, Layout::Centered, false);
+        self.value.place(Location::Middle, Layout::Centered, false);
 
         // Update screen
         screen_util::screen_update();

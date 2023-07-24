@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
 use encdec::{Decode, Encode};
-use ledger_apdu::ApduStatic;
+use ledger_proto::ApduStatic;
 
 use mc_core::keys::Key;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};

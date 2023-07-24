@@ -113,6 +113,11 @@ impl<'a> Decode<'a> for IdentSignReq<'a> {
     fn decode(buff: &'a [u8]) -> Result<(Self, usize), ApduError> {
         let mut index = 0;
 
+        // Check header length (MOB-06.8)
+        if buff.len() < 8 {
+            return Err(ApduError::InvalidLength);
+        }
+
         // Read identity index
         let (identity_index, n) = u32::decode(&buff[index..])?;
         index += n;
@@ -128,9 +133,14 @@ impl<'a> Decode<'a> for IdentSignReq<'a> {
         // Skip padding
         index += 2;
 
+        // Check full buffer length (MOB-06.8)
+        if buff.len() < 8 + uri_len + challenge_len {
+            return Err(ApduError::InvalidLength);
+        }
+
         // Read identity URI
         let identity_uri =
-            core::str::from_utf8(&buff[index..][..uri_len]).map_err(|_| ApduError::Utf8)?;
+            core::str::from_utf8(&buff[index..][..uri_len]).map_err(|_| ApduError::InvalidUtf8)?;
         index += uri_len;
 
         let challenge = &buff[index..][..challenge_len];

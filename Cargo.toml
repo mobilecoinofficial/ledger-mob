@@ -3,9 +3,9 @@ cargo-features = ["per-package-target"]
 [workspace]
 
 members = [
+    "apdu",
     "core",
     "lib",
-    "sim",
     "tests",
 ]
 
@@ -24,40 +24,43 @@ exclude = [
     "vendor/rs/ledger-transport-zemu",
 ]
 
+
+[profile.test]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
+
 [patch.crates-io]
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
-curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
-ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
-
-# Fix issues with recent nightlies, bump curve25519-dalek version
-x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "c1966b8743d320cd07a54191475e5c0f94b2ea30" }
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
 
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
-#bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
-bulletproofs-og = { git = "https://github.com/ryankurte/bulletproofs.git", branch = "fix/curve25519-backend" }
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "b76d8c3a50671b08af0874b25b2543d3302d794d" }
 
-ledger-apdu = { path = "./vendor/rs/ledger-apdu" }
-ledger-transport = { path = "./vendor/rs/ledger-transport" }
-#ledger-zondax-generic = { path = "./vendor/rs/ledger-zondax-generic" }
-
+mc-account-keys = { path = "./vendor/mob/account-keys" }
+mc-api = { path = "./vendor/mob/api" }
 mc-core = { path = "./vendor/mob/core" }
-mc-crypto-dalek = { path ="./vendor/mob/crypto/dalek" }
 mc-crypto-digestible = { path ="./vendor/mob/crypto/digestible" }
 mc-crypto-hashes = { path ="./vendor/mob/crypto/hashes" }
 mc-crypto-keys = { path ="./vendor/mob/crypto/keys" }
 mc-crypto-memo-mac = { path ="./vendor/mob/crypto/memo-mac" }
 mc-crypto-ring-signature = { path ="./vendor/mob/crypto/ring-signature" }
 mc-crypto-ring-signature-signer = { path ="./vendor/mob/crypto/ring-signature/signer" }
+mc-fog-sig-authority = { path = "./vendor/mob/fog/sig/authority" }
 mc-transaction-core = { path = "./vendor/mob/transaction/core" }
 mc-transaction-extra = { path = "./vendor/mob/transaction/extra" }
 mc-transaction-types = { path = "./vendor/mob/transaction/types" }
 mc-transaction-signer = { path = "./vendor/mob/transaction/signer" }
 mc-transaction-summary = { path = "./vendor/mob/transaction/summary" }
 mc-util-from-random = { path = "./vendor/mob/util/from-random" }
+mc-util-test-helper = { path = "./vendor/mob/util/test-helper" }
+mc-util-serial = { path = "./vendor/mob/util/serial" }
 
-#prost = { path = "../prost" }
-#prost-derive = { path = "../prost/prost-derive" }
+# patched to support ledger required 1.67.0 MSRV
+mc-rand = { path = "./vendor/mc-rand" }
+

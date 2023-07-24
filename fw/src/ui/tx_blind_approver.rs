@@ -33,8 +33,8 @@ enum ApproverState {
     Init,
     Warn,
     Hash,
-    Deny,
     Allow,
+    Deny,
 }
 
 impl TxBlindApprover {
@@ -62,28 +62,28 @@ impl TxBlindApprover {
                 self.state = ApproverState::Hash
             }
 
-            // Hash display, left back to warning, right to deny
+            // Hash display, left back to warning, right to allow
             (ApproverState::Hash, ButtonEvent::LeftButtonRelease) => {
                 self.state = ApproverState::Warn
             }
             (ApproverState::Hash, ButtonEvent::RightButtonRelease) => {
-                self.state = ApproverState::Deny
-            }
-
-            // Deny state, left back to hash, right to allow state, both to cancel
-            (ApproverState::Deny, ButtonEvent::LeftButtonRelease) => {
-                self.state = ApproverState::Hash
-            }
-            (ApproverState::Deny, ButtonEvent::RightButtonRelease) => {
                 self.state = ApproverState::Allow
             }
 
-            // Allow state, left back to deny, both to approve
+            // Allow state, left back to hash, both to approve, right to deny
             (ApproverState::Allow, ButtonEvent::LeftButtonRelease) => {
+                self.state = ApproverState::Hash
+            }
+            (ApproverState::Allow, ButtonEvent::BothButtonsRelease) => return UiResult::Exit(true),
+            (ApproverState::Allow, ButtonEvent::RightButtonRelease) => {
                 self.state = ApproverState::Deny
             }
-            // Allow state, both buttons exit and approve transaction
-            (ApproverState::Allow, ButtonEvent::BothButtonsRelease) => return UiResult::Exit(true),
+
+            // Deny state, left back to allow, both to cancel
+            (ApproverState::Deny, ButtonEvent::LeftButtonRelease) => {
+                self.state = ApproverState::Allow
+            }
+            (ApproverState::Deny, ButtonEvent::BothButtonsRelease) => return UiResult::Exit(false),
 
             // All other states, both buttons exit and cancel transaction
             (_, ButtonEvent::BothButtonsRelease) => return UiResult::Exit(false),
@@ -106,7 +106,7 @@ impl TxBlindApprover {
         if self.state != Init {
             LEFT_ARROW.shift_v(0).display();
         }
-        if self.state != Allow {
+        if self.state != Deny {
             RIGHT_ARROW.shift_v(0).display();
         }
 

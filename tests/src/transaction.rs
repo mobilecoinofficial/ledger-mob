@@ -1,21 +1,30 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-use std::error::Error;
+use std::{sync::Arc, time::Duration};
 
 use bip39::Mnemonic;
-use log::{debug, error, info, trace};
-use mc_core::{account::Account, slip10::Slip10KeyGenerator};
-use mc_transaction_summary::verify_tx_summary;
+
+use ledger_lib::Device;
 use rand_core::OsRng;
 use std::future::Future;
+use tokio::sync::Mutex;
+use tracing::{debug, error, info, trace};
 
+use mc_core::{
+    account::{Account, PublicSubaddress},
+    consts::CHANGE_SUBADDRESS_INDEX,
+    slip10::Slip10KeyGenerator,
+    subaddress::Subaddress,
+};
 use mc_transaction_core::tx::Tx;
 use mc_transaction_core::validation::validate_signature;
 use mc_transaction_signer::types::{TxSignReq, TxSignResp};
+use mc_transaction_summary::verify_tx_summary;
 
-use ledger_transport::Exchange;
-
-use ledger_mob::{tx::TxConfig, DeviceHandle};
+use ledger_mob::{
+    tx::{TransactionHandle, TxConfig},
+    DeviceHandle,
+};
 
 pub struct TransactionExpectation<'a> {
     pub mnemonic: &'a str,
@@ -61,18 +70,18 @@ impl<T: AsRef<[u8]>> core::fmt::Display for HexFmt<T> {
     }
 }
 
-pub async fn test<'a, T, F, E>(
+pub async fn test<'a, T, F>(
     t: T,
     approve: impl Fn() -> F,
     tx: &TransactionExpectation<'a>,
 ) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E> + Send + Sync,
+    T: Device + Send,
     F: Future<Output = ()>,
-    E: Error + Sync + Send + 'static,
 {
     // Load account and unsigned transaction
     let account = tx.account();
+    let change = account.subaddress(CHANGE_SUBADDRESS_INDEX);
     let req = tx.tx_req();
 
     trace!("Request: {:?}", req);
@@ -83,13 +92,17 @@ where
     info!("Starting transaction");
 
     // Initialise transaction
-    let signer = d
-        .transaction(TxConfig {
+    let mut signer = TransactionHandle::new(
+        TxConfig {
             account_index: 0,
             num_memos: 0,
             num_rings: req.rings.len(),
-        })
-        .await?;
+            request_timeout: Duration::from_millis(500),
+            user_timeout: Duration::from_secs(3),
+        },
+        Arc::new(Mutex::new(d)),
+    )
+    .await?;
 
     // Build the digest for ring signing
     debug!("Fetching signing data");
@@ -123,6 +136,7 @@ where
                 &summary,
                 &unblinding,
                 account.view_private_key().clone().inner(),
+                PublicSubaddress::from(&change),
             )
             .unwrap();
 
@@ -166,7 +180,7 @@ where
     // Signal transaction is complete
     signer.complete().await?;
 
-    info!("Transaction complete!");
+    info!("Transaction complete! validating signature");
 
     // Validate generated transaction signature
     validate_signature(req.block_version, &resp.tx, &mut OsRng {}).unwrap();

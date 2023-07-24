@@ -3,30 +3,27 @@
 use log::warn;
 use std::ops::Deref;
 
+use ledger_lib::Device;
+
 use mc_core::account::ShortAddressHash;
 use mc_transaction_core::{BlockVersion, TxSummary};
 use mc_transaction_summary::TxSummaryUnblindingData;
 
 use ledger_mob_apdu::{state::TxState, tx::*};
-use ledger_transport::Exchange;
 
 use super::{check_state, TransactionHandle};
 use crate::Error;
 
-impl<T: Exchange + Send + Sync> TransactionHandle<T>
-where
-    <T as Exchange>::Error: Send + Sync,
-{
+impl<T: Device + Send> TransactionHandle<T> {
     /// Load tx summary for signing operation, alternative to `set_message` for block versions > 3
     pub async fn set_tx_summary(
-        &self,
+        &mut self,
         block_version: BlockVersion,
         message: &[u8],
         summary: &TxSummary,
         unblinding: &TxSummaryUnblindingData,
-    ) -> Result<(), Error<<T as Exchange>::Error>> {
+    ) -> Result<(), Error> {
         let mut buff = [0u8; 256];
-        let ctx = self.ctx.lock().await;
 
         warn!("Loading TX summary");
 
@@ -42,7 +39,9 @@ where
             num_inputs: summary.inputs.len() as u32,
             num_outputs: summary.outputs.len() as u32,
         };
-        let resp = ctx.exchange::<TxInfo>(init, &mut buff).await?;
+        let resp = self
+            .request::<TxInfo>(init, &mut buff, self.info.request_timeout)
+            .await?;
 
         // Check state and expected digest
         check_state::<T>(resp.state, TxState::SummaryInit)?;
@@ -67,22 +66,43 @@ where
             );
 
             // Submit tx out summary
-            let resp = ctx.exchange::<TxInfo>(tx_out_summary, &mut buff).await?;
+            let resp = self
+                .request::<TxInfo>(tx_out_summary, &mut buff, self.info.request_timeout)
+                .await?;
 
             // Check state and expected digest
             check_state::<T>(resp.state, TxState::SummaryAddTxOut)?;
             //check_digest::<T>(&resp.digest, &ctx.digest)?;
+
+            log::debug!("Address: {:?}", u.address);
+
+            let fog_info = match u
+                .address
+                .as_ref()
+                .map(|a| (a.fog_report_url(), a.fog_authority_sig()))
+            {
+                Some((Some(url), Some(s))) => {
+                    let mut sig = [0u8; 64];
+                    sig.copy_from_slice(s);
+                    Some((url, sig))
+                }
+                None | Some((None, None)) => None,
+                _ => panic!("Fog url and signature must be both present or both absent"),
+            };
 
             // Build tx out unblinding
             let tx_out_unblinding = TxSummaryAddTxOutUnblinding::new(
                 n as u8,
                 &u.unmasked_amount,
                 u.address.as_ref().map(|a| (a, ShortAddressHash::from(a))),
+                fog_info,
                 u.tx_private_key.map(|k| k.into()),
-            );
+            )?;
 
             // Submit tx out unblinding
-            let resp = ctx.exchange::<TxInfo>(tx_out_unblinding, &mut buff).await?;
+            let resp = self
+                .request::<TxInfo>(tx_out_unblinding, &mut buff, self.info.request_timeout)
+                .await?;
 
             // Check state and expected digest
             let expected_state = match n < summary.outputs.len() - 1 {
@@ -117,7 +137,9 @@ where
             );
 
             // Submit tx out unblinding
-            let resp = ctx.exchange::<TxInfo>(tx_in_summary, &mut buff).await?;
+            let resp = self
+                .request::<TxInfo>(tx_in_summary, &mut buff, self.info.request_timeout)
+                .await?;
 
             // Check state and expected digest
             let expected_state = match n < summary.inputs.len() - 1 {
@@ -137,7 +159,9 @@ where
         };
 
         // Submit summary build request
-        let resp = ctx.exchange::<TxInfo>(b, &mut buff).await?;
+        let resp = self
+            .request::<TxInfo>(b, &mut buff, self.info.request_timeout)
+            .await?;
 
         check_state::<T>(resp.state, TxState::Pending)?;
         //check_digest::<T>(&resp.digest, &ctx.digest)?;

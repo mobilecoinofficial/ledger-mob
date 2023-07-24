@@ -3,7 +3,7 @@
 
 use curve25519_dalek::ristretto::CompressedRistretto;
 use ed25519_dalek::Digest;
-use encdec::Decode;
+use encdec::{Decode, DecodeOwned};
 use sha2::Sha512_256;
 
 use mc_core::{
@@ -12,18 +12,17 @@ use mc_core::{
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, CurveScalar, ReducedTxOut, Scalar};
+use mc_transaction_types::{Amount, MaskedAmount, UnmaskedAmount};
 
-#[cfg(feature = "summary")]
-use mc_transaction_types::{
-    amount::Amount, masked_amount::MaskedAmount, unmasked_amount::UnmaskedAmount,
+use ledger_mob_apdu::{
+    prelude::*,
+    tx::{AddTxInFlags, FogId, TxOnetimeKey, TxRingInitFlags},
 };
-
-use ledger_apdu::{ApduError, ApduStatic};
-use ledger_mob_apdu::{prelude::*, tx::AddTxInFlags};
+use ledger_proto::{ApduError, ApduStatic};
 
 /// [`Engine`][super::Engine] input events, typically decoded from request [APDUs][crate::apdu]
 #[derive(Clone, Debug)]
-pub enum Event<'a> {
+pub enum Event {
     None,
 
     /// Fetch wallet keys
@@ -50,8 +49,8 @@ pub enum Event<'a> {
     /// Request BIP-0017 derived ed25519 identity
     IdentSign {
         ident_index: u32,
-        ident_uri: &'a str,
-        challenge: &'a [u8],
+        ident_uri: heapless::String<32>,
+        challenge: heapless::Vec<u8, 64>,
     },
 
     /// Fetch signed identity
@@ -73,11 +72,10 @@ pub enum Event<'a> {
     },
 
     /// Set transaction message
-    TxSetMessage(&'a [u8]),
+    TxSetMessage(heapless::Vec<u8, 64>),
 
     /// Set transaction summary
     /// (replaces TxSetMessage where streaming verification is supported)
-    #[cfg(feature = "summary")]
     TxSummaryInit {
         message: [u8; 32],
         block_version: u32,
@@ -86,7 +84,6 @@ pub enum Event<'a> {
     },
 
     /// Add output to TxSummary
-    #[cfg(feature = "summary")]
     TxSummaryAddOutput {
         masked_amount: Option<MaskedAmount>,
         target_key: CompressedRistrettoPublic,
@@ -95,15 +92,14 @@ pub enum Event<'a> {
     },
 
     /// Add output unblinding to TxSummary
-    #[cfg(feature = "summary")]
     TxSummaryAddOutputUnblinding {
         unmasked_amount: UnmaskedAmount,
-        address: Option<(ShortAddressHash, PublicSubaddress)>,
+        address: Option<PublicSubaddress>,
+        fog_info: Option<(FogId, [u8; 64])>,
         tx_private_key: Option<TxPrivateKey>,
     },
 
     /// Add input to TxSummary
-    #[cfg(feature = "summary")]
     TxSummaryAddInput {
         pseudo_output_commitment: CompressedCommitment,
         input_rules_digest: Option<[u8; 32]>,
@@ -112,7 +108,6 @@ pub enum Event<'a> {
     },
 
     /// Build complete TxSummary
-    #[cfg(feature = "summary")]
     TxSummaryBuild {
         fee: Amount,
         tombstone_block: u64,
@@ -125,6 +120,7 @@ pub enum Event<'a> {
         subaddress_index: u64,
         value: u64,
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     },
 
     // Setup blinding
@@ -156,17 +152,29 @@ pub enum Event<'a> {
 }
 
 /// Helper for decoding APDUs to events
+///
+/// NOTE: forced-inlining collects the stack into a single frame in [Event::parse]
+/// which makes analysis tidier and is a non-critical frame (outside of [Engine::update] path)
+#[inline(always)]
 fn decode_event<'a, T>(buff: &'a [u8]) -> Result<Event, ApduError>
 where
     T: Decode<'a, Error = ApduError>,
-    Event<'a>: From<T::Output>,
+    Event: From<T::Output>,
 {
     T::decode(buff).map(|(v, _n)| Event::from(v))
 }
 
-impl<'a> Event<'a> {
+impl Event {
+    /// In-place initialisation
+    /// # Safety
+    /// This is safe as long as the pointer is valid
+    pub unsafe fn init(p: *mut Self) {
+        p.write(Self::None);
+    }
+
     /// Parse an incoming APDU to engine event
-    pub fn parse(ins: u8, buff: &'a [u8]) -> Result<Self, ApduError> {
+    #[cfg_attr(feature = "noinline", inline(never))]
+    pub fn parse(ins: u8, buff: &[u8]) -> Result<Self, ApduError> {
         match ins {
             WalletKeyReq::INS => decode_event::<WalletKeyReq>(buff),
             SubaddressKeyReq::INS => decode_event::<SubaddressKeyReq>(buff),
@@ -192,16 +200,16 @@ impl<'a> Event<'a> {
 
             TxSetMessage::INS => decode_event::<TxSetMessage>(buff),
 
-            TxRingInit::INS => TxRingInit::decode(buff).map(|(apdu, _n)| Event::from(apdu)),
+            TxRingInit::INS => decode_event::<TxRingInit>(buff),
             TxSetBlinding::INS => decode_event::<TxSetBlinding>(buff),
-            TxAddTxOut::INS => TxAddTxOut::decode(buff).map(|(apdu, _n)| Event::from(apdu)),
-            TxRingSign::INS => TxRingSign::decode(buff).map(|(apdu, _n)| Event::from(apdu)),
+            TxAddTxOut::INS => decode_event::<TxAddTxOut>(buff),
+            TxRingSign::INS => decode_event::<TxRingSign>(buff),
             TxGetKeyImage::INS => decode_event::<TxGetKeyImage>(buff),
             TxGetResponse::INS => decode_event::<TxGetResponse>(buff),
 
-            TxComplete::INS => TxComplete::decode(buff).map(|(apdu, _n)| Event::from(apdu)),
+            TxComplete::INS => decode_event::<TxComplete>(buff),
 
-            TxInfoReq::INS => TxInfoReq::decode(buff).map(|(apdu, _n)| Event::from(apdu)),
+            TxInfoReq::INS => decode_event::<TxInfoReq>(buff),
             _ => unimplemented!(),
         }
     }
@@ -211,6 +219,7 @@ impl<'a> Event<'a> {
     ///
     /// This calls out to [ledger_mob_apdu::digest] methods for
     /// consistency between events and APDUs.
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn hash(&self) -> Option<[u8; 32]> {
         use ledger_mob_apdu::digest::*;
 
@@ -260,11 +269,13 @@ impl<'a> Event<'a> {
             Event::TxSummaryAddOutputUnblinding {
                 unmasked_amount,
                 address,
+                fog_info,
                 tx_private_key,
             } => digest_tx_summary_add_output_unblinding(
                 unmasked_amount,
                 address.as_ref(),
                 tx_private_key.as_ref(),
+                fog_info.as_ref().map(|(_id, sig)| &sig[..]),
             ),
             Event::TxSummaryAddInput {
                 pseudo_output_commitment,
@@ -287,7 +298,15 @@ impl<'a> Event<'a> {
                 subaddress_index,
                 value,
                 token_id,
-            } => digest_ring_init(*ring_size, *real_index, subaddress_index, value, token_id),
+                onetime_private_key,
+            } => digest_ring_init(
+                *ring_size,
+                *real_index,
+                subaddress_index,
+                value,
+                token_id,
+                onetime_private_key.as_ref(),
+            ),
             Event::TxSetBlinding {
                 blinding,
                 output_blinding,
@@ -302,7 +321,7 @@ impl<'a> Event<'a> {
     }
 }
 
-impl<'a> From<WalletKeyReq> for Event<'a> {
+impl From<WalletKeyReq> for Event {
     fn from(a: WalletKeyReq) -> Self {
         Event::GetWalletKeys {
             account_index: a.account_index,
@@ -310,7 +329,7 @@ impl<'a> From<WalletKeyReq> for Event<'a> {
     }
 }
 
-impl<'a> From<SubaddressKeyReq> for Event<'a> {
+impl From<SubaddressKeyReq> for Event {
     fn from(a: SubaddressKeyReq) -> Self {
         Event::GetSubaddressKeys {
             account_index: a.account_index,
@@ -319,7 +338,7 @@ impl<'a> From<SubaddressKeyReq> for Event<'a> {
     }
 }
 
-impl<'a> From<KeyImageReq> for Event<'a> {
+impl From<KeyImageReq> for Event {
     fn from(a: KeyImageReq) -> Self {
         Event::GetKeyImage {
             account_index: a.account_index,
@@ -329,29 +348,29 @@ impl<'a> From<KeyImageReq> for Event<'a> {
     }
 }
 
-impl<'a> From<RandomReq> for Event<'a> {
+impl From<RandomReq> for Event {
     fn from(_: RandomReq) -> Self {
         Event::GetRandom
     }
 }
 
-impl<'a> From<IdentSignReq<'a>> for Event<'a> {
+impl<'a> From<IdentSignReq<'a>> for Event {
     fn from(i: IdentSignReq<'a>) -> Self {
         Event::IdentSign {
             ident_index: i.identity_index,
-            ident_uri: i.identity_uri,
-            challenge: i.challenge,
+            ident_uri: heapless::String::from(i.identity_uri),
+            challenge: heapless::Vec::from_slice(i.challenge).unwrap(),
         }
     }
 }
 
-impl<'a> From<IdentGetReq> for Event<'a> {
+impl From<IdentGetReq> for Event {
     fn from(_i: IdentGetReq) -> Self {
         Event::IdentGet
     }
 }
 
-impl<'a> From<TxInit> for Event<'a> {
+impl From<TxInit> for Event {
     fn from(a: TxInit) -> Self {
         Event::TxInit {
             account_index: a.account_index,
@@ -360,7 +379,7 @@ impl<'a> From<TxInit> for Event<'a> {
     }
 }
 
-impl<'a> From<TxMemoSign> for Event<'a> {
+impl From<TxMemoSign> for Event {
     fn from(a: TxMemoSign) -> Self {
         Event::TxSignMemo {
             subaddress_index: a.subaddress_index,
@@ -373,7 +392,7 @@ impl<'a> From<TxMemoSign> for Event<'a> {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryInit> for Event<'a> {
+impl From<TxSummaryInit> for Event {
     fn from(a: TxSummaryInit) -> Self {
         Event::TxSummaryInit {
             message: a.message,
@@ -385,7 +404,7 @@ impl<'a> From<TxSummaryInit> for Event<'a> {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryAddTxOut> for Event<'a> {
+impl From<TxSummaryAddTxOut> for Event {
     fn from(a: TxSummaryAddTxOut) -> Self {
         Event::TxSummaryAddOutput {
             masked_amount: a.masked_amount(),
@@ -397,7 +416,7 @@ impl<'a> From<TxSummaryAddTxOut> for Event<'a> {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryAddTxOutUnblinding> for Event<'a> {
+impl From<TxSummaryAddTxOutUnblinding> for Event {
     fn from(a: TxSummaryAddTxOutUnblinding) -> Self {
         Event::TxSummaryAddOutputUnblinding {
             unmasked_amount: UnmaskedAmount {
@@ -406,13 +425,14 @@ impl<'a> From<TxSummaryAddTxOutUnblinding> for Event<'a> {
                 blinding: CurveScalar::from(a.blinding),
             },
             address: a.address(),
+            fog_info: a.fog_info(),
             tx_private_key: a.tx_private_key().cloned(),
         }
     }
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryAddTxIn> for Event<'a> {
+impl From<TxSummaryAddTxIn> for Event {
     fn from(a: TxSummaryAddTxIn) -> Self {
         let input_rules_digest = match a.flags.contains(AddTxInFlags::HAS_INPUT_RULES) {
             true => Some(a.input_rules_digest),
@@ -428,7 +448,7 @@ impl<'a> From<TxSummaryAddTxIn> for Event<'a> {
 }
 
 #[cfg(feature = "summary")]
-impl<'a> From<TxSummaryBuild> for Event<'a> {
+impl From<TxSummaryBuild> for Event {
     fn from(a: TxSummaryBuild) -> Self {
         Event::TxSummaryBuild {
             fee: Amount {
@@ -440,19 +460,25 @@ impl<'a> From<TxSummaryBuild> for Event<'a> {
     }
 }
 
-impl<'a> From<TxRingInit> for Event<'a> {
+impl From<TxRingInit> for Event {
     fn from(a: TxRingInit) -> Self {
+        let onetime_private_key = match a.flags.contains(TxRingInitFlags::HAS_ONETIME_PRIVATE_KEY) {
+            true => Some(a.onetime_private_key),
+            false => None,
+        };
+
         Event::TxRingInit {
             ring_size: a.ring_size,
             real_index: a.real_index,
             subaddress_index: a.subaddress_index,
             value: a.value,
             token_id: a.token_id,
+            onetime_private_key,
         }
     }
 }
 
-impl<'a> From<TxSetBlinding> for Event<'a> {
+impl From<TxSetBlinding> for Event {
     fn from(a: TxSetBlinding) -> Self {
         Event::TxSetBlinding {
             blinding: a.blinding,
@@ -461,13 +487,13 @@ impl<'a> From<TxSetBlinding> for Event<'a> {
     }
 }
 
-impl<'a> From<TxSetMessage<'a>> for Event<'a> {
+impl<'a> From<TxSetMessage<'a>> for Event {
     fn from(a: TxSetMessage<'a>) -> Self {
-        Event::TxSetMessage(a.message)
+        Event::TxSetMessage(heapless::Vec::from_slice(a.message).unwrap())
     }
 }
 
-impl<'a> From<TxAddTxOut> for Event<'a> {
+impl From<TxAddTxOut> for Event {
     fn from(a: TxAddTxOut) -> Self {
         let commitment: &CompressedRistretto = a.commitment.as_ref();
 
@@ -482,19 +508,19 @@ impl<'a> From<TxAddTxOut> for Event<'a> {
     }
 }
 
-impl<'a> From<TxRingSign> for Event<'a> {
+impl From<TxRingSign> for Event {
     fn from(_: TxRingSign) -> Self {
         Event::TxSign
     }
 }
 
-impl<'a> From<TxGetKeyImage> for Event<'a> {
+impl From<TxGetKeyImage> for Event {
     fn from(_: TxGetKeyImage) -> Self {
         Event::TxGetKeyImage {}
     }
 }
 
-impl<'a> From<TxGetResponse> for Event<'a> {
+impl From<TxGetResponse> for Event {
     fn from(a: TxGetResponse) -> Self {
         Event::TxGetResponse {
             index: a.ring_index,
@@ -502,13 +528,13 @@ impl<'a> From<TxGetResponse> for Event<'a> {
     }
 }
 
-impl<'a> From<TxComplete> for Event<'a> {
+impl From<TxComplete> for Event {
     fn from(_: TxComplete) -> Self {
         Event::TxComplete
     }
 }
 
-impl<'a> From<TxInfoReq> for Event<'a> {
+impl From<TxInfoReq> for Event {
     fn from(_: TxInfoReq) -> Self {
         Event::TxGetInfo
     }

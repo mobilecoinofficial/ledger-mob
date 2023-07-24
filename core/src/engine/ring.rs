@@ -1,7 +1,11 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
+use core::ptr::addr_of_mut;
+
 use heapless::Vec;
+use ledger_mob_apdu::tx::TxOnetimeKey;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
+use zeroize::Zeroize;
 
 use super::{Error, Event, Output};
 use mc_core::keys::{RootViewPrivate, SubaddressSpendPrivate};
@@ -18,8 +22,11 @@ pub const RING_SIZE: usize = 11;
 /// Ring response size (2 * RING_SIZE)
 pub const RESP_SIZE: usize = RING_SIZE * 2;
 
+/// Maximum message size
+const MESSAGE_MAX: usize = 66;
+
 /// Heapless based MlsagSignCtx
-pub type SignCtx = MlsagSignCtx<heapless::Vec<CurveScalar, RESP_SIZE>>;
+pub type SignCtx = MlsagSignCtx<Vec<CurveScalar, RESP_SIZE>>;
 
 /// Ring signing states
 #[derive(Copy, Clone, PartialEq, Debug, EnumString, Display, EnumVariantNames, EnumIter)]
@@ -61,7 +68,7 @@ pub struct RingSigner {
     real_index: usize,
 
     /// Message for signing in ring
-    message: Vec<u8, 66>,
+    message: Vec<u8, MESSAGE_MAX>,
 
     /// Generator for the ring (derived from token_id)
     generator: PedersenGens,
@@ -84,6 +91,7 @@ struct Blindings {
 
 impl RingSigner {
     /// Create new RingSigner instance with provided params
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ring_size: usize,
         real_index: usize,
@@ -92,14 +100,24 @@ impl RingSigner {
         value: u64,
         message: &[u8],
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<Self, Error> {
+        // Check ring size and real index are valid (MOB-06.4)
+        if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
+            return Err(Error::RingInitFailed);
+        }
+        // Check message length is valid
+        if message.len() > MESSAGE_MAX {
+            return Err(Error::RingInitFailed);
+        }
+
         Ok(Self {
             state: RingState::Init,
             ring_size,
             real_index,
             root_view_private: root_view_private.clone(),
             subaddress_spend_private: subaddress_spend_private.clone(),
-            onetime_private_key: None,
+            onetime_private_key: onetime_private_key.map(|k| k.inner()),
             value,
             message: Vec::from_slice(message).map_err(|_| Error::InvalidLength)?,
             generator: generators(token_id),
@@ -109,10 +127,13 @@ impl RingSigner {
         })
     }
 
+    /// Create new RingSigner instance with provided params (out-pointer version)
+    ///
     /// out-pointer based init to avoid stack allocation
     /// used by `Function::ring_sign_init`
     /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
     #[allow(clippy::too_many_arguments)]
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub(crate) unsafe fn init(
         p: *mut Self,
         ring_size: usize,
@@ -122,28 +143,44 @@ impl RingSigner {
         value: u64,
         message: &[u8],
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<(), Error> {
-        p.write(Self {
-            state: RingState::Init,
-            ring_size,
-            real_index,
-            root_view_private: root_view_private.clone(),
-            subaddress_spend_private: subaddress_spend_private.clone(),
-            onetime_private_key: None,
-            value,
-            message: Vec::from_slice(message).map_err(|_| Error::InvalidLength)?,
-            generator: generators(token_id),
-            blindings: None,
-            ring_ctx: None,
-            fetch_count: 0,
-        });
+        // Check ring size and real inputs are valid (MOB-06.4)
+        if ring_size > RING_SIZE || real_index > RING_SIZE || real_index > ring_size {
+            return Err(Error::RingInitFailed);
+        }
+        // Check message length is valid
+        if message.len() > MESSAGE_MAX {
+            return Err(Error::RingInitFailed);
+        }
+
+        // Per-field init to avoid allocating a whole object just for setup
+        // (another stack use minimization hijink)
+        addr_of_mut!((*p).state).write(RingState::Init);
+        addr_of_mut!((*p).ring_size).write(ring_size);
+        addr_of_mut!((*p).real_index).write(real_index);
+        addr_of_mut!((*p).root_view_private).write(root_view_private.clone());
+        addr_of_mut!((*p).subaddress_spend_private).write(subaddress_spend_private.clone());
+
+        let onetime_private_key = onetime_private_key.map(|k| k.inner());
+        addr_of_mut!((*p).onetime_private_key).write(onetime_private_key);
+
+        addr_of_mut!((*p).value).write(value);
+        addr_of_mut!((*p).message)
+            .write(Vec::from_slice(message).map_err(|_| Error::InvalidLength)?);
+        addr_of_mut!((*p).generator).write(generators(token_id));
+        addr_of_mut!((*p).blindings).write(None);
+        addr_of_mut!((*p).ring_ctx).write(None);
+        addr_of_mut!((*p).fetch_count).write(0);
+
         Ok(())
     }
 
     /// Update RingSigner with the provided event
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn update(
         &mut self,
-        evt: &Event<'_>,
+        evt: &Event,
         rng: impl RngCore + CryptoRng,
     ) -> Result<(RingState, Output), Error> {
         #[cfg(feature = "log")]
@@ -189,8 +226,8 @@ impl RingSigner {
                     return Err(e);
                 };
 
-                // Move on when we have enough ring entries
-                if n as usize == self.ring_size - 1 {
+                // Move on when we have enough ring entries (MOB-06.4)
+                if (n + 1) as usize == self.ring_size {
                     self.state = RingState::Execute;
                 } else {
                     self.state = RingState::BuildRing(n + 1);
@@ -235,8 +272,10 @@ impl RingSigner {
                     None => return Err(Error::UnexpectedEvent),
                 };
 
-                // Update last index for progress indication
-                self.fetch_count += 1;
+                // Update last index for progress indication (MOB-06.9)
+                if self.fetch_count < self.ring_size * 2 {
+                    self.fetch_count += 1;
+                }
 
                 return Ok((
                     self.state,
@@ -274,6 +313,7 @@ impl RingSigner {
     }
 
     /// Internal helper to setup MLSAG
+    #[cfg_attr(feature = "noinline", inline(never))]
     fn ring_init(
         &mut self,
         real_txout: &ReducedTxOut,
@@ -297,7 +337,7 @@ impl RingSigner {
         };
 
         // Recover onetime_private_key for real txout
-        let onetime_private_key = recover_onetime_private_key(
+        let mut onetime_private_key = recover_onetime_private_key(
             &tx_out_public_key,
             self.root_view_private.as_ref(),
             self.subaddress_spend_private.as_ref(),
@@ -305,11 +345,10 @@ impl RingSigner {
 
         // Check this is the correct onetime private key for the txout
         if RistrettoPublic::from(&onetime_private_key) != tx_out_target_key {
+            // Zeroize recovered key on failure (MOB-01.3)
+            onetime_private_key.zeroize();
             return Err(Error::OnetimeKeyRecoveryFailed);
         }
-
-        // Store this for future computations
-        self.onetime_private_key = Some(onetime_private_key);
 
         // Setup signing context
         let sign_params = MlsagSignParams {
@@ -321,28 +360,41 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            // TODO: is this important..?
             check_value_is_preserved: false,
         };
 
         // Setup response storage, this _must_ be ring_size * 2 or init will fail
+        // NOTE: switched to this approach to avoid miri complaints, costs us ~1.5k of stack but, we have the headroom on the nanosplus and nanox support requires the stack fix anyway.
+        // TODO: work out whether we can push storage of this up to the global context to reduce stack use.
         let mut responses = heapless::Vec::<_, RESP_SIZE>::new();
-        let _ = responses.resize(self.ring_size * 2, CurveScalar::from(Scalar::zero()));
+        responses
+            .resize(self.ring_size * 2, CurveScalar::default())
+            .unwrap();
 
         match MlsagSignCtx::init(&sign_params, rng, responses) {
-            Ok(ctx) => self.ring_ctx = Some(ctx),
-            Err(_e) => return Err(Error::RingInitFailed),
+            Ok(ctx) => {
+                // Store context
+                self.onetime_private_key = Some(onetime_private_key);
+                self.ring_ctx = Some(ctx);
+            }
+            Err(_e) => {
+                // Clear onetime private key
+                onetime_private_key.zeroize();
+                // Fail out
+                return Err(Error::RingInitFailed);
+            }
         }
 
         Ok(())
     }
 
     /// Internal helper to update MLSAG
-    pub(crate) fn ring_update(&mut self, index: usize, tx_out: &ReducedTxOut) -> Result<(), Error> {
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn ring_update(&mut self, index: usize, tx_out: &ReducedTxOut) -> Result<(), Error> {
         // Check we have a signing context and blindings
         let ring_ctx = match self.ring_ctx.as_mut() {
             Some(v) => v,
-            None => return Err(Error::UnexpectedEvent),
+            None => return Err(Error::InvalidState),
         };
         let blindings = match &self.blindings {
             Some(b) => b,
@@ -364,7 +416,6 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            // TODO: is this important..?
             check_value_is_preserved: false,
         };
 
@@ -374,26 +425,27 @@ impl RingSigner {
         // Add txout to ring
         ring_ctx
             .update(&sign_params, index, &tx_out)
-            .map_err(|_e| Error::SignError)?;
+            .map_err(|_e| Error::RingUpdateFailed)?;
 
         Ok(())
     }
 
     /// Internal helper to finalise MLSAG
+    #[cfg_attr(feature = "noinline", inline(never))]
     fn ring_finalise(&mut self) -> Result<(KeyImage, CurveScalar), Error> {
         let ring_ctx = match self.ring_ctx.as_mut() {
             Some(v) => v,
-            None => return Err(Error::UnexpectedEvent),
+            None => return Err(Error::InvalidState),
         };
 
         let blindings = match &self.blindings {
             Some(b) => b,
-            _ => return Err(Error::UnexpectedEvent),
+            _ => return Err(Error::MissingBlindings),
         };
 
         let onetime_private_key = match &self.onetime_private_key {
             Some(k) => k,
-            _ => return Err(Error::UnexpectedEvent),
+            _ => return Err(Error::MissingOnetimePrivateKey),
         };
 
         let sign_params = MlsagSignParams {
@@ -405,7 +457,6 @@ impl RingSigner {
             blinding: &blindings.blinding,
             output_blinding: &blindings.output_blinding,
             generator: &self.generator,
-            // TODO: is this important..?
             check_value_is_preserved: false,
         };
 
@@ -424,6 +475,8 @@ impl RingSigner {
 
 #[cfg(test)]
 mod test {
+    use core::mem::MaybeUninit;
+
     use rand_core::OsRng;
 
     use mc_core::{account::RingCtAddress, subaddress::Subaddress};
@@ -458,19 +511,25 @@ mod test {
         let params =
             RingMLSAGParameters::random(&account, RING_SIZE - 1, pseudo_output_blinding, &mut rng);
 
-        // Start ring signing
-        let mut ring_signer = RingSigner::new(
-            RING_SIZE,
-            params.real_index,
-            account.view_private_key(),
-            account
-                .subaddress(params.target_subaddress_index)
-                .spend_private_key(),
-            params.value,
-            &params.message,
-            params.token_id,
-        )
-        .unwrap();
+        // Setup ring signer
+        let mut r = MaybeUninit::uninit();
+        let mut ring_signer = unsafe {
+            RingSigner::init(
+                r.as_mut_ptr(),
+                RING_SIZE,
+                params.real_index,
+                account.view_private_key(),
+                account
+                    .subaddress(params.target_subaddress_index)
+                    .spend_private_key(),
+                params.value,
+                &params.message,
+                params.token_id,
+                None,
+            )
+            .unwrap();
+            r.assume_init()
+        };
 
         let progress_total = RING_SIZE * 3 + 2;
 
@@ -550,7 +609,7 @@ mod test {
         };
 
         // Fetch responses
-        let mut responses = vec![];
+        let mut responses = alloc::vec::Vec::new();
 
         for i in 0..RESP_SIZE {
             let (_state, output) = ring_signer
