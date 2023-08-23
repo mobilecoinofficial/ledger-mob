@@ -62,7 +62,7 @@ impl<'a> ApduStatic for IdentSignReq<'a> {
 impl<'a> Encode for IdentSignReq<'a> {
     type Error = ApduError;
 
-    /// Encode an [`IdentReq`] APDU into the provided buffer
+    /// Encode an [`IdentSignReq`] APDU into the provided buffer
     #[inline]
     fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         let mut index = 0;
@@ -108,7 +108,7 @@ impl<'a> Decode<'a> for IdentSignReq<'a> {
     type Output = Self;
     type Error = ApduError;
 
-    /// Decode a [`IdentReq`] APDU from the provided buffer
+    /// Decode a [`IdentSignReq`] APDU from the provided buffer
     #[inline]
     fn decode(buff: &'a [u8]) -> Result<(Self, usize), ApduError> {
         let mut index = 0;
@@ -198,7 +198,7 @@ pub struct IdentResp {
 }
 
 impl IdentResp {
-    /// Create a new [`KeyImage`] APDU
+    /// Create a new [`IdentResp`] APDU
     pub fn new(public_key: [u8; 32], signature: [u8; 64]) -> Self {
         Self {
             public_key,

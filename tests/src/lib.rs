@@ -2,7 +2,7 @@
 
 //! Tests for mobilecoin wallet integration.
 //!
-//! Generic over [ledger_transport::Exchange] for reuse.
+//! Generic over [ledger_lib::Exchange] for reuse.
 //!
 
 pub mod wallet;
