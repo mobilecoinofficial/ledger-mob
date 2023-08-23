@@ -66,7 +66,7 @@ impl Settings {
         let name = fog_name(fog);
 
         // Display current selection
-        "Fog ID".place(Location::Custom(8), Layout::Centered, false);
+        "Fog ID".place(Location::Custom(8), Layout::Centered, true);
         name.place(Location::Custom(26), Layout::Centered, false);
 
         // Update screen
