@@ -3,7 +3,7 @@
 //! Handle for connected ledger devices
 //!
 //! This provides methods for interacting with the device
-//! and is generic over [Exchange]
+//! and is generic over [ledger_lib::Device]
 
 use std::{sync::Arc, time::Duration};
 

@@ -1,6 +1,6 @@
 //! Helpers for computing APDU / event digests
 //!
-//! This is used instead of [Digestible] as the same digest must be computed over [ledger_mob_core::engine::Event]s and APDUs.
+//! This is used in place of `Digestible` as the same digest must be computed over engine events and APDUs.
 
 use sha2::{Digest as _, Sha512_256};
 

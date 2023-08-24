@@ -67,7 +67,37 @@ impl TxSummaryInit {
 
 /// Add TxOutSummary to the summary
 ///
-/// See [mc_transaction_core::tx_summary::TxOutSummary] for equivalence
+/// See [mc_transaction_core::tx_summary::TxOutSummary] for an equivalent MobileCoin core object.
+///
+/// ## Encoding:
+/// ```text
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |     FLAGS     |    INDEX      |            RESERVED           |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                         MASKED_VALUE                          |
+/// |                        (u64, 8-byte)                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                        MASKED_TOKEN_ID                        |
+/// |                        (u64, 8-byte)                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /                           COMMITMENT                          /
+/// /                 (32-byte Compressed Ristretto Point)          /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /                        TXOUT_TARGET_KEY                       /
+/// /           (32-byte Compressed Ristretto Public Key)           /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /                           PUBLIC_KEY                          /
+/// /           (32-byte Compressed Ristretto Public Key)           /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// ```
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 #[encdec(error = "ApduError")]
 pub struct TxSummaryAddTxOut {
@@ -192,7 +222,50 @@ impl TxSummaryAddTxOut {
 
 /// Add TxOutSummaryUnblinding to the summary
 ///
-///
+/// ## Encoding:
+/// ```text
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |     FLAGS     |    INDEX      |    FOG_ID     |   RESERVED    |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                        UNMASKED_VALUE                         |
+/// |                        (u64, 8-byte)                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                            TOKEN_ID                           |
+/// |                        (u64, 8-byte)                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /                            BLINDING                           /
+/// /                   (32-byte Ristretto Scalar)                  /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /      TARGET_SPEND_PUBLIC_KEY (Optional, see HAS_ADDRESS)      /
+/// /                (32-byte Ristretto Public Key)                 /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /      TARGET_VIEW_PUBLIC_KEY (Optional, see HAS_ADDRESS)       /
+/// /                 (32-byte Ristretto Public Key)                /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /                        TXOUT_TARGET_KEY                       /
+/// /           (32-byte Compressed Ristretto Public Key)           /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /       TXOUT_PRIVATE_KEY (optional, see HAS_PRIVATE_KEY)       /
+/// /          (32-byte Compressed Ristretto Private Key)           /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /    FOG_AUTHORITY_SIG (optional, see HAS_FOG_AUTHORITY_SIG)    /
+/// /               (64-byte Fog Authority Signature)               /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// ```
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 #[encdec(error = "ApduError")]
 pub struct TxSummaryAddTxOutUnblinding {
@@ -488,7 +561,35 @@ impl TxSummaryAddTxOutUnblinding {
 
 /// Add TxInSummary for a transaction
 ///
-///
+/// ## Encoding:
+/// ```text
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |     FLAGS     |    INDEX      |            RESERVED           |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /                    PSEUDO_OUTPUT_COMMITMENT                   /
+/// /              (32-byte Compressed Ristretto Point)             /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                        UNMASKED_VALUE                         |
+/// |                        (u64, 8-byte)                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                           TOKEN_ID                            |
+/// |                         (u64, 8-byte)                         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /                           BLINDING                            /
+/// /                   (32-byte Ristretto Scalar)                  /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                                                               |
+/// /      INPUT_RULES_DIGEST (optional, see HAS_INPUT_RULES)       /
+/// /                 (32-byte Input Rules Digest)                  /
+/// |                                                               |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// ```
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 #[encdec(error = "ApduError")]
 pub struct TxSummaryAddTxIn {
@@ -582,7 +683,21 @@ impl TxSummaryAddTxIn {
 
 /// Complete TxSummary building
 ///
-///
+/// ## Encoding:
+/// ```text
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                           FEE_VALUE                           |
+/// |                         (u64, 8-byte)                         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                         FEE_TOKEN_ID                          |
+/// |                         (u64, 8-byte)                         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                        TOMBSTONE_BLOCK                        |
+/// |                         (u64, 8-byte)                         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// ```
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 #[encdec(error = "ApduError")]
 pub struct TxSummaryBuild {

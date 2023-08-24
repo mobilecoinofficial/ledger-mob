@@ -11,7 +11,7 @@ use sha2::{Digest as _, Sha512_256};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
 /// Engine state enumeration
-/// used in [`TxInfo`] to communicate transaction progress
+/// used in [crate::tx::TxInfo] to communicate transaction progress
 #[derive(
     Copy, Clone, PartialEq, Debug, EnumString, Display, EnumVariantNames, EnumIter, TryFromPrimitive,
 )]

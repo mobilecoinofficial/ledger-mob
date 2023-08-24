@@ -37,7 +37,7 @@ pub struct Summarizer<const MAX_RECORDS: usize = 16> {
     num_inputs: usize,
 }
 
-/// [Summarizer] state enumeration
+/// Summarizer state enumeration
 #[derive(
     Copy, Clone, PartialEq, Debug, Default, EnumString, Display, EnumVariantNames, EnumIter,
 )]

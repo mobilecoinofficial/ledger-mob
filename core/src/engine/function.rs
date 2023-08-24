@@ -66,7 +66,7 @@ impl Function {
     /// Setup ring-signer context
     ///
     /// this uses out-pointer based init to avoid stack allocation
-    /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
+    /// see: <https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers>
     #[cfg(feature = "mlsag")]
     #[allow(clippy::too_many_arguments)]
     #[cfg_attr(feature = "noinline", inline(never))]
@@ -138,7 +138,7 @@ impl Function {
     /// Setup summarizer context
     ///
     /// this uses out-pointer based init to avoid stack allocation
-    /// see: https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers
+    /// see: <https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers>
     #[cfg(feature = "summary")]
     #[cfg_attr(feature = "noinline", inline(never))]
     pub fn summarizer_init(

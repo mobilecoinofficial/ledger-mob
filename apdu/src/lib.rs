@@ -13,6 +13,7 @@
 //! 32-bit field alignment to reduce the need for unaligned access on constrained platforms.
 //! All field encodings are little-endian, because most of the world is these days.
 //!
+//! See [Instruction] for APDU instruction codes.
 //!
 
 #![no_std]

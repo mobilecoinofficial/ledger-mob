@@ -33,7 +33,7 @@ nanox-test: nanox
 
 # Build docs
 docs:
-	cargo doc --no-deps
+	cargo doc --no-deps --workspace
 
 # Build nanosplus firmware
 nanosplus: 
@@ -129,4 +129,4 @@ miri:
 clean:
 	rm -rf target fw/target
 
-.PHONY: fw lib core nanosplus nanox fmt clippy clean
+.PHONY: fw lib core nanosplus nanox fmt clippy clean docs
