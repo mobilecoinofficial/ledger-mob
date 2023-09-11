@@ -186,8 +186,9 @@ extern "C" fn sample_main() {
                     // Execute lock syscall (blocks on pin entry)
                     request_pin_validation();
 
-                    // Reset timeout on re-entry
+                    // Reset timeout and redraw on re-entry
                     lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);
+                    redraw = true;
                 }
             }
         };

@@ -1,6 +1,6 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-/// [Engine] errors
+/// [super::Engine] errors
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "thiserror", derive(thiserror::Error))]
 #[repr(u8)]

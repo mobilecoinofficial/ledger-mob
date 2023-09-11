@@ -3,7 +3,7 @@
 A [MobileCoin][1] NanoApp for [Ledger][2] `nanosplus` and `nanox` devices.
 You can grab the latest (unsigned) firmware and tooling [here](https://github.com/mobilecoinofficial/ledger-mob/releases), or follow the [Getting Started](#Getting-Started) instructions to build your own.
 
-For application interaction or integration see the [library](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob/index.html) and [APDU](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob_apdu/index.html) documentation.
+For application interaction or integration see the [library](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob/index.html), [Engine](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob_core/index.html) and [APDU](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob_apdu/index.html) documentation.
 
 ## Status
 

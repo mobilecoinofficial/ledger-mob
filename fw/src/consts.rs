@@ -11,7 +11,8 @@ use ledger_mob_core::apdu::app_info::AppFlags;
 
 /// App Information
 pub const APP_NAME: &str = "MobileCoin";
-pub const APP_VERSION: &str = env!("GIT_TAG");
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const GIT_VERSION: &str = env!("GIT_TAG");
 pub const BUILD_TIME: &str = env!("BUILD_TIME");
 
 pub fn app_flags() -> AppFlags {

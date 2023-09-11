@@ -2,7 +2,7 @@
 
 //! Transaction related APDUs, used to execute a transaction via the hardware wallet.
 //!
-//! See [crate::engine] for interaction and state machines
+//! See [ledger_mob_core::engine] for interaction and state machines
 
 use encdec::{Decode, Encode};
 use ledger_proto::ApduStatic;

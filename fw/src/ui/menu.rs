@@ -13,7 +13,7 @@ use nanos_ui::{
 use ledger_mob_core::engine::{Driver, Engine};
 
 use super::{clear_screen, UiResult};
-use crate::consts::MOB32X32;
+use crate::consts::{APP_VERSION, MOB32X32};
 
 #[derive(Copy, Clone, Debug, PartialEq, EnumCount)]
 pub enum MenuState {
@@ -37,6 +37,9 @@ pub const MENU_STATES: &[MenuState] = &[
     MenuState::Settings,
     MenuState::Exit,
 ];
+
+const ICON_OFFSET: i16 = -8;
+const TEXT_OFFSET: usize = 34;
 
 impl UiMenu {
     pub const fn new() -> Self {
@@ -84,19 +87,35 @@ impl UiMenu {
         // Render pages
         match state {
             MenuState::Hello => {
-                "M O B I L E C O I N".place(Location::Custom(8), Layout::Centered, false);
-                MOB32X32.draw((128 - 32) / 2, 24);
+                MOB32X32.draw((128 - 32) / 2, 2);
+                "MobileCoin".place(Location::Custom(38), Layout::Centered, true);
+                "is ready".place(Location::Custom(50), Layout::Centered, false);
             }
             MenuState::Address => {
-                "Address".place(Location::Middle, Layout::Centered, false);
+                CERTIFICATE_ICON
+                    .shift_v(ICON_OFFSET)
+                    .shift_h((128 - 16) / 2)
+                    .display();
+                "Address".place(Location::Custom(TEXT_OFFSET), Layout::Centered, true);
             }
             MenuState::Version => {
-                "App Info".place(Location::Middle, Layout::Centered, false);
+                "Version".place(Location::Custom(20), Layout::Centered, true);
+                APP_VERSION.place(Location::Custom(36), Layout::Centered, false);
             }
             MenuState::Settings => {
-                "Settings".place(Location::Middle, Layout::Centered, false);
+                COGGLE_ICON
+                    .shift_v(ICON_OFFSET)
+                    .shift_h((128 - 16) / 2)
+                    .display();
+                "Settings".place(Location::Custom(TEXT_OFFSET), Layout::Centered, true);
             }
-            MenuState::Exit => "Exit".place(Location::Middle, Layout::Centered, false),
+            MenuState::Exit => {
+                DASHBOARD_X_ICON
+                    .shift_v(ICON_OFFSET)
+                    .shift_h((128 - 16) / 2)
+                    .display();
+                "Exit".place(Location::Custom(TEXT_OFFSET), Layout::Centered, true)
+            }
         }
 
         // Update screen
