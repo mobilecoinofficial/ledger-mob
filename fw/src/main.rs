@@ -89,8 +89,6 @@ extern "C" fn sample_main() {
 
     let mut redraw = true;
 
-    nanos_ui::ui::popup("Pending Review");
-
     #[cfg(feature = "alloc")]
     platform::allocator::init();
 
