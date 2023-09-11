@@ -34,7 +34,7 @@ nvm = []
 alloc = [ "embedded-alloc", "critical-section", "ledger-mob-core/alloc" ]
 noinline = [ "ledger-mob-core/noinline" ]
 
-default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline", "pre-release" ]
+default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
 nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk", branch = "master" }
