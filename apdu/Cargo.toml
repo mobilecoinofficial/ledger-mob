@@ -33,12 +33,12 @@ sha2 = { version = "0.10.6", default_features = false }
 
 ledger-proto = { version = "0.1.0", default_features = false }
 
-mc-core = { version = "4.1.0-pre0", default_features = false, features = [ "internals" ] }
-mc-crypto-digestible = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-keys = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-ring-signature = { version = "4.1.0-pre0", default_features = false }
-mc-transaction-types = { version = "4.1.0-pre0", default_features = false }
-mc-util-from-random = { version = "4.1.0-pre0", default_features = false }
+mc-core = { version = "5", default_features = false, features = [ "internals" ] }
+mc-crypto-digestible = { version = "5", default_features = false }
+mc-crypto-keys = { version = "5", default_features = false }
+mc-crypto-ring-signature = { version = "5", default_features = false }
+mc-transaction-types = { version = "5", default_features = false }
+mc-util-from-random = { version = "5", default_features = false }
 
 
 [dev-dependencies]
