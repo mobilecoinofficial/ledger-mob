@@ -1069,14 +1069,14 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys-types"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-core"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -1091,7 +1091,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core-types"
-version = "2.0.0"
+version = "5.0.8"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "cfg-if",
  "curve25519-dalek",
@@ -1114,7 +1114,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1123,7 +1123,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel-og",
@@ -1132,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "blake2",
  "digest",
@@ -1141,7 +1141,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "base64",
  "curve25519-dalek",
@@ -1168,7 +1168,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "hmac",
  "mc-crypto-keys",
@@ -1177,7 +1177,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1196,14 +1196,14 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-transaction-summary"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "displaydoc",
  "heapless",
@@ -1220,7 +1220,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-types"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "crc",
  "displaydoc",
@@ -1237,21 +1237,21 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "generic-array",
 ]
 
 [[package]]
 name = "mc-util-vec-map"
-version = "4.1.0-pre0"
+version = "5.0.8"
 dependencies = [
  "displaydoc",
  "heapless",
@@ -1259,7 +1259,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "4.1.0-pre0"
+version = "5.0.8"
 
 [[package]]
 name = "memoffset"
