@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["TxState","Engine state enumeration used in [crate::tx::TxInfo] to communicate transaction progress"]],"struct":[["Digest","Transaction digest, used to keep a running digest of inputs to the transaction engine to ensure sync between the host and hardware wallet."],["TxStateIter","An iterator over the variants of [Self]"]]};

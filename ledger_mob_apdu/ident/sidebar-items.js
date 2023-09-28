@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["IdentGetReq","Fetch an identity object from the device following user approval returns [`IdentResp`] APDU."],["IdentResp","Identity key response APDU, contains derived ed25519 public key"],["IdentSignReq","Request an ed25519 identity for provided URI and index, returning a state object."]]};

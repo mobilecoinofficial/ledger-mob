@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["TransactionHandle","Handle to a hardware wallet configured for transaction execution"],["TxConfig","Configuration for a transaction operation"]]};

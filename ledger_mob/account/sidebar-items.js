@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["AccountHandle","Handle to a hardware wallet configured with an account index"]]};

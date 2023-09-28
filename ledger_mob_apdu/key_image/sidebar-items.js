@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["KeyImageReq","Resolve a key image for a specific subaddress and `txout_public_key`"],["KeyImageResp","Key image response APDU"]]};

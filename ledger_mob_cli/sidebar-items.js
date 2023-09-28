@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["Actions",""]],"fn":[["execute","Execute a command with the provided transport"],["main",""],["read_input","Helper to read input files where required"],["write_output","Helper to write output files if `--output` argument is provided"]],"mod":[["helpers",""]],"struct":[["Options","Ledger command line utility"]]};

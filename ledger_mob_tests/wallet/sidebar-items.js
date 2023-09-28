@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["test","Generate and fetch account view keys for the provided mnemonic"]]};
