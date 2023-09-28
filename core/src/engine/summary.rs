@@ -327,6 +327,11 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         // Finalise verification report
         verifier.finalize(fee, tombstone_block, digest, &mut self.report);
 
+        // Elide SCIs from totals for rendering
+        // TODO: we may wish to revisit this when SCIs are widely used
+        self.report.elide_swap_totals();
+
+        // Set complete state
         self.state = SummaryState::Complete;
 
         // Return message and report

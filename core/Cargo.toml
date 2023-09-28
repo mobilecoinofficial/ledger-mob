@@ -70,16 +70,16 @@ ledger-mob-apdu = { path = "../apdu", default_features = false }
 
 ledger-proto = { version = "0.1.0", default_features = false }
 
-mc-core = { version = "4.1.0-pre0", default_features = false, features = [ "internals" ] }
-mc-crypto-digestible = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-keys = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-hashes = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-ring-signature = { version = "4.1.0-pre0", optional = true, default_features = false, features = [ "internals" ] }
-mc-crypto-memo-mac = { version = "4.1.0-pre0", optional = true, default_features = false }
-mc-fog-sig-authority = { version = "4.1.0-pre0", default_features = false }
-mc-transaction-types = { version = "4.1.0-pre0", default_features = false }
-mc-transaction-summary = { version = "4.1.0-pre0", default_features = false, optional = true }
-mc-util-from-random = { version = "4.1.0-pre0", default_features = false }
+mc-core = { version = "5", default_features = false, features = [ "internals" ] }
+mc-crypto-digestible = { version = "5", default_features = false }
+mc-crypto-keys = { version = "5", default_features = false }
+mc-crypto-hashes = { version = "5", default_features = false }
+mc-crypto-ring-signature = { version = "5", optional = true, default_features = false, features = [ "internals" ] }
+mc-crypto-memo-mac = { version = "5", optional = true, default_features = false }
+mc-fog-sig-authority = { version = "5", default_features = false }
+mc-transaction-types = { version = "5", default_features = false }
+mc-transaction-summary = { version = "5", default_features = false, optional = true }
+mc-util-from-random = { version = "5", default_features = false }
 
 
 # used by bulletproofs-og, no_cc feature required for cross compilation
@@ -103,8 +103,8 @@ tokio = { version = "1.20.1", features = [ "full" ] }
 async-trait = "0.1.57"
 
 
-mc-account-keys = { version = "4.1.0-pre0", default_features = false, features = [ "serde" ] }
-mc-api = { version = "4.1.0-pre0", default_features = false }
+mc-account-keys = { version = "5", default_features = false, features = [ "serde" ] }
+mc-api = { version = "5", default_features = false }
 mc-util-test-helper = { path = "../vendor/mob/util/test-helper", default_features = false }
 ledger-mob-tests = { path = "../tests", default_features = false }
 ledger-lib = { version = "0.1.0", default_features =  false }
