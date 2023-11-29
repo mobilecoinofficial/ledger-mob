@@ -67,8 +67,6 @@ const BUTTONS_BLIND: &[Button] = &[
     Button::Right,
     // Right button to move to hash screen
     Button::Right,
-    // Right button to move to deny screen
-    Button::Right,
     // Right button to move to allow screen
     Button::Right,
     // Both buttons to select allow
@@ -81,8 +79,6 @@ const BUTTONS_SUMMARY: &[Button] = &[
     // Right button to show send
     Button::Right,
     // Right button to show fee
-    Button::Right,
-    // Right button to show deny
     Button::Right,
     // Right button to show allow
     Button::Right,

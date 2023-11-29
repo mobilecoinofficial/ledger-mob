@@ -1,19 +1,21 @@
+use std::time::Duration;
+
+use base64::{engine::general_purpose::STANDARD, Engine};
 use bip39::{Language, Mnemonic, Seed};
 use curve25519_dalek::scalar::Scalar;
-use ledger_transport_tcp::TransportTcp;
 use log::info;
 use serde::{Deserialize, Serialize};
 
 use mc_core::keys::*;
 
+use ledger_lib::Device;
 use ledger_sim::*;
-use ledger_transport::Exchange;
 
 use ledger_mob_apdu::wallet_keys::{WalletKeyReq, WalletKeyResp};
 use ledger_mob_tests::wallet;
 
 mod helpers;
-use helpers::{approve, setup};
+use helpers::{approve_wallet_sync, setup};
 
 const MNEMONIC: &str = "duck deal pretty pen thunder economy wide common goose fit engine main aisle curtain choose cube claim snake enroll detect brief history float unit";
 
@@ -24,13 +26,13 @@ async fn mob_wallet_keys() -> anyhow::Result<()> {
     let seed = Seed::new(&mnemonic, "");
 
     info!("using mnemonic: '{}'", mnemonic.phrase());
-    info!("seed: '{}'", base64::encode(&seed));
+    info!("seed: '{}'", STANDARD.encode(&seed));
 
     // Setup simulator
     let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Test wallet key generation
-    wallet::test(t, || approve(&s), mnemonic).await?;
+    wallet::test(t, || approve_wallet_sync(&s), mnemonic).await?;
 
     // Exit simulator
     d.exit(s).await?;
@@ -91,11 +93,11 @@ async fn mob_mnemonic_derive_partial() -> anyhow::Result<()> {
     mob_mnemonic_derive(&TEST_WALLETS[..4]).await
 }
 
-async fn get_account_keys(t: &TransportTcp, index: u32) -> anyhow::Result<WalletKeyResp> {
+async fn get_account_keys(mut t: impl Device, index: u32) -> anyhow::Result<WalletKeyResp> {
     let mut buff = [0u8; 256];
 
     let r = t
-        .exchange::<WalletKeyResp>(WalletKeyReq::new(index), &mut buff)
+        .request::<WalletKeyResp>(WalletKeyReq::new(index), &mut buff, Duration::from_secs(1))
         .await?;
 
     Ok(r)
@@ -107,24 +109,24 @@ async fn mob_mnemonic_derive(wallets: &[Wallet]) -> anyhow::Result<()> {
         let mnemonic = Mnemonic::from_phrase(&w.phrase, Language::English)?;
         let seed = Seed::new(&mnemonic, "");
         info!("using mnemonic: '{}'", mnemonic.phrase());
-        info!("seed: '{}'", base64::encode(&seed));
+        info!("seed: '{}'", STANDARD.encode(&seed));
 
         // Setup simulator
-        let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
+        let (d, s, mut t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
         // Fetch wallet keys from device
-        let r = match get_account_keys(&t, w.account_index).await {
+        let r = match get_account_keys(&mut t, w.account_index).await {
             Ok(v) => v,
             // App requires approval
             Err(_) => {
                 // Set approved
-                approve(&s).await;
+                approve_wallet_sync(&s).await;
 
                 // Retry request (for some reason the simulator fails the first
                 // time this is re-requested, though the device does not..?)
-                let _ = get_account_keys(&t, w.account_index).await;
+                let _ = get_account_keys(&mut t, w.account_index).await;
 
-                get_account_keys(&t, w.account_index).await?
+                get_account_keys(&mut t, w.account_index).await?
             }
         };
 

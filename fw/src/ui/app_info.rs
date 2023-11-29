@@ -3,7 +3,6 @@
 use rand_core::{CryptoRng, RngCore};
 
 use nanos_sdk::buttons::ButtonEvent;
-
 use nanos_ui::{
     layout::{Layout, Location, StringPlace},
     screen_util,
@@ -12,19 +11,20 @@ use nanos_ui::{
 use ledger_mob_core::engine::{Driver, Engine};
 
 use super::{clear_screen, UiResult};
+use crate::consts::{BUILD_TIME, GIT_VERSION};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Complete;
+pub struct AppInfo {}
 
-impl Complete {
+impl AppInfo {
     pub fn new() -> Self {
-        Self
+        Self {}
     }
 
-    pub fn update(&mut self, btn: &ButtonEvent) -> UiResult<bool> {
+    pub fn update(&mut self, btn: &ButtonEvent) -> UiResult {
         match btn {
             // Exit on both buttons pressed/released
-            ButtonEvent::BothButtonsRelease => UiResult::Exit(false),
+            ButtonEvent::BothButtonsRelease => UiResult::Exit(()),
             // Otherwise, no change
             _ => UiResult::None,
         }
@@ -34,8 +34,8 @@ impl Complete {
         // Clear screen
         clear_screen();
 
-        // Render transaction information
-        "Transaction Complete".place(Location::Middle, Layout::Centered, false);
+        // Show git version and build time
+        [GIT_VERSION, BUILD_TIME].place(Location::Middle, Layout::Centered, false);
 
         // Update screen
         screen_util::screen_update();

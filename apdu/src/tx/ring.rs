@@ -3,7 +3,7 @@
 use curve25519_dalek::ristretto::CompressedRistretto;
 use encdec::{Decode, Encode};
 
-use ledger_apdu::ApduStatic;
+use ledger_proto::ApduStatic;
 
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_ring_signature::{CompressedCommitment, KeyImage, ReducedTxOut, Scalar};
@@ -13,6 +13,8 @@ use crate::{
     helpers::*,
     ApduError, Instruction, MOB_APDU_CLA,
 };
+
+use super::TxOnetimeKey;
 
 /// Start a ring signing operation
 ///
@@ -40,9 +42,12 @@ pub struct TxRingInit {
     /// Index of real tx_in in ring
     pub real_index: u8,
 
+    /// Flags for ring init message
+    pub flags: TxRingInitFlags,
+
     /// Reserved for future use (ensures next field alignment)
     #[encdec(with = "arr")]
-    reserved: [u8; 2],
+    reserved: [u8; 1],
 
     /// Subaddress of real tx_in, used for onetime_private_key recovery
     pub subaddress_index: u64,
@@ -52,12 +57,27 @@ pub struct TxRingInit {
 
     /// Ring token_id
     pub token_id: u64,
+
+    /// One-time private key for pre-signed inputs etc.
+    /// Zero if HAS_ONETIME_PRIVATE_KEY is not set
+    #[encdec(with = "pri_key")]
+    pub onetime_private_key: TxOnetimeKey,
 }
 
 impl ApduStatic for TxRingInit {
     const CLA: u8 = MOB_APDU_CLA;
     const INS: u8 = Instruction::TxRingInit as u8;
 }
+
+bitflags::bitflags! {
+    /// TxRingInit flags
+    pub struct TxRingInitFlags: u8 {
+        /// Ring contains onetime private key (used for gift codes / pre-signed outputs)
+        const HAS_ONETIME_PRIVATE_KEY = 1 << 0;
+    }
+}
+
+crate::encdec_bitflags!(TxRingInitFlags);
 
 impl TxRingInit {
     /// Create a new ring initialisation request
@@ -67,25 +87,48 @@ impl TxRingInit {
         subaddress_index: u64,
         value: u64,
         token_id: u64,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Self {
+        let mut flags = TxRingInitFlags::empty();
+        flags.set(
+            TxRingInitFlags::HAS_ONETIME_PRIVATE_KEY,
+            onetime_private_key.is_some(),
+        );
+
+        let onetime_private_key = match onetime_private_key {
+            Some(v) => v,
+            None => TxOnetimeKey::default(),
+        };
+
         Self {
             ring_size,
             real_index,
-            reserved: [0u8; 2],
+            flags,
+            reserved: [0u8; 1],
             subaddress_index,
             value,
             token_id,
+            onetime_private_key,
         }
     }
 
     /// Compute hash from [TxRingInit] object
     pub fn hash(&self) -> [u8; 32] {
+        let onetime_private_key = match self
+            .flags
+            .contains(TxRingInitFlags::HAS_ONETIME_PRIVATE_KEY)
+        {
+            true => Some(&self.onetime_private_key),
+            false => None,
+        };
+
         digest_ring_init(
             self.ring_size,
             self.real_index,
             &self.subaddress_index,
             &self.value,
             &self.token_id,
+            onetime_private_key,
         )
     }
 }
@@ -373,7 +416,16 @@ mod test {
 
     #[test]
     fn encode_decode_tx_ring_init() {
-        let apdu = TxRingInit::new(random(), random(), random(), random(), random());
+        let onetime_private_key = RistrettoPrivate::from_random(&mut OsRng {});
+
+        let apdu = TxRingInit::new(
+            random(),
+            random(),
+            random(),
+            random(),
+            random(),
+            Some(onetime_private_key.into()),
+        );
 
         let mut buff = [0u8; 256];
         encode_decode_apdu(&mut buff, &apdu);

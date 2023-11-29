@@ -1,6 +1,6 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-/// [Engine] errors
+/// [super::Engine] errors
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "thiserror", derive(thiserror::Error))]
 #[repr(u8)]
@@ -56,6 +56,18 @@ pub enum Error {
     /// Pending user approval
     #[cfg_attr(feature = "thiserror", error("pending user approval"))]
     ApprovalPending = 0x0c,
+
+    /// Summary initialisation failed
+    #[cfg_attr(feature = "thiserror", error("failed to start summary computation"))]
+    SummaryInitFailed = 0x0d,
+
+    /// Summary missing output
+    #[cfg_attr(feature = "thiserror", error("missing summary output"))]
+    SummaryMissingOutput = 0x0e,
+
+    /// Summary initialisation failed
+    #[cfg_attr(feature = "thiserror", error("identity request rejected"))]
+    IdentRejected = 0x0f,
 
     /// Unknown / not-yet defined error (placeholder)
     #[cfg_attr(feature = "thiserror", error("unknown"))]

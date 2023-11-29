@@ -5,8 +5,8 @@
 use std::{future::Future, time::Duration};
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use log::{debug, info};
 use rand_core::{CryptoRng, OsRng, RngCore};
+use tracing::{debug, info};
 
 use mc_core::{
     account::{Account, RingCtAddress},
@@ -20,26 +20,26 @@ use mc_crypto_ring_signature::{
         create_tx_out_public_key, create_tx_out_target_key, recover_onetime_private_key,
         recover_public_subaddress_spend_key,
     },
-    CompressedCommitment, CurveScalar, Error, KeyImage, MlsagSignParams, PedersenGens,
-    ReducedTxOut, RingMLSAG, Scalar,
+    CompressedCommitment, CurveScalar, KeyImage, MlsagSignParams, PedersenGens, ReducedTxOut,
+    RingMLSAG, Scalar,
 };
 use mc_util_from_random::FromRandom;
 
-use ledger_transport::Exchange;
+use ledger_lib::Device;
 
+use ledger_mob::Error;
 use ledger_mob_apdu::{state::TxState, tx::*};
 
 /// Start a transaction and sign a ring via [RingMLSAGParameters] object
-pub async fn test<T, F, E>(
-    t: T,
+pub async fn test<T, F>(
+    mut t: T,
     approve: impl Fn() -> F,
     mnemonic: Mnemonic,
     ring_size: usize,
 ) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E>,
+    T: Device,
     F: Future<Output = ()>,
-    E: std::error::Error + Sync + Send + 'static,
 {
     let mut buff = [0u8; 256];
 
@@ -70,7 +70,10 @@ where
     let tx_init = TxInit::new(0, 1);
 
     info!("Initialise transaction: {:?}", tx_init);
-    let r = t.exchange::<TxInfo>(tx_init, &mut buff).await.unwrap();
+    let r = t
+        .request::<TxInfo>(tx_init, &mut buff, Duration::from_secs(1))
+        .await
+        .unwrap();
 
     debug!("State: {:?}", r);
     assert_eq!(r.state, TxState::SignMemos);
@@ -83,7 +86,7 @@ where
     };
     info!("Set message: {:?}", tx_set_message);
     let r = t
-        .exchange::<TxInfo>(tx_set_message, &mut buff)
+        .request::<TxInfo>(tx_set_message, &mut buff, Duration::from_secs(1))
         .await
         .unwrap();
 
@@ -97,7 +100,10 @@ where
     let mut s = None;
     for _i in 0..10 {
         debug!("awaiting tx approval (state: {:?})", r);
-        if let Ok(v) = t.exchange::<TxInfo>(TxInfoReq {}, &mut buff).await {
+        if let Ok(v) = t
+            .request::<TxInfo>(TxInfoReq {}, &mut buff, Duration::from_secs(1))
+            .await
+        {
             s = Some(v.clone());
 
             if v.state == TxState::Ready {
@@ -119,9 +125,13 @@ where
         params.target_subaddress_index,
         params.value,
         params.token_id,
+        None,
     );
     info!("Start ring signing: {:?}", tx_ring_init);
-    let r = t.exchange::<TxInfo>(tx_ring_init, &mut buff).await.unwrap();
+    let r = t
+        .request::<TxInfo>(tx_ring_init, &mut buff, Duration::from_secs(1))
+        .await
+        .unwrap();
 
     debug!("State: {:?}", r);
 
@@ -132,7 +142,7 @@ where
     };
     info!("Set blindings: {:?}", tx_set_blinding);
     let r = t
-        .exchange::<TxInfo>(tx_set_blinding, &mut buff)
+        .request::<TxInfo>(tx_set_blinding, &mut buff, Duration::from_secs(1))
         .await
         .unwrap();
 
@@ -154,7 +164,10 @@ where
 
         debug!("Add txout: {:?}", tx_add_txout);
 
-        let r = t.exchange::<TxInfo>(tx_add_txout, &mut buff).await.unwrap();
+        let r = t
+            .request::<TxInfo>(tx_add_txout, &mut buff, Duration::from_secs(1))
+            .await
+            .unwrap();
 
         debug!("State: {:?}", r);
     }
@@ -162,7 +175,10 @@ where
     info!("Signing MLSAG");
 
     // Generate signature
-    let r = t.exchange::<TxInfo>(TxRingSign, &mut buff).await.unwrap();
+    let r = t
+        .request::<TxInfo>(TxRingSign, &mut buff, Duration::from_secs(1))
+        .await
+        .unwrap();
     assert_eq!(
         r.state,
         TxState::RingComplete,
@@ -171,7 +187,7 @@ where
 
     // Retrieve key image
     let TxKeyImage { key_image, c_zero } = t
-        .exchange::<TxKeyImage>(TxGetKeyImage {}, &mut buff)
+        .request::<TxKeyImage>(TxGetKeyImage {}, &mut buff, Duration::from_secs(1))
         .await
         .unwrap();
 
@@ -183,7 +199,11 @@ where
     let mut responses = heapless::Vec::<CurveScalar, 22>::new();
     for i in 0..ring_size * 2 {
         let resp = t
-            .exchange::<TxResponse>(TxGetResponse::new(i as u8), &mut buff)
+            .request::<TxResponse>(
+                TxGetResponse::new(i as u8),
+                &mut buff,
+                Duration::from_secs(1),
+            )
             .await
             .unwrap();
 
@@ -406,8 +426,6 @@ mod test {
     #[test]
     // `verify` should accept valid signatures.
     fn test_verify_accepts_valid_signatures() {
-        let _ = simplelog::SimpleLogger::init(log::LevelFilter::Debug, Default::default());
-
         let seed = [0u8; 32];
         let mut rng: RngType = SeedableRng::from_seed(seed);
         let pseudo_output_blinding = Scalar::random(&mut rng);

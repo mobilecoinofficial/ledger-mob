@@ -2,7 +2,7 @@
 
 //! Tests for mobilecoin wallet integration.
 //!
-//! Generic over [ledger_transport::Exchange] for reuse.
+//! Generic over [ledger_lib::Exchange] for reuse.
 //!
 
 pub mod wallet;
@@ -18,3 +18,5 @@ pub mod memo;
 pub mod transaction;
 
 pub mod ident;
+
+pub use ledger_mob::Error;

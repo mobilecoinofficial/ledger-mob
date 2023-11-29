@@ -16,10 +16,10 @@ async fn mob_ident() -> anyhow::Result<()> {
 
         ledger_mob_tests::ident::test(t, || approve_ident(&s), v)
             .await
-            .unwrap();
+            .expect("Test run failed");
 
         // Exit simulator
-        d.exit(s).await?;
+        d.exit(s).await.expect("Target exit failed");
     }
 
     Ok(())
@@ -35,8 +35,6 @@ pub async fn approve_ident(h: &GenericHandle) {
         // Right button to move to URI screen
         Button::Right,
         // Right button to move to challenge screen
-        Button::Right,
-        // Right button to move to deny screen
         Button::Right,
         // Right button to move to allow screen
         Button::Right,

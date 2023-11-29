@@ -2,7 +2,7 @@
 
 use encdec::Encode;
 
-use ledger_apdu::ApduError;
+use ledger_proto::ApduError;
 use mc_core::keys::{
     RootSpendPublic, RootViewPrivate, SubaddressSpendPublic, SubaddressViewPrivate,
 };
@@ -18,7 +18,7 @@ use super::summary::SummaryState;
 #[cfg(feature = "ident")]
 use super::ident::IdentState;
 
-/// [`Engine`][super::Engine] outputs (in response to events), typically encoded to response [APDUs][crate::apdu]
+/// [`Engine`][super::Engine] outputs (in response to events), typically encoded to response [APDUs][ledger_mob_apdu]
 #[derive(Clone, PartialEq, Debug)]
 pub enum Output {
     None,
@@ -86,7 +86,15 @@ pub enum Output {
 }
 
 impl Output {
-    /// Encode an [`Output`] object to a response [APDU
+    /// Initialise an [Output] pointer without allocation
+    /// # Safety
+    /// This is safe as long as the pointer is valid
+    pub unsafe fn init(ptr: *mut Self) {
+        ptr.write(Output::None);
+    }
+
+    /// Encode an [`Output`] object to a response [APDU][ledger_mob_apdu]
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         match self.clone() {
             Output::None => Ok(0),
@@ -196,6 +204,7 @@ impl From<(crate::engine::State, TxDigest)> for apdu::tx::TxInfo {
 }
 
 impl crate::engine::State {
+    /// Map [engine](crate::engine) states to [apdu][ledger_mob_apdu::state::TxState] states for transmission
     pub fn state(&self) -> apdu::state::TxState {
         use crate::{apdu::state::TxState, engine::State};
 
@@ -206,7 +215,6 @@ impl crate::engine::State {
                 IdentState::Pending => TxState::IdentPending,
                 IdentState::Approved => TxState::IdentApproved,
                 IdentState::Denied => TxState::IdentDenied,
-                IdentState::Error => TxState::Error,
             },
             State::Ready => TxState::Ready,
             State::BuildMemos(_n) => TxState::SignMemos,

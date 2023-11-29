@@ -2,32 +2,22 @@
 
 //! Command line utility for interacting with the Ledger MobileCoin NanoApp
 
-use std::{error::Error, path::Path};
+use std::{path::Path, time::Duration};
 
 use clap::Parser;
-use ledger_transport::Exchange;
+use ledger_lib::{Device, Filters, LedgerProvider, Transport};
 use log::{debug, error, info, LevelFilter};
-use rand_core::OsRng;
+use mc_transaction_extra::UnsignedTx;
 use serde::{de::DeserializeOwned, Serialize};
-use strum::Display;
 
-use mc_core::keys::TxOutPublic;
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::ring_ct::InputRing;
-use mc_transaction_core::tx::Tx;
 use mc_transaction_signer::{
-    types::{TxSignReq, TxSignResp, TxoSynced},
-    Commands,
+    types::{TxSignReq, TxSignResp, TxSignSecrets},
+    Operations,
 };
 
-use ledger_mob::{tx::TxConfig, Connect, DeviceHandle, LedgerProvider};
+use ledger_mob::DeviceHandle;
 use ledger_mob_apdu::random::{RandomReq, RandomResp};
-
-#[cfg(feature = "transport_hid")]
-use ledger_mob::transport::TransportNativeHID;
-
-#[cfg(feature = "transport_tcp")]
-use ledger_mob::transport::{TcpOptions, TransportTcp};
 
 mod helpers;
 use helpers::*;
@@ -35,46 +25,28 @@ use helpers::*;
 /// Ledger command line utility
 #[derive(Clone, PartialEq, Debug, Parser)]
 struct Options {
-    /// Transport for ledger connection
+    /// Supported transports for ledger discovery
+    #[clap(long, value_enum, default_value = "any")]
+    target: Filters,
+
+    /// Device index (where more than one device is available)
+    #[clap(long, default_value = "0")]
+    device_index: usize,
+
+    /// Subcommand to execute
     #[clap(subcommand)]
-    transport: Transport,
+    cmd: Actions,
 
     /// Enable verbose logging
     #[clap(long, default_value = "info")]
     log_level: LevelFilter,
 }
 
-#[derive(Clone, PartialEq, Debug, clap::ValueEnum)]
-enum Format {
-    Text,
-    Json,
-    Proto,
-}
-
-#[derive(Clone, PartialEq, Debug, Parser, Display)]
-#[non_exhaustive]
-enum Transport {
-    /// USB HID
-    Hid {
-        #[clap(subcommand)]
-        cmd: Actions,
-    },
-    /// Bluetooth Low Energy
-    Ble,
-    /// TCP (Speculos simulator)
-    Tcp {
-        //#[clap(flatten)]
-        //opts: TcpOptions,
-        #[clap(subcommand)]
-        cmd: Actions,
-    },
-}
-
 #[derive(Clone, PartialEq, Debug, Parser)]
 #[non_exhaustive]
 enum Actions {
-    /// Fetch device info
-    DeviceInfo,
+    /// List available devices
+    List,
 
     /// Fetch application info
     AppInfo,
@@ -130,9 +102,9 @@ enum Actions {
         challenge: Option<HexData<32>>,
     },
 
-    // Implement shared signer commands
+    // Implement shared signer operations
     #[command(flatten)]
-    Signer(Commands),
+    Signer(Operations),
 }
 
 #[tokio::main]
@@ -144,67 +116,74 @@ async fn main() -> anyhow::Result<()> {
     simplelog::SimpleLogger::init(args.log_level, simplelog::Config::default()).unwrap();
 
     // Connect to ledger device
-    let p = LedgerProvider::new()?;
+    let mut p = LedgerProvider::init().await;
 
-    debug!("Using transport: {:?}", args.transport);
+    debug!("Using transport: {:?}", args.target);
 
-    // Connect to transport and execute commands
-    match args.transport {
-        #[cfg(feature = "transport_tcp")]
-        Transport::Tcp { cmd } => {
-            let opts = TcpOptions::default();
-            let t = Connect::<TransportTcp>::connect(&p, &opts).await?;
+    // List available devices
+    let devices = p.list(args.target).await?;
+    if devices.is_empty() {
+        return Err(anyhow::anyhow!("No devices found"));
+    }
 
-            execute(t, cmd).await?;
+    // Handle list command
+    if args.cmd == Actions::List {
+        info!("Devices:");
+        for (i, d) in devices.iter().enumerate() {
+            info!("  {}: {}", i, d);
         }
-        #[cfg(feature = "transport_hid")]
-        Transport::Hid { cmd } => {
-            let devices: Vec<_> = p.list_devices().collect();
 
-            if devices.is_empty() {
-                return Err(anyhow::anyhow!("No devices found"));
-            }
+        return Ok(());
+    }
 
-            debug!("Found devices: {:04x?}", devices);
+    // Select device by index
+    if args.device_index >= devices.len() {
+        return Err(anyhow::anyhow!(
+            "Invalid device index: {} (max: {})",
+            args.device_index,
+            devices.len() - 1
+        ));
+    }
 
-            let t = match Connect::<TransportNativeHID>::connect(&p, &devices[0]).await {
-                Ok(v) => v,
-                Err(e) => {
-                    error!("Failed to connect to device: {:04x?}", devices[0]);
-                    return Err(e.into());
-                }
-            };
+    debug!(
+        "Using device {}: {}",
+        args.device_index, devices[args.device_index]
+    );
 
-            execute(t, cmd).await?;
+    // Connect to device
+    let t = match p.connect(devices[args.device_index].clone()).await {
+        Ok(v) => v.into(),
+        Err(e) => {
+            error!(
+                "Failed to connect to device: {:04x?}",
+                devices[args.device_index]
+            );
+            return Err(e.into());
         }
-        _ => todo!("transport {} not available", args.transport),
     };
+
+    // Execute command
+    if let Err(e) = execute(t, args.cmd).await {
+        error!("Failed to execute command: {}", e);
+        error!("(Please check you have the mobilecon app open and on the main screen)");
+        return Err(anyhow::anyhow!("command failed"));
+    }
 
     Ok(())
 }
 
 /// Execute a command with the provided transport
-async fn execute<T, E>(t: DeviceHandle<T>, cmd: Actions) -> anyhow::Result<()>
+async fn execute<T>(mut t: DeviceHandle<T>, cmd: Actions) -> anyhow::Result<()>
 where
-    T: Exchange<Error = E> + Sync + Send,
-    E: Error + Sync + Send + 'static,
+    T: Device + Send,
 {
-    use ledger_apdu::apdus::*;
-
     let mut buff = [0u8; 1024];
 
     debug!("Executing command: {:?}", cmd);
 
     match cmd {
-        Actions::DeviceInfo => {
-            let i = t
-                .exchange::<DeviceInfo>(DeviceInfoGet {}, &mut buff)
-                .await?;
-
-            info!("device info: {:#?}", i);
-        }
         Actions::AppInfo => {
-            let i = t.exchange::<AppInfo>(AppInfoGet {}, &mut buff).await?;
+            let i = t.app_info().await?;
 
             info!("app info: {:#?}", i);
         }
@@ -252,7 +231,9 @@ where
         Actions::GetRandom => {
             info!("requesting random value");
 
-            let r = t.exchange::<RandomResp>(RandomReq {}, &mut buff).await?;
+            let r = t
+                .request::<RandomResp>(RandomReq {}, &mut buff, Duration::from_secs(2))
+                .await?;
 
             info!("value: {:x?}", r.value);
         }
@@ -285,71 +266,40 @@ where
 
             // Handle signer operations
             match &c {
-                Commands::GetAccount { output, .. } => {
-                    Commands::get_account(&a, account_index, output)?
+                Operations::GetAccount { output, .. } => {
+                    Operations::get_account(&a, account_index, output)?
                 }
-                Commands::SyncTxos { input, output, .. } => Commands::sync_txos(&a, input, output)?,
-                Commands::SignTx { input, output, .. } => {
+                Operations::SyncTxos { input, output, .. } => {
+                    Operations::sync_txos(&a, input, output)?
+                }
+                Operations::SignTx { input, output, .. } => {
                     // Read in transaction file
                     debug!("Loading unsigned transaction from '{}'", input);
                     let req: TxSignReq = read_input(input).await?;
 
-                    // Start device transaction
-                    debug!("Starting transaction");
-                    let signer = t
-                        .transaction(TxConfig {
-                            account_index,
-                            num_memos: 0,
-                            num_rings: req.rings.len(),
-                        })
-                        .await?;
+                    // Fetch unblinding data
+                    // TODO: remove this from mc-transaction-signer now we don't
+                    // need to support block version 2
+                    let tx_out_unblinding_data = match req.secrets {
+                        TxSignSecrets::OutputSecrets(_) => panic!("Block version >3 support only"),
+                        TxSignSecrets::TxOutUnblindingData(u) => u,
+                    };
 
-                    // TODO: sign any memos
+                    // Convert to unsigned TX
+                    let unsigned = UnsignedTx {
+                        tx_prefix: req.tx_prefix,
+                        rings: req.rings,
+                        tx_out_unblinding_data,
+                        block_version: req.block_version,
+                    };
 
-                    // Build the digest for ring signing
-                    // TODO: this will move when TxSummary is complete
-                    debug!("Building TX digest");
-                    let (signing_data, _summary, _unblinding, digest) =
-                        req.get_signing_data(&mut OsRng {}).unwrap();
-
-                    // Set the message
-                    debug!("Setting tx message");
-                    signer.set_message(&digest.0).await?;
-
-                    // Await user input
-                    debug!("Waiting for user confirmation");
-                    signer.await_approval(20).await?;
-
-                    // Execute signing (signs rings etc.)
-                    debug!("Executing signing operation");
-                    let signature = signing_data
-                        .sign(&req.rings, &signer, &mut OsRng {})
-                        .map_err(|e| anyhow::anyhow!("Ring signing error: {:?}", e))?;
-
-                    // Map key images to real inputs via public key
-                    let mut txos = vec![];
-                    for (i, r) in req.rings.iter().enumerate() {
-                        let tx_out_public_key = match r {
-                            InputRing::Signable(r) => r.members[r.real_input_index].public_key,
-                            InputRing::Presigned(_) => panic!("Pre-signed rings unsupported"),
-                        };
-
-                        txos.push(TxoSynced {
-                            tx_out_public_key: TxOutPublic::from(
-                                RistrettoPublic::try_from(&tx_out_public_key).unwrap(),
-                            ),
-                            key_image: signature.ring_signatures[i].key_image,
-                        });
-                    }
+                    // Sign transaction
+                    let (tx, txos) = t.transaction(account_index, 60, unsigned).await?;
 
                     // Build sign response
                     let resp = TxSignResp {
                         account_id: req.account_id,
-                        tx: Tx {
-                            prefix: req.tx_prefix.clone(),
-                            signature,
-                            fee_map_digest: vec![],
-                        },
+                        tx,
                         txos,
                     };
 
@@ -360,6 +310,7 @@ where
                 _ => (),
             }
         }
+        _ => unreachable!(),
     }
 
     Ok(())

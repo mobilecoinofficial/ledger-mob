@@ -2,10 +2,14 @@ name: Rust
 
 on:
   push:
-    branches: [ main ]
+    branches: 
+      - main
+      - develop
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: 
+      - main
+      - develop
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,7 +30,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2022-12-02
         target:  ${{ matrix.target }}
         override: true
         components: rustfmt, clippy, rust-src
@@ -35,7 +39,7 @@ jobs:
       run: echo "RUST_TARGET_PATH=${GITHUB_WORKSPACE}/fw/" >> $GITHUB_ENV
 
     - name: Install cross toolchain, libraries
-      run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      run: sudo apt update && sudo apt install -y gcc-arm-none-eabi gcc-multilib libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev protobuf-compiler protobuf-c-compiler
 
     - name: Restore core cache
       uses: actions/cache/restore@v3
@@ -65,9 +69,11 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
-        target:  ${{ matrix.target }}
+        toolchain: nightly-2022-12-02
         override: true
+
+    - name: Install protobuf tools
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev protobuf-compiler protobuf-c-compiler
 
     - name: Restore core cache
       uses: actions/cache/restore@v3
@@ -124,7 +130,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2022-12-02
         target:  ${{ matrix.target }}
         override: true
     
@@ -142,7 +148,7 @@ jobs:
     
     - name: Install libusb (apt native)
       if: ${{ matrix.os == 'ubuntu-latest' && matrix.target == 'x86_64-unknown-linux-gnu' }}
-      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev
 
     - name: Cache vcpkg
       if: ${{ matrix.os == 'windows-latest' }}
@@ -162,7 +168,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --package ledger-mob --target ${{ matrix.target }} --release ${{ matrix.args }}
+        args: --package ledger-mob --target ${{ matrix.target }} --release
 
     - name: Update ${{ matrix.target }} CLI cache
       if: ${{ github.ref == 'refs/heads/main' }}
@@ -225,13 +231,13 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2022-12-02
         target:  ${{ matrix.target }}
         override: true
         components: rust-src
 
     - name: Install cross toolchain 
-      run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib
+      run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib protobuf-compiler protobuf-c-compiler 
 
     - name: Load ${{ matrix.platform }} FW cache
       uses: actions/cache/restore@v3
@@ -290,7 +296,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2022-12-02
         target:  ${{ matrix.target }}
         override: true
     
@@ -303,7 +309,7 @@ jobs:
           ./target
 
     - name: Install libusb / hidapi / libudev
-      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev
 
     - name: Build library / simulator tests
       uses: actions-rs/cargo@v1
@@ -350,10 +356,13 @@ jobs:
     - name: Configure rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2022-12-02
         override: true
     
-    - name: Restore cache from test build
+    - name: Install libusb / hidapi / libudev
+      run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev
+
+    - name: Restore test cache
       uses: actions/cache/restore@v3
       with:
         key: sim
@@ -365,6 +374,10 @@ jobs:
       run: |
         docker pull ghcr.io/ledgerhq/speculos:latest
 
+    - name: Fetch nextest
+      run: |
+        curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
+
     - name: Fetch firmware artifacts
       uses: actions/download-artifact@v3
       with:
@@ -374,8 +387,8 @@ jobs:
     - name: Run simulator tests
       uses: actions-rs/cargo@v1
       with:
-        command: test
-        args: --manifest-path=lib/Cargo.toml --no-default-features --features=transport_tcp,summary,ident
+        command: nextest
+        args: run --package ledger-mob
 
   # Package firmware for distribution
   package-fw:
@@ -412,16 +425,15 @@ jobs:
 
     - name: Setup package files
       run: |
-        cp bin/ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}* .
-        cp bin/app_${{ matrix.platform }}.json .
-        cp fw/assets/mob14x14i.gif .
+        mkdir -p ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
+        cp bin/ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/ledger-mob-fw.hex
+        cp bin/app_${{ matrix.platform }}.json ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
+        cp fw/assets/mob14x14i.gif ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
 
     - name: Build firmware archive
       run: >        
         tar cvf ledger-mob-fw-${{ matrix.platform }}.tgz 
-        ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex 
-        app_${{ matrix.platform }}.json 
-        mob14x14i.gif
+        ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
 
     - name: Upload firmware package artifact
       uses: actions/upload-artifact@v3
@@ -457,7 +469,7 @@ jobs:
       - name: Fetch rust tooling
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: nightly-2022-12-02
           override: true
 
       - name: Restore core cache
@@ -468,14 +480,14 @@ jobs:
             ~/.cargo
             ./target
 
-      - name: Install libusb / libudev
-        run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev
+      - name: Install libusb / libudev / protoc
+        run: sudo apt update && sudo apt install -y libusb-1.0-0 libusb-1.0-0-dev libudev-dev libdbus-1-dev protobuf-compiler protobuf-c-compiler 
 
       - name: Build documentation
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps
+          args: --no-deps --workspace
 
       - name: Deploy to GitHub Pages
         uses: crazy-max/ghaction-github-pages@v3

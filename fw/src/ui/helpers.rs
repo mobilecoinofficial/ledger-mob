@@ -5,11 +5,18 @@ use nanos_ui::{
     bagls::*,
     bitmaps,
     layout::{Draw, Layout, Location, StringPlace},
-    screen_util,
+    screen_util, ui,
 };
 
 const TX_REQ_APPROVE: &str = "Approve Transaction?";
-const TX_REQ_DENY: &str = "Deny Transaction?";
+const TX_REQ_DENY: &str = "Reject Transaction?";
+
+/// Clear screen wrapper that works both on hardware and speculos
+/// (required as speculos doesn't support the full screen clear syscall,
+/// and we want to run _exactly_ the same code on both)
+pub fn clear_screen() {
+    ui::clear_screen();
+}
 
 /// Convert to hex. Returns a static buffer of N bytes
 #[inline]

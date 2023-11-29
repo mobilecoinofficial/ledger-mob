@@ -13,13 +13,14 @@
 //! 32-bit field alignment to reduce the need for unaligned access on constrained platforms.
 //! All field encodings are little-endian, because most of the world is these days.
 //!
+//! See [Instruction] for APDU instruction codes.
 //!
 
 #![no_std]
 
 use core::fmt::Debug;
 
-pub use ledger_apdu::{ApduBase, ApduCmd, ApduError, ApduStatic};
+pub use ledger_proto::{ApduError, ApduReq, ApduStatic};
 
 pub mod app_info;
 pub mod digest;
@@ -146,15 +147,21 @@ macro_rules! encdec_bitflags {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use encdec::EncDec;
+
     use super::*;
 
     /// Helper for APDU encode / decode tests
-    pub fn encode_decode_apdu<'a, A: ApduBase<'a>>(buff: &'a mut [u8], apdu: &A) -> usize {
+    pub fn encode_decode_apdu<'a, A: EncDec<'a, ApduError> + PartialEq>(
+        buff: &'a mut [u8],
+        apdu: &A,
+    ) -> usize {
         // Encode APDU
         let n = apdu.encode(buff).expect("encode failed");
 
         // Ensure encoded data fits maximum APDU payload
-        assert!(n < 249);
+        let m = 249;
+        assert!(n < m, "encoded length {n} exceeds maximum APDU payload {m}");
 
         // Check encoded length matches expected length
         let expected_n = apdu.encode_len().expect("get length failed");

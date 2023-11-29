@@ -6,23 +6,36 @@ fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=script.ld");
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=manifest.json");
+    println!("cargo:rerun-if-env-changed=VERSION");
+    println!("cargo:rerun-if-env-changed=CI_SHA_SHORT");
 
     let target = std::env::var("TARGET").unwrap();
 
-    // Load git firmware description and export into environment
-    let output = std::process::Command::new("git")
-        .args(["describe", "--dirty=+", "--always"])
-        .output()
-        .expect("git describe failed");
+    // Check if we have an injected app version
+    let version_tag = match std::env::var("VERSION") {
+        Ok(v) => v,
+        // Otherwise, run `git describe`
+        _ => {
+            let output = std::process::Command::new("git")
+                .args(["describe", "--dirty=+", "--always"])
+                .output()
+                .expect("git describe failed");
 
-    let version_tag = std::str::from_utf8(&output.stdout).unwrap().trim();
+            std::str::from_utf8(&output.stdout)
+                .unwrap()
+                .trim()
+                .to_string()
+        }
+    };
+
+    // Load git firmware description and export into environment
     println!("cargo:rustc-env=GIT_TAG={version_tag}");
 
     let build_time = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
     println!("cargo:rustc-env=BUILD_TIME={build_time}");
 
     // Generate manifest file
-    generate_manifest(&target, version_tag)?;
+    generate_manifest(&target, &version_tag)?;
 
     // Copy icons to build dir
     copy_icons()?;
@@ -42,11 +55,13 @@ fn generate_manifest(target: &str, version: &str) -> anyhow::Result<()> {
 
     // Set flags depending on target:
     // For Nano X, need to enable access to `os_setting_get`.
-    // This will not be necessary anymore in a future upgrade.
-    tmpl = match target {
-        "nanox" => tmpl.replace("FLAGS", "0x200"),
-        _ => tmpl.replace("FLAGS", "0"),
+    // This will not be necessary in a future upgrade.
+    // For all platforms allow global pin request.
+    let flags = match target {
+        "nanox" => 0x240,
+        _ => 0x040,
     };
+    tmpl = tmpl.replace("FLAGS", &format!("0x{flags:04x}"));
 
     // Replace manifest components
     tmpl = tmpl.replace("FW", "ledger-mob-fw.hex");
@@ -57,6 +72,13 @@ fn generate_manifest(target: &str, version: &str) -> anyhow::Result<()> {
         _ => panic!("Unrecognised target: {target}"),
     };
     tmpl = tmpl.replace("TARGET", target_id);
+
+    let api_level = match target {
+        "nanosplus" => "1",
+        "nanox" => "5",
+        _ => panic!("Unrecognised target: {target}"),
+    };
+    tmpl = tmpl.replace("API_LEVEL", api_level);
 
     tmpl = tmpl.replace("VERSION", version);
 

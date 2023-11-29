@@ -29,8 +29,8 @@ enum ApproverState {
     Init,
     Uri,
     Challenge,
-    Deny,
     Allow,
+    Deny,
 }
 
 impl IdentApprover {
@@ -54,14 +54,14 @@ impl IdentApprover {
             (Uri, RightButtonRelease) => ApproverState::Challenge,
 
             (Challenge, LeftButtonRelease) => ApproverState::Uri,
-            (Challenge, RightButtonRelease) => ApproverState::Deny,
+            (Challenge, RightButtonRelease) => ApproverState::Allow,
 
-            (Deny, LeftButtonRelease) => ApproverState::Uri,
-            (Deny, BothButtonsRelease) => return UiResult::Exit(false),
-            (Deny, RightButtonRelease) => ApproverState::Allow,
-
-            (Allow, LeftButtonRelease) => ApproverState::Deny,
+            (Allow, LeftButtonRelease) => ApproverState::Uri,
             (Allow, BothButtonsRelease) => return UiResult::Exit(true),
+            (Allow, RightButtonRelease) => ApproverState::Deny,
+
+            (Deny, LeftButtonRelease) => ApproverState::Allow,
+            (Deny, BothButtonsRelease) => return UiResult::Exit(false),
 
             _ => self.state,
         };
@@ -86,7 +86,7 @@ impl IdentApprover {
         if self.state != ApproverState::Init {
             LEFT_ARROW.shift_v(0).display();
         }
-        if self.state != ApproverState::Allow {
+        if self.state != ApproverState::Deny {
             RIGHT_ARROW.shift_v(0).display();
         }
 

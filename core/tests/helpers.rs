@@ -1,12 +1,15 @@
 #![allow(unused)]
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use bip39::Seed;
+use ledger_proto::{ApduBase, ApduReq};
 use log::{debug, trace};
 
 use ledger_mob_core::engine::{Driver, Engine, Error, Event};
+use mc_core::slip10::Slip10Key;
 
 pub const MNEMONIC: &str = "duck deal pretty pen thunder economy wide common goose fit engine main aisle curtain choose cube claim snake enroll detect brief history float unit";
 
@@ -34,24 +37,23 @@ impl TestEngine {
 }
 
 #[async_trait]
-impl ledger_transport::Exchange for TestEngine {
-    type Error = Error;
+impl ledger_lib::Device for TestEngine {
+    async fn request<'a, 'b, RESP: ApduBase<'b>>(
+        &mut self,
+        request: impl ApduReq<'a> + Send,
+        buff: &'b mut [u8],
+        timeout: Duration,
+    ) -> Result<RESP, ledger_lib::Error> {
+        let h = request.header();
 
-    async fn exchange<'a, 'c, ANS: ledger_apdu::ApduBase<'a>>(
-        &self,
-        command: impl ledger_apdu::ApduCmd<'c>,
-        buff: &'a mut [u8],
-    ) -> Result<ANS, Self::Error> {
-        let h = command.header();
-
-        debug!("cmd: {:?}", command);
+        debug!("cmd: {:?}", request);
 
         // Encode command to APDU (skipping header)
-        let n = command.encode(buff).unwrap();
+        let n = request.encode(buff).unwrap();
 
         assert!(
             n < 250,
-            "encoded command maximum length exceeded for: {command:?} ({n} bytes)"
+            "encoded command maximum length exceeded for: {request:?} ({n} bytes)"
         );
 
         trace!("encoded: {:02x?}", &buff[..n]);
@@ -77,7 +79,7 @@ impl ledger_transport::Exchange for TestEngine {
         );
 
         // Decode response APDU
-        let (a, _) = ANS::decode(&buff[..n]).unwrap();
+        let (a, _) = RESP::decode(&buff[..n]).unwrap();
 
         debug!("resp: {:?}", a);
 
@@ -101,8 +103,9 @@ impl TestDriver {
 }
 
 impl Driver for TestDriver {
-    fn slip10_derive_ed25519(&self, path: &[u32]) -> [u8; 32] {
-        slip10_ed25519::derive_ed25519_private_key(&self.seed, path)
+    fn slip10_derive_ed25519(&self, path: &[u32]) -> Slip10Key {
+        let d = slip10_ed25519::derive_ed25519_private_key(&self.seed, path);
+        Slip10Key::from_raw(d)
     }
 }
 

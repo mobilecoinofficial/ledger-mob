@@ -5,27 +5,33 @@
 //! This handles [Event] inputs and returns [Output] responses to the caller,
 //! see [apdu][crate::apdu] for APDU protocol / encoding specifications.
 
+use core::ptr::addr_of_mut;
+
 use heapless::Vec;
+use ledger_mob_apdu::tx::TxOnetimeKey;
 use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
+use zeroize::Zeroize;
 
 use mc_core::{
-    account::{Account, RingCtAddress},
+    account::{Account, PublicSubaddress, RingCtAddress, ShortAddressHash},
     keys::{SubaddressViewPublic, TxOutPublic},
-    memo::Memo,
     slip10::{wallet_path, Slip10Key},
     subaddress::Subaddress,
 };
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{
+    CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
+};
+#[cfg(feature = "memo")]
+use mc_crypto_memo_mac::compute_category1_hmac;
 use mc_crypto_ring_signature::{onetime_keys::recover_onetime_private_key, KeyImage};
-
-#[cfg(feature = "summary")]
-use mc_transaction_summary::TxSummaryUnblindingReport;
-
-pub use mc_transaction_types::{BlockVersion, TokenId};
-
 #[cfg(feature = "summary")]
 pub use mc_transaction_summary::TransactionEntity;
+#[cfg(feature = "summary")]
+use mc_transaction_summary::TxSummaryUnblindingReport;
+pub use mc_transaction_types::{BlockVersion, TokenId};
+
+use crate::helpers::sign_authority;
 
 mod function;
 pub use function::Function;
@@ -45,15 +51,24 @@ pub use error::Error;
 mod ring;
 pub use ring::{RingState, RESP_SIZE, RING_SIZE};
 
+mod fog;
+pub use fog::{FogCert, FogId};
+
 #[cfg(feature = "ident")]
 mod ident;
 #[cfg(feature = "ident")]
-use ident::{Ident, IdentState};
+use ident::Ident;
+#[cfg(feature = "ident")]
+pub use ident::IdentState;
 
 #[cfg(feature = "summary")]
 mod summary;
 #[cfg(feature = "summary")]
-use summary::SummaryState;
+use summary::OutputAddress;
+#[cfg(feature = "summary")]
+pub use summary::SummaryState;
+
+use crate::helpers::digest_public_address;
 
 /// Maximum ring message size
 const MSG_SIZE: usize = 32;
@@ -72,7 +87,7 @@ pub enum State {
     Ident(IdentState),
 
     /// Transaction init, building memos
-    BuildMemos(u8),
+    BuildMemos(usize),
     /// Ready to set transaction message
     SetMessage,
     /// Loading TxSummary for verification
@@ -116,11 +131,11 @@ pub struct Engine<DRV: Driver, RNG: CryptoRngCore = OsRng> {
 /// [`Driver`] trait provides platform support for [`Engine`] instances
 pub trait Driver {
     /// SLIP-0010 derivation for ed25519 keys
-    fn slip10_derive_ed25519(&self, path: &[u32]) -> [u8; 32];
+    fn slip10_derive_ed25519(&self, path: &[u32]) -> Slip10Key;
 }
 
 impl<T: Driver> Driver for &mut T {
-    fn slip10_derive_ed25519(&self, path: &[u32]) -> [u8; 32] {
+    fn slip10_derive_ed25519(&self, path: &[u32]) -> Slip10Key {
         T::slip10_derive_ed25519(self, path)
     }
 }
@@ -150,6 +165,24 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         }
     }
 
+    /// Initialise an uninitialised engine instance
+    /// pointer, another adventure in stack frame reduction
+    /// TODO: add checks that init and new_with_rng match
+    /// # Safety
+    /// per-field init is okay so long as we init _all_ fields
+    pub unsafe fn init(p: *mut Self, drv: DRV, rng: RNG) {
+        addr_of_mut!((*p).state).write(State::Init);
+        addr_of_mut!((*p).unlocked).write(false);
+        addr_of_mut!((*p).message).write(Vec::new());
+        addr_of_mut!((*p).account_index).write(0);
+        addr_of_mut!((*p).digest).write(TxDigest::new());
+        addr_of_mut!((*p).num_rings).write(0);
+        addr_of_mut!((*p).function).write(Function::new());
+        addr_of_mut!((*p).ring_count).write(0);
+        addr_of_mut!((*p).rng).write(rng);
+        addr_of_mut!((*p).drv).write(drv);
+    }
+
     /// Handle incoming transaction events
     // TODO: rejections / timeouts / failure case for transaction aborted half way through?
     #[cfg_attr(feature = "noinline", inline(never))]
@@ -176,12 +209,16 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     return Err(Error::ApprovalPending);
                 }
 
-                let account = self.get_account(*account_index);
+                let mut account = self.get_account(*account_index);
+
+                let spend_public = account.spend_public_key();
+                let view_private = account.view_private_key().clone();
+                account.zeroize();
 
                 return Ok(Output::WalletKeys {
                     account_index: *account_index,
-                    spend_public: account.spend_public_key(),
-                    view_private: account.view_private_key().clone(),
+                    spend_public,
+                    view_private,
                 });
             }
 
@@ -198,15 +235,20 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     return Err(Error::ApprovalPending);
                 }
 
-                let account = self.get_account(*account_index);
+                let mut account = self.get_account(*account_index);
+                let mut subaddress = account.subaddress(*subaddress_index);
+                account.zeroize();
 
-                let subaddress = account.subaddress(*subaddress_index);
+                let spend_public = subaddress.spend_public_key();
+                let view_private = subaddress.view_private_key().clone();
+                subaddress.view_private.zeroize();
+                subaddress.spend_private.zeroize();
 
                 return Ok(Output::SubaddressKeys {
                     account_index: *account_index,
                     subaddress_index: *subaddress_index,
-                    spend_public: subaddress.spend_public_key(),
-                    view_private: subaddress.view_private_key().clone(),
+                    spend_public,
+                    view_private,
                 });
             }
 
@@ -224,20 +266,13 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     return Err(Error::ApprovalPending);
                 }
 
-                let account = self.get_account(*account_index);
-                let subaddress = account.subaddress(*subaddress_index);
-
-                let onetime_private_key = recover_onetime_private_key(
+                let r = self.get_key_image(
+                    *account_index,
+                    *subaddress_index,
                     txout_public_key.as_ref(),
-                    account.view_private_key().as_ref(),
-                    subaddress.spend_private_key().as_ref(),
                 );
 
-                return Ok(Output::KeyImage {
-                    account_index: *account_index,
-                    subaddress_index: *subaddress_index,
-                    key_image: KeyImage::from(&onetime_private_key),
-                });
+                return Ok(r);
             }
 
             // Fetch a random value
@@ -251,7 +286,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // Request identity proof
             #[cfg(feature = "ident")]
             (
-                State::Init,
+                State::Init | State::Ident(_),
                 Event::IdentSign {
                     ident_index,
                     ident_uri,
@@ -275,27 +310,15 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // Derive identity and sign the provided challenge
             #[cfg(feature = "ident")]
             (State::Ident(s), Event::IdentGet) => {
-                // Retrieve identity context
-                let ident = match self.function.ident_ref() {
-                    Some(v) => v,
-                    None => {
-                        self.state = State::Error;
-                        return Err(Error::InvalidState);
-                    }
-                };
-
-                #[cfg(feature = "log")]
-                log::debug!("ident get, state: {:?}", s);
-
-                // Ensure identity request has been approved
-                if s != IdentState::Approved {
-                    return Err(Error::ApprovalPending);
+                // Check approval state (MOB-02, MOB-05)
+                match s {
+                    IdentState::Pending => return Err(Error::ApprovalPending),
+                    IdentState::Denied => return Err(Error::IdentRejected),
+                    IdentState::Approved => (),
                 }
 
-                // Compute identity object
-                let path = ident.path();
-                let private_key = self.drv.slip10_derive_ed25519(&path);
-                let r = ident.compute(&private_key);
+                // Fetch signed identity
+                let r = self.get_signed_ident(s);
 
                 // Reset engine state
                 self.function.clear();
@@ -316,6 +339,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 // Set common transaction information
                 self.account_index = *account_index;
                 self.num_rings = *num_rings as usize;
+                self.ring_count = 0;
                 self.digest = TxDigest::from_random(&mut self.rng);
 
                 // TODO: start timeout for transaction completion
@@ -324,6 +348,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 // clear so prior report cannot be reused.
                 self.state = State::BuildMemos(0);
                 self.function.clear();
+                self.message.clear();
             }
 
             // Sign memos for the transaction
@@ -339,19 +364,26 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 },
             ) => {
                 // NOTE: these must be signed prior to the summary construction,
-                // so must be allowed without approval / unlocking.
+                // so must be allowed prior to transaction approval.
                 // this has been deemed non-critical as signed memos are not
-                // _useable_ until included in a transaction.
+                // _useable_ until included in a transaction (and the device
+                // must already be unlocked to be interactive).
 
-                // Sign memo
-                let r = self.sign_memo(
-                    n,
+                // Perform memo signing
+                let r = self.memo_sign(
                     *subaddress_index,
                     tx_public_key,
                     receiver_view_public,
                     kind,
                     payload,
-                )?;
+                );
+
+                // Update memo counter
+                self.state = State::BuildMemos(n + 1);
+
+                // There is no condition under which the application can
+                // sign enough memos for this to overflow (MOB-06.10)
+                assert_ne!(n + 1, usize::MAX);
 
                 // Return HMAC
                 return Ok(r);
@@ -411,6 +443,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     token_id,
                     subaddress_index,
                     real_index,
+                    onetime_private_key,
                 },
             ) => {
                 return self.ring_init(
@@ -419,6 +452,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                     *token_id,
                     *subaddress_index,
                     *real_index,
+                    onetime_private_key.clone(),
                 );
             }
 
@@ -468,10 +502,55 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     }
 
     /// Fetch an [`Account`] instance for a given wallet index
+    #[cfg_attr(feature = "noinline", inline(never))]
     pub fn get_account(&self, account_index: u32) -> Account {
         let path = wallet_path(account_index);
         let seed = self.drv.slip10_derive_ed25519(&path);
-        Account::from(&Slip10Key::from_raw(seed))
+        let a = Account::from(&seed);
+
+        // Clear seed following use (MOB-01.4)
+        drop(seed);
+
+        a
+    }
+
+    /// Fetch a Subaddress instance for a given wallet and subaddress index
+    #[cfg_attr(feature = "noinline", inline(never))]
+    pub fn get_subaddress(
+        &self,
+        account_index: u32,
+        subaddress_index: u64,
+        fog_id: FogId,
+    ) -> OutputAddress {
+        let mut account = self.get_account(account_index);
+        let mut subaddress = account.subaddress(subaddress_index);
+
+        // Zeroize private account keys (MOB-01.x)
+        account.zeroize();
+
+        let sig: Option<[u8; 64]> = match fog_id {
+            FogId::None => None,
+            _ => Some(sign_authority(&subaddress.view_private, fog_id.spki())).map(|v| v.into()),
+        };
+
+        let p = PublicSubaddress::from(&subaddress);
+
+        // Zeroize private subaddress keys (MOB-01.x)
+        subaddress.view_private.zeroize();
+        subaddress.spend_private.zeroize();
+
+        let short_hash = digest_public_address(
+            &p,
+            fog_id.url(),
+            sig.as_ref().map(|v| &v[..]).unwrap_or(&[]),
+        );
+
+        OutputAddress {
+            short_hash,
+            address: p,
+            fog_id,
+            fog_sig: sig,
+        }
     }
 
     /// Check whether engine is unlocked (ie. key requests and scanning have been approved)
@@ -482,6 +561,12 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     /// Unlock the engine (allowing key requests and scanning)
     pub fn unlock(&mut self) {
         self.unlocked = true;
+    }
+
+    /// Lock the engine (requires approval for key requests and scanning)
+    pub fn lock(&mut self) {
+        // MOB-04 - lock engine on timeout
+        self.unlocked = false;
     }
 
     /// Approve a pending transaction (advances state to `State::Ready`)
@@ -537,6 +622,46 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         None
     }
 
+    /// Resolve address if available
+    #[cfg(feature = "summary")]
+    pub fn address(&self, h: &ShortAddressHash) -> Option<&OutputAddress> {
+        self.function.summarizer_ref().and_then(|v| v.address(h))
+    }
+
+    /// Noop report if summary feature is disabled
+    #[cfg(not(feature = "summary"))]
+    pub fn address(&self, _h: &ShortAddressHash) -> Option<&OutputAddress> {
+        None
+    }
+
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn get_key_image(
+        &self,
+        account_index: u32,
+        subaddress_index: u64,
+        txout_public_key: &RistrettoPublic,
+    ) -> Output {
+        let mut account = self.get_account(account_index);
+        let mut subaddress = account.subaddress(subaddress_index);
+
+        let onetime_private_key = recover_onetime_private_key(
+            txout_public_key,
+            account.view_private_key().as_ref(),
+            subaddress.spend_private_key().as_ref(),
+        );
+
+        // Zeroize keys
+        account.zeroize();
+        subaddress.view_private.zeroize();
+        subaddress.spend_private.zeroize();
+
+        Output::KeyImage {
+            account_index,
+            subaddress_index,
+            key_image: KeyImage::from(&onetime_private_key),
+        }
+    }
+
     /// Return ident info if available
     #[cfg(feature = "ident")]
     pub fn ident(&self) -> Option<&Ident> {
@@ -548,7 +673,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         self.function.ident_ref()
     }
 
-    /// Approve or deny a pending identity request
+    /// Approve or deny a pending identity request, updating the [IdentState]
     #[cfg(feature = "ident")]
     pub fn ident_approve(&mut self, approve: bool) {
         if let State::Ident(IdentState::Pending) = self.state {
@@ -556,50 +681,88 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 self.state = State::Ident(IdentState::Approved);
             } else {
                 self.function.clear();
-                self.state = State::Init;
+                self.state = State::Ident(IdentState::Denied);
             }
         }
     }
 
+    #[cfg(feature = "ident")]
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn get_signed_ident(&mut self, s: IdentState) -> Result<Output, Error> {
+        // Retrieve identity context
+        let ident = match self.function.ident_ref() {
+            Some(v) => v,
+            None => {
+                return Err(Error::InvalidState);
+            }
+        };
+
+        #[cfg(feature = "log")]
+        log::debug!("ident get, state: {:?}", s);
+
+        // Ensure identity request has been approved
+        if s != IdentState::Approved {
+            return Err(Error::ApprovalPending);
+        }
+
+        // Compute identity object
+        let path = ident.path();
+        let mut private_key = self.drv.slip10_derive_ed25519(&path);
+        let resp = ident.compute(&private_key);
+
+        // Zeroize private key (MOB-01.5)
+        private_key.zeroize();
+
+        Ok(resp)
+    }
+
     // Sign the provided memo, returning an `Output::MemoHmac` on success
-    fn sign_memo(
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn memo_sign(
         &mut self,
-        n: u8,
         subaddress_index: u64,
-        tx_public_key: &TxOutPublic,
+        tx_out_public_key: &TxOutPublic,
         receiver_view_public: &SubaddressViewPublic,
         kind: &[u8; 2],
         payload: &[u8; 48],
-    ) -> Result<Output, Error> {
+    ) -> Output {
         // Fetch default subaddress
-        let account = self.get_account(self.account_index);
-        let subaddr = account.subaddress(subaddress_index);
+        let mut account = self.get_account(self.account_index);
+        let mut sender_subaddr = account.subaddress(subaddress_index);
 
         // KX using sender default subaddress spend private and receiver subaddress view public
-        let sender_spend_private = subaddr.spend_private_key();
+        // (allowing the receiver to reverse this _if_ they know the sender)
+        let shared_secret = RistrettoPrivate::key_exchange(
+            sender_subaddr.spend_private_key().as_ref(),
+            receiver_view_public.as_ref(),
+        );
 
-        // TODO: check memo is supported type (no MEMO_TYPE_BYTES exported yet)
+        // Zeroize private keys (MOB-01.2)
+        account.zeroize();
+        sender_subaddr.view_private.zeroize();
+        sender_subaddr.spend_private.zeroize();
+
+        // TODO: check memo is supported type (no MEMO_TYPE_BYTES exported from core just yet)
 
         // Build HMAC
-        let tx_out_public_key: &RistrettoPublic = tx_public_key.as_ref();
-        let hmac_value = Memo::hmac_sign(
-            tx_out_public_key,
-            sender_spend_private,
-            receiver_view_public,
+        // - this is a deterministic value so it can be generated by the sender with knowledge of the
+        //   receiver, and the receiver with knowledge of the sender, but not by other parties.
+        // - `tx_out_public_key` is unique to a given TxOut avoiding collisions for a transaction
+        //   between the same parties with the same memo kind and payload.
+        let tx_out_public_key: &RistrettoPublic = tx_out_public_key.as_ref();
+        let hmac_value = compute_category1_hmac(
+            shared_secret.as_ref(),
+            &CompressedRistrettoPublic::from(tx_out_public_key),
             *kind,
             payload,
         );
 
-        // Update memo counter
-        self.state = State::BuildMemos(n + 1);
-
         // Return HMAC
-        // TODO: useful to ensure hmac|memo correspondence? can't check this on client i think because we don't have the keys
-        Ok(Output::MemoHmac {
+        Output::MemoHmac {
             state: self.state,
             digest: self.digest.clone(),
-            hmac: hmac_value.0,
-        })
+            hmac: hmac_value,
+        }
     }
 
     /// Initialise ring signing context
@@ -611,17 +774,23 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         token_id: u64,
         subaddress_index: u64,
         real_index: u8,
+        onetime_private_key: Option<TxOnetimeKey>,
     ) -> Result<Output, Error> {
         // Preload keys for onetime_private_key recovery on real input
-        let account = self.get_account(self.account_index);
-        let subaddress = account.subaddress(subaddress_index);
+        let mut account = self.get_account(self.account_index);
+        let mut subaddress = account.subaddress(subaddress_index);
 
         #[cfg(feature = "log")]
         log::info!("using subaddress {}: {:#?}", subaddress_index, subaddress);
 
         // Count signed rings
         if self.function.ring_signer_ref().is_some() {
+            // If we're already in ring signing mode, increment counter
             self.ring_count += 1;
+
+            // There is no real-world condition where this -can- overflow
+            // as this would require a transaction containing 2^32 rings (MOB-06.1)
+            assert!(self.ring_count < usize::MAX);
         }
 
         // Setup ring signer context
@@ -633,7 +802,13 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             value,
             &self.message,
             token_id,
+            onetime_private_key,
         );
+
+        // Zeroize keys
+        account.zeroize();
+        subaddress.view_private.zeroize();
+        subaddress.spend_private.zeroize();
 
         // Handle errors
         match ctx {
@@ -696,7 +871,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     #[cfg_attr(feature = "noinline", inline(never))]
     fn tx_summary_init(
         &mut self,
-        message: &[u8],
+        message: &[u8; 32],
         block_version: u32,
         num_outputs: u32,
         num_inputs: u32,
@@ -704,22 +879,38 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         // Check streaming message length
         // (note transaction message hash is set later, incoming
         // message is only used for txsummary generation)
+
+        use mc_core::consts::CHANGE_SUBADDRESS_INDEX;
+
         if message.len() > self.message.capacity() {
             return Err(Error::InvalidLength);
         }
 
-        let a = self.get_account(self.account_index);
+        let mut account = self.get_account(self.account_index);
+        let change_subaddress =
+            PublicSubaddress::from(&account.subaddress(CHANGE_SUBADDRESS_INDEX));
 
         // Setup summarizer context
-        let _ctx = self.function.summarizer_init(
+        if let Err(e) = self.function.summarizer_init(
             message,
             BlockVersion::try_from(block_version).unwrap(),
             num_outputs as usize,
             num_inputs as usize,
-            a.view_private_key(),
-        );
+            account.view_private_key(),
+            &change_subaddress,
+        ) {
+            #[cfg(feature = "log")]
+            log::error!("summarizer init failed: {:?}", e);
+
+            account.zeroize();
+
+            self.function.clear();
+            self.state = State::Error;
+            return Err(e);
+        }
 
         self.state = State::Summary(SummaryState::Init);
+        account.zeroize();
 
         Ok(Output::State {
             state: self.state,
@@ -748,7 +939,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 public_key,
                 associated_to_input_rules,
             } => summarizer.add_output_summary(
-                masked_amount.clone(),
+                masked_amount.as_ref(),
                 target_key,
                 public_key,
                 *associated_to_input_rules,
@@ -756,11 +947,13 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             Event::TxSummaryAddOutputUnblinding {
                 unmasked_amount,
                 address,
+                fog_info,
                 tx_private_key,
             } => summarizer.add_output_unblinding(
                 unmasked_amount,
-                address.clone(),
-                tx_private_key.clone(),
+                address.as_ref(),
+                fog_info.as_ref().map(|(id, sig)| (*id, sig)),
+                tx_private_key.as_ref(),
             ),
             Event::TxSummaryAddInput {
                 pseudo_output_commitment,
@@ -816,22 +1009,27 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
 }
 
 fn compute_ring_progress(current: usize, ring: usize, total_rings: usize) -> usize {
-    // Check to avoid divide by zero
-    if current == 0 && ring == 0 {
+    // Check to avoid divide by zero (MOB-06.2)
+    if (current == 0 && ring == 0) || total_rings == 0 {
         return 0;
     }
 
     let t = current + (ring * 100);
     let v = t / total_rings;
 
+    // Panic in _debug builds_ (testing only) if we exceed
+    // 100% when calculating progress
     debug_assert!(v <= 100);
 
+    // Otherwise clamp to a maximum of 100
     v.min(100)
 }
 
 #[cfg(test)]
 mod test {
     extern crate std;
+
+    use core::mem::MaybeUninit;
 
     use rand_core::OsRng;
     use strum::IntoEnumIterator;
@@ -852,12 +1050,12 @@ mod test {
         pub static ref PRIVATE_KEY: RistrettoPrivate = RistrettoPrivate::from_random(&mut OsRng{});
 
         /// Mocked out test values, only for state tests
-        pub static ref TESTS: [(State, Event<'static>); 4] = [
+        pub static ref TESTS: [(State, Event); 4] = [
             (State::Init, Event::TxInit{ account_index: 0, num_rings: 13 }),
 
-            (State::SetMessage, Event::TxSetMessage(&[0xaa, 0xbb, 0xcc])),
+            (State::SetMessage, Event::TxSetMessage(heapless::Vec::from_slice(&[0xaa, 0xbb, 0xcc]).unwrap())),
 
-            (State::Ready, Event::TxRingInit{ ring_size: RING_SIZE as u8, value: 100, token_id: 10, real_index: 3, subaddress_index: 8 }),
+            (State::Ready, Event::TxRingInit{ ring_size: RING_SIZE as u8, value: 100, token_id: 10, real_index: 3, subaddress_index: 8, onetime_private_key: None }),
 
             (State::SignRing(RingState::Init), Event::TxSetBlinding{ blinding: Scalar::random(&mut OsRng{}), output_blinding: Scalar::random(&mut OsRng{})}),
 
@@ -894,8 +1092,9 @@ mod test {
 
     /// Driver impl for test use
     impl Driver for TestDriver {
-        fn slip10_derive_ed25519(&self, path: &[u32]) -> [u8; 32] {
-            slip10_ed25519::derive_ed25519_private_key(&self.seed, path)
+        fn slip10_derive_ed25519(&self, path: &[u32]) -> Slip10Key {
+            let d = slip10_ed25519::derive_ed25519_private_key(&self.seed, path);
+            Slip10Key::from_raw(d)
         }
     }
 
@@ -1017,7 +1216,12 @@ mod test {
         let params =
             RingMLSAGParameters::random(&account, RING_SIZE - 1, pseudo_output_blinding, &mut rng);
 
-        let mut engine = Engine::new_with_rng(drv, rng);
+        // Setup engine
+        let mut e = MaybeUninit::uninit();
+        let mut engine = unsafe {
+            Engine::init(e.as_mut_ptr(), drv, rng);
+            e.assume_init()
+        };
 
         // Initialise new transaction
         let r = engine
@@ -1033,7 +1237,7 @@ mod test {
         };
 
         // Set message (shared between rings)
-        let evt = Event::TxSetMessage(&params.message);
+        let evt = Event::TxSetMessage(heapless::Vec::from_slice(&params.message).unwrap());
         let r = engine.update(&evt).expect("Set message");
 
         assert_eq!(
@@ -1053,6 +1257,7 @@ mod test {
             token_id: params.token_id,
             real_index: params.real_index as u8,
             subaddress_index: params.target_subaddress_index,
+            onetime_private_key: None,
         };
         let r = engine.update(&evt).expect("Init ring");
 
