@@ -37,8 +37,8 @@ noinline = [ "ledger-mob-core/noinline" ]
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-ledger_device_sdk = "1.4.1"
-ledger_secure_sdk_sys = "1.0.3"
+ledger_device_sdk = "1.4.2"
+ledger_secure_sdk_sys = "1.1.0"
 ledger-proto = { version = "0.1.0", default_features = false }
 
 getrandom = { version = "0.2.7", default_features = false, features = [ "custom" ] }
