@@ -2,9 +2,9 @@
 
 use rand_core::{CryptoRng, RngCore};
 
-use nanos_sdk::buttons::ButtonEvent;
+use ledger_device_sdk::buttons::ButtonEvent;
 
-use nanos_ui::{
+use ledger_device_sdk::ui::{
     bagls::*,
     layout::{Draw, Layout, Location, StringPlace},
     screen_util,
