@@ -15,16 +15,13 @@ use core::mem::MaybeUninit;
 use encdec::Encode;
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp, DeviceInfoReq};
-use nanos_sdk::{
+use ledger_device_sdk::ui::layout::{Layout, Location, StringPlace};
+use ledger_device_sdk::{
     buttons::ButtonEvent,
     io::{self, ApduHeader, Reply, SyscallError},
     random::LedgerRng,
 };
-use nanos_ui::{
-    layout::{Layout, Location, StringPlace},
-    screen_util::screen_update,
-};
+use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp, DeviceInfoReq};
 
 use ledger_mob_core::{
     apdu::{
@@ -65,7 +62,7 @@ struct AppCtx {
 }
 
 // Setup ledger panic handler
-nanos_sdk::set_panic!(nanos_sdk::exiting_panic);
+ledger_device_sdk::set_panic!(ledger_device_sdk::exiting_panic);
 
 // Setup custom (OS) getrandom function
 getrandom::register_custom_getrandom!(app_getrandom);
@@ -74,7 +71,7 @@ getrandom::register_custom_getrandom!(app_getrandom);
 #[no_mangle]
 #[inline]
 pub fn app_getrandom(buff: &mut [u8]) -> Result<(), getrandom::Error> {
-    nanos_sdk::random::rand_bytes(buff);
+    ledger_device_sdk::random::rand_bytes(buff);
     Ok(())
 }
 
@@ -234,7 +231,7 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                         let fog_id = platform_get_fog_id();
                         ui.state = UiState::Settings(Settings::new(fog_id))
                     }
-                    MenuState::Exit => nanos_sdk::exit_app(0),
+                    MenuState::Exit => ledger_device_sdk::exit_app(0),
                     _ => (),
                 }
             });
@@ -382,7 +379,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         }
         // Ledger exit app command
         (0xb0, 0xa7) => {
-            nanos_sdk::exit_app(0);
+            ledger_device_sdk::exit_app(0);
         }
         // MobileCoin application info
         (MobAppInfoReq::CLA, MobAppInfoReq::INS) => {
@@ -559,7 +556,7 @@ fn platform_tests(comm: &mut io::Comm) {
             let evt = comm.next_event::<ApduHeader>();
 
             match evt {
-                io::Event::Button(_btn) => nanos_sdk::exit_app(30),
+                io::Event::Button(_btn) => ledger_device_sdk::exit_app(30),
                 io::Event::Command(_cmd) => {
                     comm.reply(SyscallError::Security);
                 }

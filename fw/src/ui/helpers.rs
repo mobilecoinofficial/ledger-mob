@@ -1,11 +1,11 @@
 #![allow(unused)]
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-use nanos_ui::{
+use ledger_device_sdk::ui::{
     bagls::*,
-    bitmaps,
+    bitmaps, gadgets,
     layout::{Draw, Layout, Location, StringPlace},
-    screen_util, ui,
+    screen_util,
 };
 
 const TX_REQ_APPROVE: &str = "Approve Transaction?";
@@ -15,7 +15,7 @@ const TX_REQ_DENY: &str = "Reject Transaction?";
 /// (required as speculos doesn't support the full screen clear syscall,
 /// and we want to run _exactly_ the same code on both)
 pub fn clear_screen() {
-    ui::clear_screen();
+    gadgets::clear_screen();
 }
 
 /// Convert to hex. Returns a static buffer of N bytes
@@ -72,7 +72,7 @@ pub fn show_key(kind: &str, key: &[u8]) {
 #[inline]
 pub fn show_str(kind: &str, s: &str) {
     kind.place(Location::Top, Layout::Centered, true);
-    nanos_ui::ui::MessageScroller::new(s).event_loop()
+    ledger_device_sdk::ui::gadgets::MessageScroller::new(s).event_loop()
 }
 
 #[inline]
