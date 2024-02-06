@@ -1067,9 +1067,9 @@ dependencies = [
 
 [[package]]
 name = "ledger_device_sdk"
-version = "1.4.2"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6357bb0259db7b9c0ac031ab5ce13d32df66df3ec8d83e3f8ab0751082d969ff"
+checksum = "991d04af0296732c54e377c0df3d4f57ef6c982ca9c735ba11df9c174f54ffc8"
 dependencies = [
  "include_gif",
  "ledger_secure_sdk_sys",
@@ -1081,9 +1081,9 @@ dependencies = [
 
 [[package]]
 name = "ledger_secure_sdk_sys"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a4e2b8d39040cc60a101c53e79e5c15f8e4584c829a3db2fc9439f841639deb"
+checksum = "60e201ddad57baebaf48c694341d1e0aa910d3516cafee32fc385fa73c01381c"
 dependencies = [
  "bindgen",
  "cc",
@@ -1592,9 +1592,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.59"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aeca18b86b413c660b781aa319e4e2648a3e6f9eadc9b47e9038e6fe9f3451b"
+checksum = "e2422ad645d89c99f8f3e6b88a9fdeca7fabeac836b1002371c4367c8f984aae"
 dependencies = [
  "unicode-ident",
 ]
