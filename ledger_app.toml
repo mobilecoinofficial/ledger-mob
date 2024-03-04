@@ -1,4 +1,4 @@
 [app]
 build_directory = "./fw/"
 sdk = "Rust"
-devices = ["nanox", "nanos+"]
+devices = ["nanos+"]
