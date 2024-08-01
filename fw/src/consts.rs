@@ -4,8 +4,8 @@
 
 #![allow(unused)]
 
-use nanos_sdk::ecc::make_bip32_path;
-use nanos_ui::bitmaps::Glyph;
+use ledger_device_sdk::ecc::make_bip32_path;
+use ledger_device_sdk::ui::bitmaps::Glyph;
 
 use ledger_mob_core::apdu::app_info::AppFlags;
 

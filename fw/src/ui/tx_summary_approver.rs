@@ -7,9 +7,9 @@ use strum::{Display, EnumCount};
 
 use emstr::{helpers::Hex, EncodeStr};
 
-use nanos_sdk::buttons::ButtonEvent;
+use ledger_secure_sdk_sys::buttons::ButtonEvent;
 
-use nanos_ui::{
+use ledger_device_sdk::ui::{
     bagls::*,
     layout::{Draw, Layout, Location, StringPlace},
     screen_util,
@@ -68,28 +68,31 @@ impl TxSummaryApprover {
         btn: &ButtonEvent,
         engine: &Engine<D, R>,
     ) -> UiResult<bool> {
-        use ButtonEvent::*;
         use TxSummaryApproverState::*;
 
         match (self.state, btn) {
             // Transaction overview (first page)
-            (Init, RightButtonRelease) => self.state = Op(0),
+            (Init, ButtonEvent::RightButtonRelease) => self.state = Op(0),
 
             // Passthrough to address renderer if available
-            (Op(_), BothButtonsRelease) if self.address.is_some() => self.address = None,
+            (Op(_), ButtonEvent::BothButtonsRelease) if self.address.is_some() => {
+                self.address = None
+            }
             (Op(_), _) if self.address.is_some() => {
                 let address = self.address.as_mut().unwrap();
                 address.update(btn).map_exit(|_| ());
             }
 
             // List of operations
-            (Op(n), LeftButtonRelease) if n == 0 => self.state = Init,
-            (Op(n), LeftButtonRelease) => self.state = Op(n - 1),
-            (Op(n), RightButtonRelease) if n + 1 < self.num_outputs => self.state = Op(n + 1),
-            (Op(_n), RightButtonRelease) => self.state = Fee,
+            (Op(n), ButtonEvent::LeftButtonRelease) if n == 0 => self.state = Init,
+            (Op(n), ButtonEvent::LeftButtonRelease) => self.state = Op(n - 1),
+            (Op(n), ButtonEvent::RightButtonRelease) if n + 1 < self.num_outputs => {
+                self.state = Op(n + 1)
+            }
+            (Op(_n), ButtonEvent::RightButtonRelease) => self.state = Fee,
 
             // Select for operations with addresses
-            (Op(n), BothButtonsRelease) if self.address.is_none() => {
+            (Op(n), ButtonEvent::BothButtonsRelease) if self.address.is_none() => {
                 let report = match engine.report() {
                     Some(r) => r,
                     None => return UiResult::None,
@@ -118,26 +121,28 @@ impl TxSummaryApprover {
             }
 
             // Fee information
-            (Fee, LeftButtonRelease) => self.state = Op(self.num_outputs - 1),
-            (Fee, RightButtonRelease) => self.state = Total(0),
+            (Fee, ButtonEvent::LeftButtonRelease) => self.state = Op(self.num_outputs - 1),
+            (Fee, ButtonEvent::RightButtonRelease) => self.state = Total(0),
 
             // List of totals
-            (Total(n), LeftButtonRelease) if n == 0 => self.state = Fee,
-            (Total(n), LeftButtonRelease) => self.state = Total(n - 1),
-            (Total(n), RightButtonRelease) if n + 1 < self.num_totals => self.state = Total(n + 1),
-            (Total(_n), RightButtonRelease) => self.state = Allow,
+            (Total(n), ButtonEvent::LeftButtonRelease) if n == 0 => self.state = Fee,
+            (Total(n), ButtonEvent::LeftButtonRelease) => self.state = Total(n - 1),
+            (Total(n), ButtonEvent::RightButtonRelease) if n + 1 < self.num_totals => {
+                self.state = Total(n + 1)
+            }
+            (Total(_n), ButtonEvent::RightButtonRelease) => self.state = Allow,
 
             // Approve page
-            (Allow, LeftButtonRelease) => self.state = Total(self.num_totals - 1),
-            (Allow, BothButtonsRelease) => return UiResult::Exit(true),
-            (Allow, RightButtonRelease) => self.state = Deny,
+            (Allow, ButtonEvent::LeftButtonRelease) => self.state = Total(self.num_totals - 1),
+            (Allow, ButtonEvent::BothButtonsRelease) => return UiResult::Exit(true),
+            (Allow, ButtonEvent::RightButtonRelease) => self.state = Deny,
 
             // Deny page
-            (Deny, LeftButtonRelease) => self.state = Allow,
-            (Deny, BothButtonsRelease) => return UiResult::Exit(false),
+            (Deny, ButtonEvent::LeftButtonRelease) => self.state = Allow,
+            (Deny, ButtonEvent::BothButtonsRelease) => return UiResult::Exit(false),
 
             // Both buttons pressed in other states cancels the request
-            (_, BothButtonsRelease) => return UiResult::Exit(false),
+            (_, ButtonEvent::BothButtonsRelease) => return UiResult::Exit(false),
 
             _ => return UiResult::None,
         }
