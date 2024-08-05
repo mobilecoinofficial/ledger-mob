@@ -99,7 +99,7 @@ wts-nanox:
 lint: fmt clippy
 
 fmt:
-	cargo fmt --check -p ledger-mob -p -p ledger-mob-apdu ledger-mob-core -p ledger-mob-tests
+	cargo fmt --check -p ledger-mob -p ledger-mob-apdu ledger-mob-core -p ledger-mob-tests
 	cargo fmt --check --manifest-path=fw/Cargo.toml
 
 clippy:
