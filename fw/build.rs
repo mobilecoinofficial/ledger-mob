@@ -74,7 +74,7 @@ fn generate_manifest(target: &str, version: &str) -> anyhow::Result<()> {
     tmpl = tmpl.replace("TARGET", target_id);
 
     let api_level = match target {
-        "nanosplus" => "1",
+        "nanosplus" => "5",
         "nanox" => "5",
         _ => panic!("Unrecognised target: {target}"),
     };

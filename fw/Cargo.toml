@@ -10,17 +10,22 @@ edition = "2021"
 license = "GPL-3.0"
 publish = false
 
-[package.metadata.nanos]
+[package.metadata.ledger]
 name = "MobileCoin"
 curve = [ "ed25519" ]
 path = [ 
     "44'/866'",
     "13'/",
 ]
-flags = "0"
-icon = "assets/mob16x16i.gif"
-icon_small = "assets/mob14x14i.gif"
-api_level = "1"
+api_level = "5"
+flags = "0x040"
+
+[package.metadata.ledger.nanox]
+icon = "assets/mob14x14i.gif"
+
+[package.metadata.ledger.nanosplus]
+icon = "assets/mob14x14i.gif"
+
 
 [features]
 applet = []
