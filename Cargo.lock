@@ -2469,7 +2469,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -2493,14 +2493,14 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys-types"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-api"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "bs58",
  "cargo-emit",
@@ -2530,7 +2530,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-verifier-types"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "base64 0.21.0",
  "displaydoc",
@@ -2552,7 +2552,7 @@ dependencies = [
 
 [[package]]
 name = "mc-blockchain-types"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "hex_fmt",
@@ -2575,7 +2575,7 @@ dependencies = [
 
 [[package]]
 name = "mc-common"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "backtrace",
  "cfg-if",
@@ -2610,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-types"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "mc-common",
  "mc-crypto-digestible",
@@ -2622,7 +2622,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -2640,7 +2640,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core-types"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
@@ -2651,7 +2651,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-box"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "aead",
  "digest 0.10.7",
@@ -2665,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "cfg-if",
  "curve25519-dalek",
@@ -2678,7 +2678,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2687,7 +2687,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-digestible",
  "signature 2.2.0",
@@ -2695,7 +2695,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "blake2",
  "digest 0.10.7",
@@ -2704,7 +2704,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "base64 0.21.0",
  "curve25519-dalek",
@@ -2733,7 +2733,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "hmac",
  "mc-crypto-keys",
@@ -2742,7 +2742,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-multisig"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -2752,7 +2752,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -2773,7 +2773,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature-signer"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -2793,7 +2793,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "mc-crypto-keys",
 ]
@@ -2901,7 +2901,7 @@ checksum = "b3c237bec3e33530c4b1a171c8c078ad5d525d5fae177ac9d62e8e454b3fffb7"
 
 [[package]]
 name = "mc-transaction-core"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "aes 0.8.4",
  "bulletproofs-og",
@@ -2939,7 +2939,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-extra"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "cfg-if",
  "curve25519-dalek",
@@ -2971,7 +2971,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-signer"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2999,7 +2999,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-summary"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "heapless 0.7.16",
@@ -3019,7 +3019,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-types"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "crc",
  "displaydoc",
@@ -3037,7 +3037,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-grpc"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "mc-util-build-script",
  "protoc-grpcio",
@@ -3045,14 +3045,14 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-info"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-util-build-script"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "cargo-emit",
  "displaydoc",
@@ -3063,7 +3063,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-encodings"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "base64 0.21.0",
  "displaydoc",
@@ -3074,18 +3074,18 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-host-cert"
-version = "6.0.1"
+version = "6.0.2"
 
 [[package]]
 name = "mc-util-logger-macros"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3094,7 +3094,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "generic-array",
  "hex_fmt",
@@ -3104,7 +3104,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-serial"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "prost 0.12.3",
  "serde",
@@ -3114,7 +3114,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-test-helper"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "clap",
  "lazy_static",
@@ -3125,11 +3125,11 @@ dependencies = [
 
 [[package]]
 name = "mc-util-u64-ratio"
-version = "6.0.1"
+version = "6.0.2"
 
 [[package]]
 name = "mc-util-uri"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "base64 0.21.0",
  "displaydoc",
@@ -3144,7 +3144,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-vec-map"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "heapless 0.8.0",
@@ -3152,14 +3152,14 @@ dependencies = [
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "mc-watcher-api"
-version = "6.0.1"
+version = "6.0.2"
 dependencies = [
  "displaydoc",
  "serde",
