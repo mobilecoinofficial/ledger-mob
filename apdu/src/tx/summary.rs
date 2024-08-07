@@ -321,10 +321,11 @@ bitflags::bitflags! {
 crate::encdec_bitflags!(AddTxOutUnblindingFlags);
 
 /// Fog identifier for resolving account information
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Default)]
 #[repr(u8)]
 pub enum FogId {
     /// No fog associated with account
+    #[default]
     None = 0,
     /// MobileCoin MainNet fog
     MobMain = 1,
@@ -334,12 +335,6 @@ pub enum FogId {
     SignalMain = 3,
     /// Signal TestNet fog
     SignalTest = 4,
-}
-
-impl Default for FogId {
-    fn default() -> Self {
-        FogId::None
-    }
 }
 
 impl FogId {
@@ -456,11 +451,7 @@ impl TxSummaryAddTxOutUnblinding {
 
         // Parse address information
         let (address_spend_public, address_view_public, address_short_hash) = match &address {
-            Some((keys, hash)) => (
-                keys.spend_public_key(),
-                keys.view_public_key(),
-                hash.clone(),
-            ),
+            Some((keys, hash)) => (keys.spend_public_key(), keys.view_public_key(), *hash),
             None => (Default::default(), Default::default(), Default::default()),
         };
 
