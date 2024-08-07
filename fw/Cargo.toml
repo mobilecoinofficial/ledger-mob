@@ -43,7 +43,7 @@ default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
 ledger_device_sdk = "1.14.0"
-ledger_secure_sdk_sys = "1.4.0"
+ledger_secure_sdk_sys = "1.4.3"
 include_gif = "1.1.0"
 ledger-proto = { version = "0.1.0", default_features = false }
 
@@ -138,3 +138,6 @@ mc-fog-sig-authority = { path = "../vendor/mob/fog/sig/authority" }
 mc-util-from-random = { path = "../vendor/mob/util/from-random" }
 mc-transaction-types = { path ="../vendor/mob/transaction/types" }
 mc-transaction-summary = { path ="../vendor/mob/transaction/summary" }
+
+#ledger_device_sdk = { path = "../../ledger-device-rust-sdk/ledger_device_sdk" }
+#ledger_secure_sdk_sys = { path = "../../ledger-device-rust-sdk/ledger_secure_sdk_sys" }

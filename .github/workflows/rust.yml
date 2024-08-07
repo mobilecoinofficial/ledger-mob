@@ -239,10 +239,13 @@ jobs:
     - name: Install cross toolchain 
       run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib protobuf-compiler protobuf-c-compiler 
 
+    - name: Install cargo-ledger
+      run: cargo install cargo-ledger && cargo ledger setup
+
     - name: Load ${{ matrix.platform }} FW cache
       uses: actions/cache/restore@v3
       with:
-        key: fw-${{ matrix.platform }}-${{ matrix.target }}
+        key: fw-${{ matrix.platform }}
         path: |
           ~/.cargo
           ./fw/target
@@ -255,13 +258,13 @@ jobs:
 
     - name: Build FW
       run: |
-        cd fw && cargo build --target ./${{ matrix.platform }}.json --release
+        make ${{ matrix.platform }}
 
     - name: Update ${{ matrix.platform }} FW cache
       if: ${{ github.ref == 'refs/heads/main' }}
       uses: actions/cache/save@v3
       with:
-        key: fw-${{ matrix.platform }}-${{ matrix.target }}-${{ github.run_id }}
+        key: fw-${{ matrix.platform }}-${{ github.run_id }}
         path: |
           ~/.cargo
           ./fw/target
@@ -270,7 +273,6 @@ jobs:
       run: |
         cp fw/target/${{ matrix.platform }}/release/ledger-mob-fw ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
         arm-none-eabi-objcopy -O ihex fw/target/${{ matrix.platform }}/release/ledger-mob-fw ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
-        cp fw/target/${{ matrix.platform }}/release/app_${{ matrix.platform}}.json app_${{ matrix.platform }}.json
 
     - name: Upload firmware binary artifact
       uses: actions/upload-artifact@v3
@@ -279,7 +281,6 @@ jobs:
         path: |
           ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
           ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
-          app_${{ matrix.platform }}.json
 
   # Build simulator tests
   build-sim:

@@ -63,4 +63,3 @@ mc-util-serial = { path = "./vendor/mob/util/serial" }
 
 # patched to support ledger required 1.67.0 MSRV
 mc-rand = { path = "./vendor/mc-rand" }
-
