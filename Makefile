@@ -26,7 +26,7 @@ core-test:
 	cargo nextest run --package ledger-mob-core
 
 nanosplus-test: nanosplus
-	MODEL=nanosp cargo nextest run --package ledger-mob $(NANOSP_ARGS)
+	MODEL=nanosplus cargo nextest run --package ledger-mob $(NANOSP_ARGS)
 
 nanox-test: nanox
 	MODEL=nanox cargo nextest run --package ledger-mob
