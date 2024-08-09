@@ -44,13 +44,15 @@ impl<T: Device + Send> TransactionHandle<T> {
             .await?;
 
         // Check state and expected digest
-        check_state::<T>(resp.state, TxState::SummaryInit)?;
+        check_state(resp.state, TxState::SummaryInit)?;
         //check_digest::<T>(&resp.digest, &ctx.digest)?;
 
         warn!("Write {} TxOuts", summary.outputs.len());
 
         // Write outputs to summary
-        if summary.outputs.len() != unblinding.outputs.len() {}
+        if summary.outputs.len() != unblinding.outputs.len() {
+            // TODO: what should be here..?
+        }
 
         for n in 0..summary.outputs.len() {
             let o = &summary.outputs[n];
@@ -71,7 +73,7 @@ impl<T: Device + Send> TransactionHandle<T> {
                 .await?;
 
             // Check state and expected digest
-            check_state::<T>(resp.state, TxState::SummaryAddTxOut)?;
+            check_state(resp.state, TxState::SummaryAddTxOut)?;
             //check_digest::<T>(&resp.digest, &ctx.digest)?;
 
             log::debug!("Address: {:?}", u.address);
@@ -109,7 +111,7 @@ impl<T: Device + Send> TransactionHandle<T> {
                 true => TxState::SummaryAddTxOut,
                 false => TxState::SummaryAddTxIn,
             };
-            check_state::<T>(resp.state, expected_state)?;
+            check_state(resp.state, expected_state)?;
             //check_digest::<T>(&resp.digest, &ctx.digest)?;
         }
 
@@ -146,7 +148,7 @@ impl<T: Device + Send> TransactionHandle<T> {
                 true => TxState::SummaryAddTxIn,
                 false => TxState::SummaryReady,
             };
-            check_state::<T>(resp.state, expected_state)?;
+            check_state(resp.state, expected_state)?;
             //check_digest::<T>(&resp.digest, &ctx.digest)?;
         }
 
@@ -163,7 +165,7 @@ impl<T: Device + Send> TransactionHandle<T> {
             .request::<TxInfo>(b, &mut buff, self.info.request_timeout)
             .await?;
 
-        check_state::<T>(resp.state, TxState::Pending)?;
+        check_state(resp.state, TxState::Pending)?;
         //check_digest::<T>(&resp.digest, &ctx.digest)?;
 
         Ok(())

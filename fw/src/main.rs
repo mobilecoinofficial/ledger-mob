@@ -3,7 +3,6 @@
 #![no_std]
 #![no_main]
 #![cfg_attr(feature = "alloc", feature(alloc_error_handler))]
-#![feature(cstr_from_bytes_until_nul)]
 
 extern crate rlibc;
 
@@ -75,6 +74,12 @@ pub fn app_getrandom(buff: &mut [u8]) -> Result<(), getrandom::Error> {
     Ok(())
 }
 
+/// Error handler for allocation
+#[alloc_error_handler]
+fn oom(_: core::alloc::Layout) -> ! {
+    ledger_device_sdk::exit_app(250)
+}
+
 #[no_mangle]
 extern "C" fn sample_main() {
     // Setup comms and UI instances
@@ -86,7 +91,7 @@ extern "C" fn sample_main() {
 
     let mut redraw = true;
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "local_alloc")]
     platform::allocator::init();
 
     // non-nvm fog ID global must be pre-initialised
