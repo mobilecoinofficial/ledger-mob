@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["RESP_SIZE","RING_SIZE"],"enum":["Error","Event","FogId","IdentState","Output","RingState","State","SummaryState","TransactionEntity"],"struct":["BlockVersion","Engine","Function","StateIter","TokenId","TxDigest"],"trait":["Driver","FogCert"]};

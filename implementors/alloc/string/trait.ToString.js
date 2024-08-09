@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"ledger_mob_cli":[["impl&lt;const N: <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.usize.html\">usize</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html\" title=\"trait alloc::string::ToString\">ToString</a> for <a class=\"struct\" href=\"ledger_mob_cli/helpers/struct.HexData.html\" title=\"struct ledger_mob_cli::helpers::HexData\">HexData</a>&lt;N&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

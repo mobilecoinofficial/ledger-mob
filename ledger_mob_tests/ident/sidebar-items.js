@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["VECTORS"],"fn":["test"],"struct":["Vector"]};

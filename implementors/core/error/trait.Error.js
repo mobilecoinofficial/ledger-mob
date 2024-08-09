@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"ledger_mob":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/error/trait.Error.html\" title=\"trait core::error::Error\">Error</a> for <a class=\"enum\" href=\"ledger_mob/enum.Error.html\" title=\"enum ledger_mob::Error\">Error</a>"]],
+"ledger_mob_core":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/error/trait.Error.html\" title=\"trait core::error::Error\">Error</a> for <a class=\"enum\" href=\"ledger_mob_core/engine/enum.Error.html\" title=\"enum ledger_mob_core::engine::Error\">Error</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

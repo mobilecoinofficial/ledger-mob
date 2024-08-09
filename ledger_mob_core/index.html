@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="MobileCoin hardware wallet core"><title>ledger_mob_core - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="ledger_mob_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (ca62d2c44 2023-09-30)" data-channel="nightly" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../ledger_mob_core/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a></nav><nav class="sidebar"><a class="logo-container" href="../ledger_mob_core/index.html"><img class="rust-logo" src="../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><h2 class="location"><a href="#">Crate ledger_mob_core</a></h2><div class="sidebar-elems"><ul class="block"><li class="version">Version 0.16.0</li><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">ledger_mob_core</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/ledger_mob_core/lib.rs.html#3-88">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>MobileCoin hardware wallet core</p>
+<p>This provides a common <a href="engine/index.html" title="mod ledger_mob_core::engine">Engine</a> supporting transaction signing and verification
+for execution on hardware wallets.</p>
+<p>Interactions with the <a href="engine/index.html" title="mod ledger_mob_core::engine">Engine</a> are performed via <a href="engine/enum.Event.html" title="enum ledger_mob_core::engine::Event">Event</a>s and <a href="engine/enum.Output.html" title="enum ledger_mob_core::engine::Output">Output</a>s,
+see <a href="../ledger_mob_apdu/index.html" title="mod ledger_mob_apdu">ledger_mob_apdu</a> for APDU objects and wire encodings.</p>
+<h3 id="operations"><a href="#operations">Operations</a></h3>
+<p>Prior to interacting with a hardware wallet the client should issue an
+<a href="../ledger_mob_apdu/app_info/struct.AppInfoReq.html" title="struct ledger_mob_apdu::app_info::AppInfoReq"><code>AppInfoReq</code></a> to fetch an
+<a href="../ledger_mob_apdu/app_info/struct.AppInfoResp.html" title="struct ledger_mob_apdu::app_info::AppInfoResp"><code>AppInfoResp</code></a> containing application information
+including the applet version, protocol version, and flags for available features.</p>
+<h4 id="requesting-wallet--subaddress-keys"><a href="#requesting-wallet--subaddress-keys">Requesting wallet / subaddress keys</a></h4>
+<p>Wallet keys can be requested via <a href="../ledger_mob_apdu/wallet_keys/struct.WalletKeyReq.html" title="struct ledger_mob_apdu::wallet_keys::WalletKeyReq"><code>WalletKeyReq</code></a>
+APDU, returning a <a href="../ledger_mob_apdu/wallet_keys/struct.WalletKeyResp.html" title="struct ledger_mob_apdu::wallet_keys::WalletKeyResp"><code>WalletKeyResp</code></a> containing
+the root spend public key and view private key for a given account index.</p>
+<p>SubAddress keys can be requested via <a href="../ledger_mob_apdu/subaddress_keys/struct.SubaddressKeyReq.html" title="struct ledger_mob_apdu::subaddress_keys::SubaddressKeyReq"><code>WalletKeyReq</code></a>
+APDU, returning a <a href="../ledger_mob_apdu/subaddress_keys/struct.SubaddressKeyResp.html" title="struct ledger_mob_apdu::subaddress_keys::SubaddressKeyResp"><code>WalletKeyResp</code></a> containing
+the subaddress spend public key and view private key for a given account index.</p>
+<h4 id="key-image-scanning"><a href="#key-image-scanning">Key Image Scanning</a></h4>
+<p>Key images can be recovered via <a href="../ledger_mob_apdu/key_image/struct.KeyImageReq.html" title="struct ledger_mob_apdu::key_image::KeyImageReq"><code>KeyImageReq</code></a> request,
+returning a <a href="../ledger_mob_apdu/key_image/struct.KeyImageResp.html" title="struct ledger_mob_apdu::key_image::KeyImageResp"><code>KeyImageResp</code></a> APDU containing the computed
+key image.</p>
+<h4 id="executing-a-transaction"><a href="#executing-a-transaction">Executing a transaction</a></h4>
+<p>Transactions consist of a series of operations to first configure the
+transaction, sign memos for the transaction, then to sign the set of
+rings included in the transaction.</p>
+<p>See <a href="https://github.com/mobilecoinofficial/ledger-mob/blob/main/lib/src/handle.rs#L219"><code>lib/src/handle.rs</code></a>
+for a complete / reference implementation.</p>
+<p>Unless otherwise documented each transaction operation returns a
+<a href="../ledger_mob_apdu/tx/struct.TxInfo.html" title="struct ledger_mob_apdu::tx::TxInfo"><code>TxInfo</code></a> response containing the current
+<a href="../ledger_mob_apdu/state/enum.TxState.html" title="enum ledger_mob_apdu::state::TxState">transaction state</a> as well as a
+<a href="engine/struct.TxDigest.html" title="struct ledger_mob_core::engine::TxDigest"><code>TxDigest</code></a> computed from the inputs to the transaction.
+This digest ensures the executed transaction matches the callers expectations,
+and <em>MUST</em> be cached on <a href="../ledger_mob_apdu/tx/tx_init/struct.TxInit.html" title="struct ledger_mob_apdu::tx::tx_init::TxInit"><code>TxInit</code></a> and updated and
+compared for each operation during a transaction, with the transaction
+discarded if a mismatch is detected.</p>
+<ol>
+<li>Issue <a href="../ledger_mob_apdu/tx/tx_init/struct.TxInit.html" title="struct ledger_mob_apdu::tx::tx_init::TxInit"><code>TxInit</code></a> with transaction options to start a transaction operation</li>
+<li>Generate and sign memos
+<ol>
+<li>Issue <a href="../ledger_mob_apdu/tx/memo/struct.TxMemoSign.html" title="struct ledger_mob_apdu::tx::memo::TxMemoSign"><code>TxMemoSign</code></a> to fetch a <a href="../ledger_mob_apdu/tx/memo/struct.TxMemoSig.html" title="struct ledger_mob_apdu::tx::memo::TxMemoSig"><code>TxMemoSig</code></a>
+APDU containing a signature for the provided memo</li>
+</ol>
+</li>
+<li>Build transaction summary to generate message for signing (see: <a href="https://github.com/mobilecoinfoundation/mcips/pull/52">MCIP#52</a>)
+<ol>
+<li>Issue <a href="../ledger_mob_apdu/tx/summary/struct.TxSummaryInit.html" title="struct ledger_mob_apdu::tx::summary::TxSummaryInit"><code>TxSummaryInit</code></a> to start summary generation</li>
+<li>Add N outputs and unblinding information using <a href="../ledger_mob_apdu/tx/summary/struct.TxSummaryAddTxOut.html" title="struct ledger_mob_apdu::tx::summary::TxSummaryAddTxOut"><code>TxSummaryAddTxOut</code></a> followed by <a href="../ledger_mob_apdu/tx/summary/struct.TxSummaryAddTxOutUnblinding.html" title="struct ledger_mob_apdu::tx::summary::TxSummaryAddTxOutUnblinding"><code>TxSummaryAddTxOutUnblinding</code></a></li>
+<li>Add M inputs via <a href="../ledger_mob_apdu/tx/summary/struct.TxSummaryAddTxIn.html" title="struct ledger_mob_apdu::tx::summary::TxSummaryAddTxIn"><code>TxSummaryAddTxIn</code></a></li>
+<li>Issue <a href="../ledger_mob_apdu/tx/summary/struct.TxSummaryBuild.html" title="struct ledger_mob_apdu::tx::summary::TxSummaryBuild"><code>TxSummaryBuild</code></a> to build summary message</li>
+</ol>
+</li>
+<li>Sign N rings
+<ol>
+<li>Issue <a href="../ledger_mob_apdu/tx/ring/struct.TxRingInit.html" title="struct ledger_mob_apdu::tx::ring::TxRingInit"><code>TxRingInit</code></a> to start a ring signing operation</li>
+<li>Issue <a href="../ledger_mob_apdu/tx/ring/struct.TxSetBlinding.html" title="struct ledger_mob_apdu::tx::ring::TxSetBlinding"><code>TxSetBlinding</code></a> to set the blinding values for the ring</li>
+<li>Issue <a href="../ledger_mob_apdu/tx/ring/struct.TxAddTxOut.html" title="struct ledger_mob_apdu::tx::ring::TxAddTxOut"><code>TxAddTxOut</code></a> for each ring entry
+(in order of <code>real_index</code> to <code>(real_index - 1) % ring_size)</code></li>
+<li>Issue <a href="../ledger_mob_apdu/tx/ring/struct.TxRingSign.html" title="struct ledger_mob_apdu::tx::ring::TxRingSign"><code>TxRingSign</code></a> to complete signing</li>
+<li>Issue <a href="../ledger_mob_apdu/tx/ring/struct.TxGetKeyImage.html" title="struct ledger_mob_apdu::tx::ring::TxGetKeyImage"><code>TxGetKeyImage</code></a> to fetch a <a href="../ledger_mob_apdu/tx/ring/struct.TxKeyImage.html" title="struct ledger_mob_apdu::tx::ring::TxKeyImage"><code>TxKeyImage</code></a>
+APDU containing the key image and zeroth challenge for the signed ring</li>
+<li>Issue <a href="../ledger_mob_apdu/tx/ring/struct.TxGetResponse.html" title="struct ledger_mob_apdu::tx::ring::TxGetResponse"><code>TxGetResponse</code></a> to fetch <a href="../ledger_mob_apdu/tx/ring/struct.TxResponse.html" title="struct ledger_mob_apdu::tx::ring::TxResponse"><code>TxResponse</code></a>
+APDU containing the response scalar for each ring entry</li>
+</ol>
+</li>
+<li>Issue <a href="../ledger_mob_apdu/tx/struct.TxComplete.html" title="struct ledger_mob_apdu::tx::TxComplete"><code>TxComplete</code></a> to complete transaction</li>
+</ol>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><ul class="item-table"><li><div class="item-name" id="reexport.apdu"><code>pub use <a class="mod" href="../ledger_mob_apdu/index.html" title="mod ledger_mob_apdu">ledger_mob_apdu</a> as apdu;</code></div></li></ul><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="engine/index.html" title="mod ledger_mob_core::engine">engine</a></div><div class="desc docblock-short">The <a href="engine/struct.Engine.html" title="struct ledger_mob_core::engine::Engine">Engine</a> provides functionality required by hardware wallets.</div></li><li><div class="item-name"><a class="mod" href="helpers/index.html" title="mod ledger_mob_core::helpers">helpers</a></div></li></ul><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.TokenId.html" title="struct ledger_mob_core::TokenId">TokenId</a></div><div class="desc docblock-short">Token Id, used to identify different assets on on the blockchain.</div></li></ul></section></div></main></body></html>
