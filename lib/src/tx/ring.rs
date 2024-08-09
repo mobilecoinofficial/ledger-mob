@@ -136,7 +136,7 @@ impl<T: Device> TransactionHandle<T> {
         let r = t
             .request::<TxInfo>(TxRingSign, &mut buff, self.info.request_timeout)
             .await?;
-        check_state::<T>(r.state, TxState::RingComplete)?;
+        check_state(r.state, TxState::RingComplete)?;
 
         debug!("Requesting key image");
 

@@ -6,17 +6,14 @@ use core::{ffi::CStr, mem::MaybeUninit};
 
 use encdec::Encode;
 
-use ledger_proto::{apdus::DeviceInfoResp, ApduError};
-use nanos_sdk::{
-    bindings::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10},
-    ecc,
-    uxapp::UxEvent,
-};
+use ledger_device_sdk::{ecc, uxapp::UxEvent};
 #[cfg(feature = "nvm")]
-use nanos_sdk::{
+use ledger_device_sdk::{
     nvm::{AtomicStorage, SingleStorage},
     Pic,
 };
+use ledger_proto::{apdus::DeviceInfoResp, ApduError};
+use ledger_secure_sdk_sys::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10};
 
 #[cfg(feature = "nvm")]
 use ledger_mob_core::apdu::tx::FOG_IDS;
@@ -94,7 +91,7 @@ pub fn platform_set_fog_id(fog_id: &FogId) {
 }
 
 // Global allocator configuration
-#[cfg(feature = "alloc")]
+#[cfg(feature = "local_alloc")]
 pub(crate) mod allocator {
     use core::mem::MaybeUninit;
     use critical_section::RawRestoreState;
@@ -112,7 +109,7 @@ pub(crate) mod allocator {
     /// Error handler for allocation
     #[alloc_error_handler]
     fn oom(_: core::alloc::Layout) -> ! {
-        nanos_sdk::exit_app(250)
+        ledger_device_sdk::exit_app(250)
     }
 
     /// Initialise allocator
@@ -148,9 +145,12 @@ pub fn fetch_encode_device_info(buff: &mut [u8]) -> Result<usize, ApduError> {
     let mut se_version_raw = [0u8; 32];
     let flags;
     unsafe {
-        flags = nanos_sdk::bindings::os_flags();
-        nanos_sdk::bindings::os_version(mcu_version_raw.as_mut_ptr(), se_version_raw.len() as u32);
-        nanos_sdk::bindings::os_seph_version(
+        flags = ledger_secure_sdk_sys::os_flags();
+        ledger_secure_sdk_sys::os_version(
+            mcu_version_raw.as_mut_ptr(),
+            se_version_raw.len() as u32,
+        );
+        ledger_secure_sdk_sys::os_seph_version(
             se_version_raw.as_mut_ptr(),
             se_version_raw.len() as u32,
         );

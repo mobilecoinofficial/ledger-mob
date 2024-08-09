@@ -62,6 +62,29 @@ async fn tx3() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+#[cfg_attr(not(feature = "summary"), ignore = "requires summary feature to run")]
+async fn tx4() -> anyhow::Result<()> {
+    let v = &TRANSACTIONS[3];
+
+    // Generate mnemonic
+    // NOTE TX MNEMONIC MUST MATCH OBJECT
+    let mnemonic = Mnemonic::from_phrase(v.mnemonic, Language::English)?;
+    let seed = Seed::new(&mnemonic, "");
+    info!("using mnemonic: '{}'", mnemonic.phrase());
+
+    // Setup simulator
+    let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
+
+    // Run transaction signing test
+    test(t, || approve_tx(&s, 3, BUTTONS_SUMMARY), v).await?;
+
+    // Exit simulator
+    d.exit(s).await?;
+
+    Ok(())
+}
+
 const BUTTONS_BLIND: &[Button] = &[
     // Right button to move to warning screen
     Button::Right,

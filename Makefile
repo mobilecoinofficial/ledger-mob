@@ -26,7 +26,7 @@ core-test:
 	cargo nextest run --package ledger-mob-core
 
 nanosplus-test: nanosplus
-	MODEL=nanosp cargo nextest run --package ledger-mob $(NANOSP_ARGS)
+	MODEL=nanosplus cargo nextest run --package ledger-mob $(NANOSP_ARGS)
 
 nanox-test: nanox
 	MODEL=nanox cargo nextest run --package ledger-mob
@@ -37,7 +37,7 @@ docs:
 
 # Build nanosplus firmware
 nanosplus: 
-	cd fw && cargo build --target ./nanosplus.json $(NANOSP_ARGS) $(RUSTARGS)
+	cd fw && cargo build --target nanosplus $(NANOSP_ARGS) $(RUSTARGS)
 
 # Build nanox firmware
 nanox:
@@ -45,22 +45,21 @@ nanox:
 
 # Run nanosplus firmware under speculos without debug
 nanosplus-run:
-	cd fw && cargo run --target ./nanosplus.json $(NANOSP_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
+	cd fw && cargo run --target nanosplus $(NANOSP_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
 
 # Run nanox firmware under speculos without debug
 nanox-run:
 	cd fw && cargo run --target ./nanox.json $(NANOX_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
 
 # Load firmware onto device
-nanosplus-load: fw/target/nanosplus/release/ledger-mob-fw.hex
-	cd fw/target/nanosplus/release/ && \
-	ledgerctl install -f app_nanosplus.json
+nanosplus-load: nanosplus
+	cd fw && cargo ledger --use-prebuilt target/nanosplus/release/ledger-mob-fw build nanosplus --load
 
 # Convert ELF to HEX for loading
 fw/target/%/release/ledger-mob-fw.hex: %
 	arm-none-eabi-objcopy fw/target/$</release/ledger-mob-fw -O ihex $@
 
-# Package nanoapp
+# Package nanoapp to archive
 package-%: % fw/target/%/release/ledger-mob-fw.hex
 	mkdir -p target/ledger-mob-fw-$<
 
@@ -72,18 +71,13 @@ package-%: % fw/target/%/release/ledger-mob-fw.hex
 		-C target \
 		ledger-mob-fw-$<
 
-# Build speculos simulator
-speculos: 
-	cd vendor/speculos && mkdir -p build && cd build && cmake -DWITH_VNC=0 -DBUILD_TESTING=0 .. && make -j
-
-
 # Run firmware under speculos with QEMU debug connection
 nanosplus-debug:
-	cd fw && speculos.py --model nanosp --display qt -a 1 --apdu-port 1237 $(SPECULOS_ARGS) -d target/nanosplus/release/ledger-mob-fw
+	cd fw && speculos --model nanosp --display qt --apdu-port 1237 $(SPECULOS_ARGS) -d target/nanosplus/release/ledger-mob-fw
 
 # Launch GDB connecting to speculos QEMU
 nanosplus-gdb:
-	cd fw && rust-gdb fw/target/nanosplus/release/ledger-mob-fw
+	cd fw && rust-gdb target/nanosplus/release/ledger-mob-fw
 
 # Objdump to show disassembly of sample_main (see `sp` for stack allocation)
 objdump:
@@ -99,7 +93,7 @@ wts-nanox:
 lint: fmt clippy
 
 fmt:
-	cargo fmt --check -p ledger-mob -p -p ledger-mob-apdu ledger-mob-core -p ledger-mob-tests
+	cargo fmt --check -p ledger-mob -p ledger-mob-apdu ledger-mob-core -p ledger-mob-tests
 	cargo fmt --check --manifest-path=fw/Cargo.toml
 
 clippy:

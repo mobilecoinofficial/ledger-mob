@@ -40,7 +40,7 @@ x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "b76d8c3a50671b08af0874b25b2543d3302d794d" }
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
 
 mc-account-keys = { path = "./vendor/mob/account-keys" }
 mc-api = { path = "./vendor/mob/api" }
@@ -63,4 +63,3 @@ mc-util-serial = { path = "./vendor/mob/util/serial" }
 
 # patched to support ledger required 1.67.0 MSRV
 mc-rand = { path = "./vendor/mc-rand" }
-

@@ -5,22 +5,27 @@ cargo-features = ["per-package-target"]
 name = "ledger-mob-fw"
 description = "MobileCoin Ledger NanoApp"
 repository = "https://github.com/mobilecoinofficial/ledger-mob.git"
-version = "0.16.0"
+version = "0.16.1"
 edition = "2021"
 license = "GPL-3.0"
 publish = false
 
-[package.metadata.nanos]
+[package.metadata.ledger]
 name = "MobileCoin"
 curve = [ "ed25519" ]
 path = [ 
     "44'/866'",
     "13'/",
 ]
-flags = "0"
-icon = "assets/mob16x16i.gif"
-icon_small = "assets/mob14x14i.gif"
-api_level = "1"
+api_level = "5"
+flags = "0x040"
+
+[package.metadata.ledger.nanox]
+icon = "assets/mob14x14i.gif"
+
+[package.metadata.ledger.nanosplus]
+icon = "assets/mob14x14i.gif"
+
 
 [features]
 applet = []
@@ -34,11 +39,12 @@ nvm = []
 alloc = [ "embedded-alloc", "critical-section", "ledger-mob-core/alloc" ]
 noinline = [ "ledger-mob-core/noinline" ]
 
-default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline", "pre-release" ]
+default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-nanos_sdk = { git = "https://github.com/LedgerHQ/ledger-nanos-sdk", branch = "master" }
-nanos_ui = { git = "https://github.com/LedgerHQ/ledger-nanos-ui", branch = "master" }
+ledger_device_sdk = "1.14.0"
+ledger_secure_sdk_sys = "1.4.3"
+include_gif = "1.1.0"
 ledger-proto = { version = "0.1.0", default_features = false }
 
 getrandom = { version = "0.2.7", default_features = false, features = [ "custom" ] }
@@ -51,10 +57,10 @@ emstr = { version = "0.2.0", default_features = false }
 heapless = "0.7.16"
 rngcheck = "0.1.1"
 
-mc-core = { version = "5", default-features = false }
+mc-core = { version = "6", default-features = false }
 ledger-mob-core = { path = "../core", default_features = false }
 
-curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }
+curve25519-dalek = { version = "4.1.1", default_features = false }
 ed25519-dalek = { version = "2.0.0-pre.0", default_features = false }
 x25519-dalek = { version = "2.0.0-pre.2", default_features = false }
 
@@ -113,12 +119,12 @@ overflow-checks = false
 
 [patch.crates-io]
 
-curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
-ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
-x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
+#curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
+#ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
+#x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "b76d8c3a50671b08af0874b25b2543d3302d794d" }
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
 
 # Mobilecoin core patches (replicates workspace level)
 
@@ -133,7 +139,5 @@ mc-util-from-random = { path = "../vendor/mob/util/from-random" }
 mc-transaction-types = { path ="../vendor/mob/transaction/types" }
 mc-transaction-summary = { path ="../vendor/mob/transaction/summary" }
 
-# patch nanos_sdk so nanos_ui uses the same version
-# hack to avoid cargo#5478 https://github.com/rust-lang/cargo/issues/5478
-[patch."https://github.com/LedgerHQ/ledger-nanos-sdk"]
-nanos_sdk = { git = "https://github.com//LedgerHQ/ledger-nanos-sdk.git", branch = "master" }
+#ledger_device_sdk = { path = "../../ledger-device-rust-sdk/ledger_device_sdk" }
+#ledger_secure_sdk_sys = { path = "../../ledger-device-rust-sdk/ledger_secure_sdk_sys" }
