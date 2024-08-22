@@ -91,7 +91,7 @@ pub fn platform_set_fog_id(fog_id: &FogId) {
 }
 
 // Global allocator configuration
-#[cfg(feature = "local_alloc")]
+#[cfg(feature = "alloc")]
 pub(crate) mod allocator {
     use core::mem::MaybeUninit;
     use critical_section::RawRestoreState;

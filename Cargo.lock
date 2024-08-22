@@ -2251,7 +2251,7 @@ dependencies = [
 
 [[package]]
 name = "ledger-mob-core"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "aes 0.7.5",
  "anyhow",
