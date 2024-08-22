@@ -74,7 +74,6 @@ pub fn app_getrandom(buff: &mut [u8]) -> Result<(), getrandom::Error> {
     Ok(())
 }
 
-
 #[no_mangle]
 extern "C" fn sample_main() {
     // Setup comms and UI instances
