@@ -17,7 +17,6 @@ path = [
     "44'/866'",
     "13'/",
 ]
-api_level = "5"
 flags = "0x040"
 
 [package.metadata.ledger.nanox]
