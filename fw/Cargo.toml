@@ -53,7 +53,7 @@ strum = { version = "0.24.1", default_features = false }
 hex_fmt = { version = "0.3.0", default_features = false }
 encdec = { version = "0.9.0", default_features = false }
 emstr = { version = "0.2.0", default_features = false }
-heapless = "0.7.16"
+heapless = "0.8.0"
 rngcheck = "0.1.1"
 
 mc-core = { version = "6", default-features = false }
@@ -70,6 +70,10 @@ critical-section = { version = "1.1.1", optional = true }
 
 # used by bulletproofs-og, no_cc feature required for cross compilation
 clear_on_drop = { version = "0.2", default-features = false, features = [ "no_cc" ] }
+
+[target.'cfg(target_os = "nanox")'.dependencies]
+bytes = { version = "1.4.0", default_features = false, features = [ "use-portable-atomic" ] }
+portable-atomic = { version = "1.7.0", features = ["require-cas", "critical-section"] }
 
 [build-dependencies]
 image = "0.24.3"
@@ -140,3 +144,5 @@ mc-transaction-summary = { path ="../vendor/mob/transaction/summary" }
 
 #ledger_device_sdk = { path = "../../ledger-device-rust-sdk/ledger_device_sdk" }
 #ledger_secure_sdk_sys = { path = "../../ledger-device-rust-sdk/ledger_secure_sdk_sys" }
+
+bytes = { git = "https://github.com/ryankurte/rust-bytes.git", branch = "v1.4.0-portable-atomic" }

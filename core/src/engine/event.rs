@@ -358,7 +358,7 @@ impl<'a> From<IdentSignReq<'a>> for Event {
     fn from(i: IdentSignReq<'a>) -> Self {
         Event::IdentSign {
             ident_index: i.identity_index,
-            ident_uri: heapless::String::from(i.identity_uri),
+            ident_uri: heapless::String::try_from(i.identity_uri).unwrap(),
             challenge: heapless::Vec::from_slice(i.challenge).unwrap(),
         }
     }

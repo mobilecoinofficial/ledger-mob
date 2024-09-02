@@ -1754,7 +1754,6 @@ dependencies = [
  "atomic-polyfill",
  "hash32 0.2.1",
  "rustc_version",
- "serde",
  "spin 0.9.8",
  "stable_deref_trait",
 ]
@@ -1766,6 +1765,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
 dependencies = [
  "hash32 0.3.1",
+ "serde",
  "stable_deref_trait",
 ]
 
@@ -2231,7 +2231,7 @@ dependencies = [
  "byteorder",
  "curve25519-dalek",
  "encdec",
- "heapless 0.7.16",
+ "heapless 0.8.0",
  "ledger-proto",
  "log",
  "mc-core",
@@ -2266,7 +2266,7 @@ dependencies = [
  "ed25519-dalek",
  "emstr",
  "encdec",
- "heapless 0.7.16",
+ "heapless 0.8.0",
  "hkdf",
  "lazy_static",
  "ledger-lib",
@@ -2289,6 +2289,7 @@ dependencies = [
  "mc-util-test-helper",
  "merlin",
  "num_enum",
+ "portable-atomic",
  "prost 0.11.3",
  "prost-build 0.11.4",
  "rand",
@@ -2319,7 +2320,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "futures",
- "heapless 0.7.16",
+ "heapless 0.8.0",
  "hex",
  "lazy_static",
  "ledger-lib",
@@ -3002,7 +3003,7 @@ name = "mc-transaction-summary"
 version = "6.0.2"
 dependencies = [
  "displaydoc",
- "heapless 0.7.16",
+ "heapless 0.8.0",
  "mc-account-keys",
  "mc-core",
  "mc-crypto-digestible",
@@ -3537,6 +3538,12 @@ dependencies = [
  "opaque-debug",
  "universal-hash",
 ]
+
+[[package]]
+name = "portable-atomic"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da544ee218f0d287a911e9c99a39a8c9bc8fcad3cb8db5959940044ecfc67265"
 
 [[package]]
 name = "portpicker"

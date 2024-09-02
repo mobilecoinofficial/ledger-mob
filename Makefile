@@ -41,7 +41,7 @@ nanosplus:
 
 # Build nanox firmware
 nanox:
-	cd fw && cargo build --target ./nanox.json $(NANOX_ARGS) $(RUSTARGS)
+	cd fw && cargo build --target nanox $(NANOX_ARGS) $(RUSTARGS)
 
 # Run nanosplus firmware under speculos without debug
 nanosplus-run:
@@ -49,7 +49,7 @@ nanosplus-run:
 
 # Run nanox firmware under speculos without debug
 nanox-run:
-	cd fw && cargo run --target ./nanox.json $(NANOX_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
+	cd fw && cargo run --target nanox $(NANOX_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
 
 # Load firmware onto device
 nanosplus-load: nanosplus

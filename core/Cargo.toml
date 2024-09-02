@@ -46,7 +46,7 @@ bitflags = "1.3.2"
 byteorder = { version = "1.4.3", default_features = false }
 zeroize = { version = "1.5", default_features = false }
 log = { version = "0.4.17", default_features = false, optional = true }
-heapless = { version = "0.7.16", default_features = false }
+heapless = { version = "0.8.0", default_features = false }
 hkdf = { version = "0.12.3", default_features = false }
 rand_core = { version = "0.6.4", default_features = false, features = [ "getrandom" ] }
 strum = { version = "0.24.1", default_features = false, features = [ "derive" ] }
@@ -84,6 +84,9 @@ mc-util-from-random = { version = "6", default_features = false }
 
 # used by bulletproofs-og, no_cc feature required for cross compilation
 clear_on_drop = { version = "0.2", default-features = false, features = [ "no_cc" ] }
+
+[target.'cfg(target = "nanox")'.dependencies]
+portable-atomic = { version = "1.3", default-features = false, features = ["require-cas"] }
 
 
 [build-dependencies]
