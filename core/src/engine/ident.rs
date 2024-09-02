@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
+use core::str::FromStr;
 
 use heapless::{String, Vec};
 
@@ -34,7 +35,7 @@ pub struct Ident {
 impl Ident {
     /// Create a new ident context
     pub fn new(identity_index: u32, uri: &str, challenge: &[u8]) -> Result<Self, Error> {
-        let identity_uri = String::try_from(uri).map_err(|_| Error::InvalidLength)?;
+        let identity_uri = String::from_str(uri).map_err(|_| Error::InvalidLength)?;
         let challenge = Vec::try_from(challenge).map_err(|_| Error::InvalidLength)?;
 
         Ok(Self {

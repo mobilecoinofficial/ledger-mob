@@ -90,8 +90,8 @@ impl<T: Device> TransactionHandle<T> {
             .await?;
 
         // Check state and expected digest
-        check_state::<T>(r.state, TxState::SignMemos)?;
-        check_digest::<T>(&r.digest, &digest)?;
+        check_state(r.state, TxState::SignMemos)?;
+        check_digest(&r.digest, &digest)?;
 
         // Update submitted memo count
         {

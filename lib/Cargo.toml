@@ -10,21 +10,21 @@ publish = false
 [features]
 cli = []
 
-prost = [ "dep:prost" ]
+prost = ["dep:prost"]
 summary = []
 ident = []
 
-default = [ "cli", "prost", "summary", "ident" ]
+default = ["cli", "prost", "summary", "ident"]
 
 [dependencies]
 async-trait = "0.1.57"
 anyhow = "1.0.58"
 base64 = "0.21.0"
-clap = { version = "4.0.26", features = [ "derive" ] }
-ed25519-dalek = { version = "2.0.0-pre.1", default_features = false }
+clap = { version = "4.0.26", features = ["derive"] }
+ed25519-dalek = { version = "2.0.0-pre.0", default_features = false }
 encdec = "0.9.0"
-strum = { version = "0.24.1", features = [ "derive" ] }
-tokio = { version = "1.20.1", features = [ "full" ] }
+strum = { version = "0.24.1", features = ["derive"] }
+tokio = { version = "1.20.1", features = ["full"] }
 hex = "0.4.3"
 thiserror = "1.0.37"
 lazy_static = "1.4.0"
@@ -34,45 +34,45 @@ rand = "0.8.4"
 rand_core = "0.6.4"
 simplelog = "0.12.0"
 futures = "0.3.24"
-serde = { version = "1.0.148", features = [ "derive" ] }
-serde_cbor = { version = "0.11.2", features = [ "std" ] }
+serde = { version = "1.0.148", features = ["derive"] }
+serde_cbor = { version = "0.11.2", features = ["std"] }
 serde_json = { version = "*" }
 prost = { version = "0.11.2", optional = true }
 zeroize = { version = "*" }
 
-ledger-lib = { version = "0.1.0", features = [ "clap" ] }
+ledger-lib = { version = "0.1.0", features = ["clap"] }
 ledger-proto = { version = "0.1.0" }
 
 ledger-mob-apdu = { path = "../apdu" }
 
-mc-core = { version = "4.1.0-pre0", features = [ "serde" ] }
-mc-crypto-keys = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-ring-signature = { version = "4.1.0-pre0", default_features = false }
-mc-crypto-ring-signature-signer = { version = "4.1.0-pre0", default_features = false }
-mc-transaction-core = { version = "4.1.0-pre0" }
-mc-transaction-extra = { version = "4.1.0-pre0" }
-mc-transaction-signer = { version = "4.1.0-pre0" }
-mc-transaction-summary = { version = "4.1.0-pre0" }
+mc-core = { version = "6", features = ["serde"] }
+mc-crypto-keys = { version = "6", default_features = false }
+mc-crypto-ring-signature = { version = "6", default_features = false }
+mc-crypto-ring-signature-signer = { version = "6", default_features = false }
+mc-transaction-core = { version = "6" }
+mc-transaction-extra = { version = "6" }
+mc-transaction-signer = { version = "6" }
+mc-transaction-summary = { version = "6" }
 
 [dev-dependencies]
 toml = "0.5.9"
 tiny-bip39 = "1.0"
 portpicker = "0.1.1"
-serde = { version = "1.0.144", features = [ "derive" ] }
+serde = { version = "1.0.144", features = ["derive"] }
 
 ledger-sim = "0.1.0"
 ledger-mob-tests = { path = "../tests", default_features = false }
 
-curve25519-dalek = { version = "4.0.0-rc.1", default_features = false }
+curve25519-dalek = { version = "4.1.1", default_features = false }
 x25519-dalek = { version = "2.0.0-pre.2", default_features = false }
 ed25519-dalek = { version = "2.0.0-pre.0", default_features = false }
 
-mc-core = { version = "4.1.0-pre0", features = [ "bip39" ] }
-mc-crypto-keys = { version = "4.1.0-pre0", default-features = false }
-mc-crypto-ring-signature = { version = "4.1.0-pre0", default-features = false }
-mc-util-from-random = { version = "4.1.0-pre0", default-features = false }
+mc-core = { version = "6", features = ["bip39"] }
+mc-crypto-keys = { version = "6", default-features = false }
+mc-crypto-ring-signature = { version = "6", default-features = false }
+mc-util-from-random = { version = "6", default-features = false }
 
 [[bin]]
 name = "ledger-mob-cli"
 path = "src/cli/main.rs"
-required-features = [ "cli" ]
+required-features = ["cli"]

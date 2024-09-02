@@ -30,7 +30,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-02
+        toolchain: nightly-2023-11-10
         target:  ${{ matrix.target }}
         override: true
         components: rustfmt, clippy, rust-src
@@ -69,7 +69,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-02
+        toolchain: nightly-2023-11-10
         override: true
 
     - name: Install protobuf tools
@@ -130,7 +130,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-02
+        toolchain: nightly-2023-11-10
         target:  ${{ matrix.target }}
         override: true
     
@@ -231,18 +231,21 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-02
+        toolchain: nightly-2023-11-10
         target:  ${{ matrix.target }}
         override: true
-        components: rust-src
+        components: rust-src, llvm-tools
 
     - name: Install cross toolchain 
       run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib protobuf-compiler protobuf-c-compiler 
 
+    - name: Install cargo-ledger
+      run: cargo install cargo-ledger && cargo ledger setup
+
     - name: Load ${{ matrix.platform }} FW cache
       uses: actions/cache/restore@v3
       with:
-        key: fw-${{ matrix.platform }}-${{ matrix.target }}
+        key: fw-${{ matrix.platform }}
         path: |
           ~/.cargo
           ./fw/target
@@ -255,13 +258,13 @@ jobs:
 
     - name: Build FW
       run: |
-        cd fw && cargo build --target ./${{ matrix.platform }}.json --release
+        make ${{ matrix.platform }}
 
     - name: Update ${{ matrix.platform }} FW cache
       if: ${{ github.ref == 'refs/heads/main' }}
       uses: actions/cache/save@v3
       with:
-        key: fw-${{ matrix.platform }}-${{ matrix.target }}-${{ github.run_id }}
+        key: fw-${{ matrix.platform }}-${{ github.run_id }}
         path: |
           ~/.cargo
           ./fw/target
@@ -270,7 +273,6 @@ jobs:
       run: |
         cp fw/target/${{ matrix.platform }}/release/ledger-mob-fw ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
         arm-none-eabi-objcopy -O ihex fw/target/${{ matrix.platform }}/release/ledger-mob-fw ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
-        cp fw/target/${{ matrix.platform }}/release/app_${{ matrix.platform}}.json app_${{ matrix.platform }}.json
 
     - name: Upload firmware binary artifact
       uses: actions/upload-artifact@v3
@@ -279,7 +281,6 @@ jobs:
         path: |
           ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
           ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
-          app_${{ matrix.platform }}.json
 
   # Build simulator tests
   build-sim:
@@ -296,7 +297,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-02
+        toolchain: nightly-2023-11-10
         target:  ${{ matrix.target }}
         override: true
     
@@ -356,7 +357,7 @@ jobs:
     - name: Configure rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-02
+        toolchain: nightly-2023-11-10
         override: true
     
     - name: Install libusb / hidapi / libudev
@@ -427,7 +428,6 @@ jobs:
       run: |
         mkdir -p ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}
         cp bin/ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/ledger-mob-fw.hex
-        cp bin/app_${{ matrix.platform }}.json ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
         cp fw/assets/mob14x14i.gif ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
 
     - name: Build firmware archive
@@ -469,7 +469,7 @@ jobs:
       - name: Fetch rust tooling
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2022-12-02
+          toolchain: nightly-2023-11-10
           override: true
 
       - name: Restore core cache

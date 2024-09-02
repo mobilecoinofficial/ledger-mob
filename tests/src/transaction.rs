@@ -56,6 +56,9 @@ pub const TRANSACTIONS: &[TransactionExpectation<'static>] = &[
     }, TransactionExpectation {
         mnemonic: "duck deal pretty pen thunder economy wide common goose fit engine main aisle curtain choose cube claim snake enroll detect brief history float unit",
         request: include_str!("../vectors/tx3.json"),
+    }, TransactionExpectation {
+        mnemonic: "duck deal pretty pen thunder economy wide common goose fit engine main aisle curtain choose cube claim snake enroll detect brief history float unit",
+        request: include_str!("../vectors/tx4.json"),
     },
 ];
 

@@ -215,7 +215,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         if let Some((h, _)) = &a {
             if !self.addresses.iter().any(|v| &v.short_hash == h) {
                 self.addresses.push(OutputAddress {
-                    short_hash: h.clone(),
+                    short_hash: *h,
                     address: address.cloned().unwrap(),
                     fog_id: fog_info.map(|(f, _)| f).unwrap_or_default(),
                     fog_sig: fog_info.map(|(_, s)| *s),
@@ -327,6 +327,11 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         // Finalise verification report
         verifier.finalize(fee, tombstone_block, digest, &mut self.report);
 
+        // Elide SCIs from totals for rendering
+        // TODO: we may wish to revisit this when SCIs are widely used
+        self.report.elide_swap_totals();
+
+        // Set complete state
         self.state = SummaryState::Complete;
 
         // Return message and report

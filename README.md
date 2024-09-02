@@ -33,7 +33,7 @@ Side-loading is only supported on `nanosplus` devices with the latest firmware v
 
 - Download the latest nanosplus release [here](https://github.com/mobilecoinofficial/ledger-mob/releases/latest/download/ledger-mob-fw-nanosplus.tgz)
 - `tar -xvf ledger-mob-fw-nanosplus.tgz` to extract the firmware package
-- `ledgerctl install app_nanosplus.json` to install the nanoapp
+- `cargo ledger --use-prebuilt [APP.elf] build --load` to install the nanoapp
   - You may need to add the `-f` argument to correctly unload prior releases
 
 

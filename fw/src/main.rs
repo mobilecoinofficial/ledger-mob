@@ -3,7 +3,6 @@
 #![no_std]
 #![no_main]
 #![cfg_attr(feature = "alloc", feature(alloc_error_handler))]
-#![feature(cstr_from_bytes_until_nul)]
 
 extern crate rlibc;
 

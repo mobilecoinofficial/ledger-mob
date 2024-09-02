@@ -44,10 +44,6 @@ async fn tx2() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[cfg_attr(
-    not(feature = "summary"),
-    ignore = "tx3 test requires summary implementation"
-)]
 async fn tx3() -> anyhow::Result<()> {
     let _ = simplelog::TermLogger::init(
         log::LevelFilter::Debug,
@@ -64,6 +60,29 @@ async fn tx3() -> anyhow::Result<()> {
     e.unlock();
 
     test(e.clone(), || approve_tx(&e), &TRANSACTIONS[2])
+        .await
+        .unwrap();
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tx4() -> anyhow::Result<()> {
+    let _ = simplelog::TermLogger::init(
+        log::LevelFilter::Debug,
+        Default::default(),
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    );
+
+    let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[3].mnemonic, Language::English)?;
+    let seed = Seed::new(&mnemonic, "");
+
+    let e = TestEngine::new(Engine::new(TestDriver::new(seed)));
+
+    e.unlock();
+
+    test(e.clone(), || approve_tx(&e), &TRANSACTIONS[3])
         .await
         .unwrap();
 

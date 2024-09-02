@@ -987,7 +987,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         // Check results
         match r {
             // On complete, move to tx pending state
-            Ok(state) if state == SummaryState::Complete => self.state = State::Pending,
+            Ok(SummaryState::Complete) => self.state = State::Pending,
             // Otherwise, update summary state
             Ok(state) => self.state = State::Summary(state),
             // Or handle errors

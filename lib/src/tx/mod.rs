@@ -120,8 +120,8 @@ impl<T: Device + Send> TransactionHandle<T> {
             .await?;
 
         // Check state and expected digest
-        check_state::<T>(resp.state, TxState::Pending)?;
-        check_digest::<T>(&resp.digest, &digest)?;
+        check_state(resp.state, TxState::Pending)?;
+        check_digest(&resp.digest, &digest)?;
 
         Ok(())
     }
@@ -168,7 +168,7 @@ impl<T: Device + Send> TransactionHandle<T> {
 }
 
 /// Helper to check state when executing transactions
-pub(crate) fn check_state<T: Device>(actual: TxState, expected: TxState) -> Result<(), Error> {
+pub(crate) fn check_state(actual: TxState, expected: TxState) -> Result<(), Error> {
     if actual != expected {
         Err(Error::InvalidState(actual, expected))
     } else {
@@ -177,7 +177,7 @@ pub(crate) fn check_state<T: Device>(actual: TxState, expected: TxState) -> Resu
 }
 
 /// Helper to check digest when executing transactions
-pub(crate) fn check_digest<T: Device>(actual: &Digest, expected: &Digest) -> Result<(), Error> {
+pub(crate) fn check_digest(actual: &Digest, expected: &Digest) -> Result<(), Error> {
     if expected != actual {
         Err(Error::DigestMismatch)
     } else {
