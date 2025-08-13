@@ -3,6 +3,7 @@
 //! Ledger MobileCoin Platform Support
 
 use core::{ffi::CStr, mem::MaybeUninit};
+use core::cell::SyncUnsafeCell;
 
 use encdec::Encode;
 
@@ -24,10 +25,10 @@ use mc_core::slip10::Slip10Key;
 /// Note NVM is not available under speculos so accessing this page will fault.
 #[cfg(feature = "nvm")]
 #[cfg_attr(feature = "nvm", link_section = ".nvm_data")]
-static mut FOG: Pic<AtomicStorage<u32>> = Pic::new(AtomicStorage::new(&(FogId::MobMain as u32)));
+static FOG: SyncUnsafeCell<Pic<AtomicStorage<u32>>> = SyncUnsafeCell::new(Pic::new(AtomicStorage::new(&(FogId::MobMain as u32))));
 
 #[cfg(not(feature = "nvm"))]
-static mut FOG: MaybeUninit<FogId> = MaybeUninit::uninit();
+static FOG: SyncUnsafeCell<MaybeUninit<FogId>> = SyncUnsafeCell::new(MaybeUninit::uninit());
 
 /// Ledger platform driver
 pub struct LedgerDriver {}
@@ -58,7 +59,7 @@ impl Driver for LedgerDriver {
 /// Fetch fog ID from platform persistent storage
 #[cfg(feature = "nvm")]
 pub fn platform_get_fog_id() -> FogId {
-    let i = unsafe { *FOG.get_ref().get_ref() } as usize;
+    let i = unsafe { *(*FOG.get()).as_ptr() } as usize;
     if i < FOG_IDS.len() {
         FOG_IDS[i]
     } else {
@@ -81,13 +82,13 @@ pub fn platform_set_fog_id(fog_id: &FogId) {
 /// Fetch fog ID from local variable
 #[cfg(not(feature = "nvm"))]
 pub fn platform_get_fog_id() -> FogId {
-    unsafe { FOG.assume_init() }
+    unsafe { (*FOG.get()).assume_init() }
 }
 
 /// Update fog ID in local variable
 #[cfg(not(feature = "nvm"))]
 pub fn platform_set_fog_id(fog_id: &FogId) {
-    unsafe { FOG.write(*fog_id) };
+    unsafe { (*FOG.get()).write(*fog_id) };
 }
 
 // Global allocator configuration
@@ -95,12 +96,13 @@ pub fn platform_set_fog_id(fog_id: &FogId) {
 pub(crate) mod allocator {
     use core::mem::MaybeUninit;
     use critical_section::RawRestoreState;
+    use core::cell::SyncUnsafeCell;
 
     /// Allocator heap size
     const HEAP_SIZE: usize = 1024;
 
     /// Statically allocated heap memory
-    static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
+    static HEAP_MEM: SyncUnsafeCell<[MaybeUninit<u8>; HEAP_SIZE]> = SyncUnsafeCell::new([MaybeUninit::uninit(); HEAP_SIZE]);
 
     /// Bind global allocator
     #[global_allocator]
@@ -115,7 +117,7 @@ pub(crate) mod allocator {
     /// Initialise allocator
     #[inline(never)]
     pub fn init() {
-        unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
+        unsafe { HEAP.init((*HEAP_MEM.get()).as_ptr() as usize, HEAP_SIZE) }
     }
 
     /// Noop critical section

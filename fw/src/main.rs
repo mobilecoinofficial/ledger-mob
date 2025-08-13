@@ -3,6 +3,7 @@
 #![no_std]
 #![no_main]
 #![cfg_attr(feature = "alloc", feature(alloc_error_handler))]
+#![feature(sync_unsafe_cell)]
 
 extern crate rlibc;
 
@@ -10,6 +11,7 @@ extern crate rlibc;
 extern crate alloc;
 
 use core::mem::MaybeUninit;
+use core::cell::SyncUnsafeCell;
 
 use encdec::Encode;
 use rand_core::{CryptoRng, RngCore};
@@ -50,7 +52,8 @@ const APDU_HEADER_LEN: usize = 5;
 /// fail while on the nanox all memory access will fail)
 /// This is exacerbated by rust/llvm failing to support NRVO or copy-elision
 /// expect this to be resolved in the OS in future but, the workaround is not egregious...
-static mut APP_CTX: MaybeUninit<AppCtx> = MaybeUninit::uninit();
+//static mut APP_CTX: MaybeUninit<AppCtx> = MaybeUninit::uninit();
+static APP_CTX: SyncUnsafeCell<MaybeUninit<AppCtx>> = SyncUnsafeCell::new(MaybeUninit::uninit());
 
 /// Container for app context to simplify global init
 struct AppCtx {
@@ -94,7 +97,8 @@ extern "C" fn sample_main() {
 
     // Initialise and bind globally allocated contexts
     let (engine, ui, event, output) = unsafe {
-        let p = &mut *APP_CTX.as_mut_ptr();
+        let p = &mut *(*APP_CTX.get()).as_mut_ptr();
+
 
         Engine::init(&mut p.engine, LedgerDriver {}, LedgerRng {});
         Ui::init(&mut p.ui);

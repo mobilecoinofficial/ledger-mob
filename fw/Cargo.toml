@@ -13,7 +13,7 @@ publish = false
 [package.metadata.ledger]
 name = "MobileCoin"
 curve = [ "ed25519" ]
-path = [ 
+path = [
     "44'/866'",
     "13'/",
 ]
@@ -24,6 +24,13 @@ icon = "assets/mob14x14i.gif"
 
 [package.metadata.ledger.nanosplus]
 icon = "assets/mob14x14i.gif"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(target_os, values("nanosplus"))',
+    'cfg(target_os, values("nanox"))',
+]
 
 
 [features]
@@ -41,8 +48,8 @@ noinline = [ "ledger-mob-core/noinline" ]
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-ledger_device_sdk = { version = "1.14.1", default_features = false }
-ledger_secure_sdk_sys = { version = "1.4.4", default_features = false }
+ledger_device_sdk = { version = "1.23.0", default_features = false }
+ledger_secure_sdk_sys = { version = "1.9.0", default_features = false }
 include_gif = "1.1.0"
 ledger-proto = { version = "0.1.0", default_features = false }
 

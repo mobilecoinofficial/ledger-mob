@@ -154,20 +154,6 @@ impl Ui {
     }
 }
 
-pub trait Element {
-    /// Event type for updates
-    type Event;
-
-    /// Context for renderer
-    type Context;
-
-    /// Handle an event, updating element state or exiting
-    fn update(&mut self, evt: Self::Event);
-
-    /// Draw element
-    fn draw(&self, ctx: Self::Context);
-}
-
 /// Result type for Ui elements
 ///
 /// Indicates whether a redraw is required or if the element has
