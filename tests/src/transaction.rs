@@ -62,8 +62,6 @@ pub const TRANSACTIONS: &[TransactionExpectation<'static>] = &[
     },
 ];
 
-struct HexFmt<T: AsRef<[u8]>>(pub T);
-
 impl<T: AsRef<[u8]>> core::fmt::Display for HexFmt<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for b in self.0.as_ref() {

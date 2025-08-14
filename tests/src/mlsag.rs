@@ -384,7 +384,7 @@ impl RingMLSAGParameters {
             check_value_is_preserved: balance_check,
         };
 
-        let mut responses = vec![CurveScalar::default(); self.ring.len()];
+        let mut responses = vec![CurveScalar::default(); self.ring.len() * 2];
 
         let (key_image, c_zero) = opts.sign(&self.ring[..], rng, &mut responses)?;
 
