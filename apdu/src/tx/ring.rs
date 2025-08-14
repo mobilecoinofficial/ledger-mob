@@ -71,6 +71,7 @@ impl ApduStatic for TxRingInit {
 
 bitflags::bitflags! {
     /// TxRingInit flags
+    #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct TxRingInitFlags: u8 {
         /// Ring contains onetime private key (used for gift codes / pre-signed outputs)
         const HAS_ONETIME_PRIVATE_KEY = 1 << 0;

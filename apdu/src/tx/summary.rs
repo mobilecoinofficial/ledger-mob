@@ -131,6 +131,7 @@ pub struct TxSummaryAddTxOut {
 
 bitflags::bitflags! {
     /// TxSummaryAddTxOut flags
+    #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct AddTxOutFlags: u8 {
         /// TxOutSummary contains masked amount
         const HAS_MASKED_AMOUNT = 1 << 0;
@@ -308,6 +309,7 @@ pub struct TxSummaryAddTxOutUnblinding {
 
 bitflags::bitflags! {
     /// TxSummaryAddTxOut flags
+    #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct AddTxOutUnblindingFlags: u8 {
         /// TxSummaryAddTxOutUnblinding contains private key
         const HAS_PRIVATE_KEY = 1 << 0;
@@ -612,6 +614,7 @@ pub struct TxSummaryAddTxIn {
 
 bitflags::bitflags! {
     /// TxSummaryAddTxOut flags
+    #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct AddTxInFlags: u8 {
         /// TxInSummary contains input rules digest
         const HAS_INPUT_RULES = 1 << 0;

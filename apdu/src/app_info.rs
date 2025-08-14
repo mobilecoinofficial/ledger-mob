@@ -75,6 +75,7 @@ pub struct AppInfoResp<'a> {
 
 bitflags::bitflags! {
     /// Application info flags
+    #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct AppFlags: u16 {
         /// Indicates app is unlocked for key requests
         const UNLOCKED = 1 << 0;

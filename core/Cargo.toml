@@ -40,29 +40,29 @@ default = [
 ]
 
 [dependencies]
-aes = { version = "0.7.5", default-features = false }
+aes = { version = "0.8.4", default-features = false }
 num_enum = { version = "0.5.7", default-features = false }
-bitflags = "1.3.2"
+bitflags = "2.4"
 byteorder = { version = "1.4.3", default-features = false }
-zeroize = { version = "1.5", default-features = false }
+zeroize = { version = "1.8", default-features = false }
 log = { version = "0.4.17", default-features = false, optional = true }
 heapless = { version = "0.8.0", default-features = false }
-hkdf = { version = "0.12.3", default-features = false }
+hkdf = { version = "0.12.4", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = [ "getrandom" ] }
 strum = { version = "0.24.1", default-features = false, features = [ "derive" ] }
 static_assertions = "1.1.0"
 encdec = { version = "0.9.0", default-features = false }
 thiserror = { version = "1.0.38", optional = true }
 emstr = { version = "0.2.0", default-features = false }
-prost = { version = "0.11.0", default-features = false, features = [ "prost-derive" ] }
+prost = { version = "0.12", default-features = false, features = [ "prost-derive" ] }
 crc = { version = "3.0.0", default-features = false }
-curve25519-dalek = { version = "4.1.1", default-features = false, features = [ "zeroize" ] }
-ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false, features = [ "zeroize" ] }
+ed25519-dalek = { version = "2.1.1", default-features = false }
+x25519-dalek = { version = "2.0.1", default-features = false }
 merlin = { version = "3.0.0", default-features = false }
 rand_hc = { version = "0.3.2", default-features = false }
 schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
-sha2 = { version = "0.10.6", default-features = false }
+sha2 = { version = "0.10.8", default-features = false }
 bs58 = { version = "0.4.0", default-features = false }
 const-decoder = "0.3.0"
 
