@@ -5,7 +5,7 @@ cargo-features = ["per-package-target"]
 name = "ledger-mob-fw"
 description = "MobileCoin Ledger NanoApp"
 repository = "https://github.com/mobilecoinofficial/ledger-mob.git"
-version = "0.16.2"
+version = "0.17.0"
 edition = "2021"
 license = "GPL-3.0"
 publish = false
@@ -63,7 +63,7 @@ emstr = { version = "0.2.0", default-features = false }
 heapless = "0.8.0"
 rngcheck = "0.1.1"
 
-mc-core = { version = "6", default-features = false }
+mc-core = { version = "7", default-features = false }
 ledger-mob-core = { path = "../core", default-features = false }
 
 curve25519-dalek = { version = "4.1.1", default-features = false }
@@ -153,3 +153,6 @@ mc-transaction-summary = { path ="../vendor/mob/transaction/summary" }
 #ledger_secure_sdk_sys = { path = "../../ledger-device-rust-sdk/ledger_secure_sdk_sys" }
 
 bytes = { git = "https://github.com/ryankurte/rust-bytes.git", branch = "v1.4.0-portable-atomic" }
+
+# Fork that adds i128 support
+emstr = { git = "http://github.com/eranrund/emstr.git", rev = "08810c8e21034a255d3a50c7cfdab495481aa522" }

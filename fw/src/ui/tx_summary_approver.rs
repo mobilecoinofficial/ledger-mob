@@ -194,7 +194,7 @@ impl TxSummaryApprover {
                 // Write value and token id
                 // TODO: ensure values can not be concatenated
 
-                let value_str = fmt_token_val(*value as i64, *token_id, &mut value_buff);
+                let value_str = fmt_token_val(*value as i128, *token_id, &mut value_buff);
 
                 match &entity {
                     // Balance changes to ourself or others
@@ -250,7 +250,7 @@ impl TxSummaryApprover {
             // Fees
             Fee => {
                 let value_str = fmt_token_val(
-                    report.network_fee.value as i64,
+                    report.network_fee.value as i128,
                     report.network_fee.token_id,
                     &mut buff[..],
                 );
