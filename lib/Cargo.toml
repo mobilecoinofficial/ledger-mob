@@ -13,6 +13,7 @@ cli = []
 prost = ["dep:prost"]
 summary = []
 ident = []
+transport_hid = []
 
 default = ["cli", "prost", "summary", "ident"]
 
@@ -21,7 +22,7 @@ async-trait = "0.1.57"
 anyhow = "1.0.58"
 base64 = "0.21.0"
 clap = { version = "4.0.26", features = ["derive"] }
-ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
+ed25519-dalek = { version = "2.1.1", default-features = false }
 encdec = "0.9.0"
 strum = { version = "0.24.1", features = ["derive"] }
 tokio = { version = "1.20.1", features = ["full"] }
@@ -45,14 +46,14 @@ ledger-proto = { version = "0.1.0" }
 
 ledger-mob-apdu = { path = "../apdu" }
 
-mc-core = { version = "6", features = ["serde"] }
-mc-crypto-keys = { version = "6", default-features = false }
-mc-crypto-ring-signature = { version = "6", default-features = false }
-mc-crypto-ring-signature-signer = { version = "6", default-features = false }
-mc-transaction-core = { version = "6" }
-mc-transaction-extra = { version = "6" }
-mc-transaction-signer = { version = "6" }
-mc-transaction-summary = { version = "6" }
+mc-core = { version = "7", features = ["serde"] }
+mc-crypto-keys = { version = "7", default-features = false }
+mc-crypto-ring-signature = { version = "7", default-features = false }
+mc-crypto-ring-signature-signer = { version = "7", default-features = false }
+mc-transaction-core = { version = "7" }
+mc-transaction-extra = { version = "7" }
+mc-transaction-signer = { version = "7" }
+mc-transaction-summary = { version = "7" }
 
 [dev-dependencies]
 toml = "0.5.9"
@@ -63,14 +64,14 @@ serde = { version = "1.0.144", features = ["derive"] }
 ledger-sim = "0.1.0"
 ledger-mob-tests = { path = "../tests", default-features = false }
 
-curve25519-dalek = { version = "4.1.1", default-features = false }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
-ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false }
+x25519-dalek = { version = "2.0.1", default-features = false }
+ed25519-dalek = { version = "2.1.1", default-features = false }
 
-mc-core = { version = "6", features = ["bip39"] }
-mc-crypto-keys = { version = "6", default-features = false }
-mc-crypto-ring-signature = { version = "6", default-features = false }
-mc-util-from-random = { version = "6", default-features = false }
+mc-core = { version = "7", features = ["bip39"] }
+mc-crypto-keys = { version = "7", default-features = false }
+mc-crypto-ring-signature = { version = "7", default-features = false }
+mc-util-from-random = { version = "7", default-features = false }
 
 [[bin]]
 name = "ledger-mob-cli"
