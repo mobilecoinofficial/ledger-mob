@@ -79,12 +79,12 @@ pub struct MobAppInfo {
 
 impl<T: Device + Send> DeviceHandle<T> {
     /// Helper to fetch user interaction timeout
-    fn user_timeout(&self) -> Duration {
+    pub fn user_timeout(&self) -> Duration {
         Duration::from_secs(self.user_timeout_s as u64)
     }
 
     /// Helper to fetch APDU request timeout
-    fn request_timeout(&self) -> Duration {
+    pub fn request_timeout(&self) -> Duration {
         Duration::from_secs(self.request_timeout_s as u64)
     }
 
@@ -167,7 +167,8 @@ impl<T: Device + Send> DeviceHandle<T> {
     }
 
     /// Helper to retry for requests requiring user approval
-    // TODO: fix apdu lifetimes so we don't need multiple buffers here / can return immediate errors
+    // TODO: fix apdu lifetimes so we don't need multiple buffers here / can return
+    // immediate errors
     async fn retry<'a, ANS: ApduBase<'a>>(
         &mut self,
         req: impl ApduReq<'_> + Clone + Send,
@@ -215,6 +216,28 @@ impl<T: Device + Send> DeviceHandle<T> {
         }
     }
 
+    /// Get a TransactionHandle which can be used by external callers to drive
+    /// the transaction signing state-machine manually. This is useful for
+    /// memo signing.
+    pub async fn transaction_handle(&self,
+        account_index: u32,
+        num_memos: usize,
+        num_rings: usize,
+        approval_timeout_s: u32,
+    ) -> Result<TransactionHandle<T>, Error> {
+        Ok(TransactionHandle::new(
+            TxConfig {
+                account_index,
+                num_memos,
+                num_rings,
+                request_timeout: self.request_timeout(),
+                user_timeout: Duration::from_secs(approval_timeout_s as u64),
+            },
+            self.t.clone(),
+        )
+        .await?)
+    }
+
     /// Sign an unsigned transaction object using the device
     pub async fn transaction(
         &mut self,
@@ -224,15 +247,11 @@ impl<T: Device + Send> DeviceHandle<T> {
     ) -> Result<(Tx, Vec<TxoSynced>), Error> {
         // Start device transaction
         debug!("Starting transaction");
-        let mut signer = TransactionHandle::new(
-            TxConfig {
-                account_index,
-                num_memos: 0,
-                num_rings: unsigned.rings.len(),
-                request_timeout: self.request_timeout(),
-                user_timeout: Duration::from_secs(approval_timeout_s as u64),
-            },
-            self.t.clone(),
+        let mut signer = self.transaction_handle(
+            account_index,
+            0,
+            unsigned.rings.len(),
+            approval_timeout_s,
         )
         .await?;
 

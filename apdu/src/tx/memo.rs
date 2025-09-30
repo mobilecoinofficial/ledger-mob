@@ -1,10 +1,7 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
 use encdec::{Decode, Encode};
-use mc_core::{
-    account::RingCtAddress,
-    keys::{SubaddressViewPublic, TxOutPublic},
-};
+use mc_core::keys::{SubaddressViewPublic, TxOutPublic};
 
 use super::TxState;
 use crate::{
@@ -80,11 +77,12 @@ impl ApduStatic for TxMemoSign {
 }
 
 impl TxMemoSign {
-    /// Create a new memo signing request with the provided target, kind, and payload
-    pub fn new<T: RingCtAddress>(
+    /// Create a new memo signing request with the provided target subaddress
+    /// view public key, kind, and payload
+    pub fn new(
         subaddress_index: u64,
         tx_public_key: TxOutPublic,
-        target: &T,
+        target_view_public: SubaddressViewPublic,
         kind: [u8; 2],
         payload: [u8; MEMO_PAYLOAD_NO_HMAC],
     ) -> Self {
@@ -94,7 +92,7 @@ impl TxMemoSign {
             payload_len: MEMO_PAYLOAD_NO_HMAC as u8,
             reserved: 0,
             tx_public_key,
-            target_view_public: target.view_public_key(),
+            target_view_public,
             payload,
         }
     }
@@ -186,7 +184,7 @@ mod test {
         let apdu = TxMemoSign::new(
             DEFAULT_SUBADDRESS_INDEX,
             RistrettoPublic::from(&transaction_private).into(),
-            &target_subaddr,
+            target_subaddr.view_public_key(),
             [0, 1],
             payload,
         );

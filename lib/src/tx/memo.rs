@@ -11,7 +11,7 @@ use ledger_mob_apdu::{
     tx::{TxMemoSig, TxMemoSign},
 };
 
-use mc_core::{account::PublicSubaddress, keys::TxOutPublic};
+use mc_core::{account::{PublicSubaddress, RingCtAddress}, keys::TxOutPublic};
 use mc_transaction_signer::traits::MemoHmacSigner;
 
 use super::{check_digest, check_state, Error, TransactionHandle};
@@ -73,7 +73,7 @@ impl<T: Device> TransactionHandle<T> {
         let tx_memo_sign = TxMemoSign::new(
             sender_subaddress_index,
             tx_public_key.clone(),
-            &target_subaddress,
+            target_subaddress.view_public_key(),
             *memo_type,
             *memo_data_sans_hmac,
         );

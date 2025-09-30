@@ -52,6 +52,7 @@ mc-crypto-memo-mac = { path ="./vendor/mob/crypto/memo-mac" }
 mc-crypto-ring-signature = { path ="./vendor/mob/crypto/ring-signature" }
 mc-crypto-ring-signature-signer = { path ="./vendor/mob/crypto/ring-signature/signer" }
 mc-fog-sig-authority = { path = "./vendor/mob/fog/sig/authority" }
+mc-transaction-builder = { path = "./vendor/mob/transaction/builder" }
 mc-transaction-core = { path = "./vendor/mob/transaction/core" }
 mc-transaction-extra = { path = "./vendor/mob/transaction/extra" }
 mc-transaction-types = { path = "./vendor/mob/transaction/types" }

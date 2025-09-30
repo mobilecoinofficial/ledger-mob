@@ -72,7 +72,7 @@ where
     let tx_memo_sign = TxMemoSign::new(
         DEFAULT_SUBADDRESS_INDEX,
         tx_out_public_key.into(),
-        &target_subaddr,
+        target_subaddr.view_public_key(),
         [0, 1],
         payload,
     );
