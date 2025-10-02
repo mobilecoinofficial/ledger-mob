@@ -1178,7 +1178,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -1193,7 +1193,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core-types"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "cfg-if",
  "curve25519-dalek",
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1225,7 +1225,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "mc-crypto-digestible",
  "signature",
@@ -1233,7 +1233,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "blake2",
  "digest",
@@ -1242,7 +1242,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "base64",
  "curve25519-dalek",
@@ -1269,7 +1269,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "hmac",
  "mc-crypto-keys",
@@ -1278,7 +1278,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1296,14 +1296,14 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-transaction-summary"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "displaydoc",
  "heapless",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-types"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "crc",
  "displaydoc",
@@ -1337,21 +1337,21 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "generic-array",
 ]
 
 [[package]]
 name = "mc-util-vec-map"
-version = "7.0.2"
+version = "7.0.5"
 dependencies = [
  "displaydoc",
  "heapless",
@@ -1359,7 +1359,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "7.0.2"
+version = "7.0.5"
 
 [[package]]
 name = "memchr"
