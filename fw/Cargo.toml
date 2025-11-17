@@ -41,9 +41,7 @@ noinline = [ "ledger-mob-core/noinline" ]
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-ledger_device_sdk = { version = "1.14.1", default_features = false }
-ledger_secure_sdk_sys = { version = "1.4.4", default_features = false }
-include_gif = "1.1.0"
+ledger_device_sdk = { version = "1.28.0", default_features = false, features=["sys"] }
 ledger-proto = { version = "0.1.0", default_features = false }
 
 getrandom = { version = "0.2.7", default_features = false, features = [ "custom" ] }
@@ -142,7 +140,6 @@ mc-util-from-random = { path = "../vendor/mob/util/from-random" }
 mc-transaction-types = { path ="../vendor/mob/transaction/types" }
 mc-transaction-summary = { path ="../vendor/mob/transaction/summary" }
 
-#ledger_device_sdk = { path = "../../ledger-device-rust-sdk/ledger_device_sdk" }
-#ledger_secure_sdk_sys = { path = "../../ledger-device-rust-sdk/ledger_secure_sdk_sys" }
+ledger_device_sdk = { path = "../../ledger-device-rust-sdk/ledger_device_sdk" }
 
 bytes = { git = "https://github.com/ryankurte/rust-bytes.git", branch = "v1.4.0-portable-atomic" }

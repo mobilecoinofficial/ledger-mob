@@ -13,7 +13,7 @@ use ledger_device_sdk::{
     Pic,
 };
 use ledger_proto::{apdus::DeviceInfoResp, ApduError};
-use ledger_secure_sdk_sys::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10};
+use ledger_device_sdk::sys::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10};
 
 #[cfg(feature = "nvm")]
 use ledger_mob_core::apdu::tx::FOG_IDS;
@@ -145,12 +145,12 @@ pub fn fetch_encode_device_info(buff: &mut [u8]) -> Result<usize, ApduError> {
     let mut se_version_raw = [0u8; 32];
     let flags;
     unsafe {
-        flags = ledger_secure_sdk_sys::os_flags();
-        ledger_secure_sdk_sys::os_version(
+        flags = ledger_device_sdk::sys::os_flags();
+        ledger_device_sdk::sys::os_version(
             mcu_version_raw.as_mut_ptr(),
             se_version_raw.len() as u32,
         );
-        ledger_secure_sdk_sys::os_seph_version(
+        ledger_device_sdk::sys::os_seph_version(
             se_version_raw.as_mut_ptr(),
             se_version_raw.len() as u32,
         );
