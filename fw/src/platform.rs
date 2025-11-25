@@ -6,6 +6,7 @@ use core::{ffi::CStr, mem::MaybeUninit};
 
 use encdec::Encode;
 
+use ledger_device_sdk::sys::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10};
 use ledger_device_sdk::{ecc, uxapp::UxEvent};
 #[cfg(feature = "nvm")]
 use ledger_device_sdk::{
@@ -13,7 +14,6 @@ use ledger_device_sdk::{
     Pic,
 };
 use ledger_proto::{apdus::DeviceInfoResp, ApduError};
-use ledger_device_sdk::sys::{os_perso_derive_node_with_seed_key, HDW_ED25519_SLIP10};
 
 #[cfg(feature = "nvm")]
 use ledger_mob_core::apdu::tx::FOG_IDS;
