@@ -231,7 +231,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2023-11-10
+        toolchain: nightly-2024-12-01
         target:  ${{ matrix.target }}
         override: true
         components: rust-src, llvm-tools
@@ -240,7 +240,7 @@ jobs:
       run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib protobuf-compiler protobuf-c-compiler 
 
     - name: Install cargo-ledger
-      run: cargo install cargo-ledger && cargo ledger setup
+      run: cargo install cargo-ledger && cargo +nightly-2024-12-01 ledger setup
 
     - name: Load ${{ matrix.platform }} FW cache
       uses: actions/cache/restore@v3
@@ -275,7 +275,7 @@ jobs:
         arm-none-eabi-objcopy -O ihex fw/target/${{ matrix.platform }}/release/ledger-mob-fw ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
 
     - name: Upload firmware binary artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ledger-mob-fw-${{ matrix.platform }}
         path: |
