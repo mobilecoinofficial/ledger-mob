@@ -5,7 +5,7 @@ cargo-features = ["per-package-target"]
 name = "ledger-mob-fw"
 description = "MobileCoin Ledger NanoApp"
 repository = "https://github.com/mobilecoinofficial/ledger-mob.git"
-version = "0.16.1"
+version = "0.16.2"
 edition = "2021"
 license = "GPL-3.0"
 publish = false
@@ -41,7 +41,7 @@ noinline = [ "ledger-mob-core/noinline" ]
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-ledger_device_sdk = { version = "1.29.0", default_features = false, features=["sys"] }
+ledger_device_sdk = { version = "1.30.0", default_features = false, features=["sys"] }
 ledger-proto = { version = "0.1.0", default_features = false }
 
 getrandom = { version = "0.2.7", default_features = false, features = [ "custom" ] }
