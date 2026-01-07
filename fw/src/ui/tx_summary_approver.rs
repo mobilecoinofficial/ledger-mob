@@ -7,7 +7,7 @@ use strum::{Display, EnumCount};
 
 use emstr::{helpers::Hex, EncodeStr};
 
-use ledger_secure_sdk_sys::buttons::ButtonEvent;
+use ledger_device_sdk::sys::buttons::ButtonEvent;
 
 use ledger_device_sdk::ui::{
     bagls::*,
