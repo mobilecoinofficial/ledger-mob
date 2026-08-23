@@ -2,10 +2,13 @@ RUSTARGS=--release
 
 VERSION=$(shell git describe --dirty=+)
 
-NANOSP_ARGS=
-NANOX_ARGS=
+# Docker image for building firmware
+BUILD_CONTAINER="ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:5.4.1"
 
-SPECULOS_ARGS=--zoom=4
+# Docker image for running speculos
+SPECULOS_CONTAINER="ghcr.io/ledgerhq/speculos:latest"
+
+SPECULOS_ARGS=
 ifdef MNEMONIC
 	SPECULOS_ARGS+=--seed "$(MNEMONIC)"
 endif
@@ -26,7 +29,7 @@ core-test:
 	cargo nextest run --package ledger-mob-core
 
 nanosplus-test: nanosplus
-	MODEL=nanosplus cargo nextest run --package ledger-mob $(NANOSP_ARGS)
+	MODEL=nanosplus cargo nextest run --package ledger-mob
 
 nanox-test: nanox
 	MODEL=nanox cargo nextest run --package ledger-mob
@@ -37,19 +40,19 @@ docs:
 
 # Build nanosplus firmware
 nanosplus: 
-	cd fw && cargo build --target nanosplus $(NANOSP_ARGS) $(RUSTARGS)
+	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build nanosplus
 
 # Build nanox firmware
 nanox:
-	cd fw && cargo build --target nanox $(NANOX_ARGS) $(RUSTARGS)
+	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build nanox
 
-# Run nanosplus firmware under speculos without debug
+# Run nanosplus firmware under speculos
 nanosplus-run:
-	cd fw && cargo run --target nanosplus $(NANOSP_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanosp --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/nanosplus/release/ledger-mob-fw
 
-# Run nanox firmware under speculos without debug
+# Run nanox firmware under speculos
 nanox-run:
-	cd fw && cargo run --target nanox $(NANOX_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanox --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/nanox/release/ledger-mob-fw
 
 # Load firmware onto device
 nanosplus-load: nanosplus
@@ -73,7 +76,7 @@ package-%: % fw/target/%/release/ledger-mob-fw.hex
 
 # Run firmware under speculos with QEMU debug connection
 nanosplus-debug:
-	cd fw && speculos --model nanosp --display qt --apdu-port 1237 $(SPECULOS_ARGS) -d target/nanosplus/release/ledger-mob-fw
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanosp --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) -d target/nanosplus/release/ledger-mob-fw
 
 # Launch GDB connecting to speculos QEMU
 nanosplus-gdb:
@@ -82,12 +85,6 @@ nanosplus-gdb:
 # Objdump to show disassembly of sample_main (see `sp` for stack allocation)
 objdump:
 	arm-none-eabi-objdump fw/target/nanosplus/release/ledger-mob-fw --disassemble=sample_main -S | head -n 20
-
-wts-nanosplus:
-	wts fw/target/nanosplus/release/ledger-mob-fw -n 20
-
-wts-nanox:
-	wts fw/target/nanox/release/ledger-mob-fw -n 20
 
 # Run linters
 lint: fmt clippy
