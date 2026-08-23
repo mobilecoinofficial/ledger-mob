@@ -1,6 +1,15 @@
 name: Rust
 
 on:
+  push:
+    branches:
+      - main
+      - develop
+    tags: [ 'v*' ]
+  pull_request:
+    branches:
+      - main
+      - develop
   workflow_dispatch:
 
 env:
@@ -20,9 +29,9 @@ jobs:
     - uses: FranzDiebold/github-env-vars-action@v2.7.0
 
     - name: Configure toolchain
-      uses: actions-rs/toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2023-11-10
+        toolchain: nightly-2025-12-05
         target:  ${{ matrix.target }}
         override: true
         components: rustfmt, clippy, rust-src
@@ -59,9 +68,9 @@ jobs:
     - uses: FranzDiebold/github-env-vars-action@v2.7.0
       
     - name: Configure toolchain
-      uses: actions-rs/toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2023-11-10
+        toolchain: nightly-2025-12-05
         override: true
 
     - name: Install protobuf tools
@@ -120,9 +129,9 @@ jobs:
         echo "VERSION=$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
       
     - name: Configure toolchain
-      uses: actions-rs/toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2023-11-10
+        toolchain: nightly-2025-12-05
         target:  ${{ matrix.target }}
         override: true
     
@@ -195,6 +204,7 @@ jobs:
   # Build Firmware
   build-fw:
     runs-on: ubuntu-latest
+    container: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:5.4.1
     continue-on-error: ${{ matrix.experimental }}
 
     strategy:
@@ -221,7 +231,7 @@ jobs:
         echo "VERSION=$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
       
     - name: Configure toolchain
-      uses: actions-rs/toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: nightly-2024-12-01
         target:  ${{ matrix.target }}
@@ -250,7 +260,7 @@ jobs:
 
     - name: Build FW
       run: |
-        make ${{ matrix.platform }}
+        cargo ledger build ${{ matrix.platform }}
 
     - name: Update ${{ matrix.platform }} FW cache
       if: ${{ github.ref == 'refs/heads/main' }}
@@ -275,7 +285,7 @@ jobs:
           ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}.hex
 
   # Build simulator tests
-  build-sim:
+  build-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -287,9 +297,9 @@ jobs:
     - uses: FranzDiebold/github-env-vars-action@v2.7.0
       
     - name: Configure toolchain
-      uses: actions-rs/toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2023-11-10
+        toolchain: nightly-2025-12-05
         target:  ${{ matrix.target }}
         override: true
     
@@ -322,7 +332,7 @@ jobs:
   # Run simulator tests
   test-sim:
     runs-on: ubuntu-latest
-    needs: [ build-sim, build-fw ]
+    needs: [ build-tests, build-fw ]
 
     strategy:
       fail-fast: false
@@ -347,9 +357,9 @@ jobs:
         echo "NANOAPP=$(pwd)/bin/ledger-mob-fw-${{ matrix.platform }}-$(git describe --dirty=+ --always --tags)" >> $GITHUB_ENV
 
     - name: Configure rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2023-11-10
+        toolchain: nightly-2025-12-05
         override: true
     
     - name: Install libusb / hidapi / libudev
@@ -459,9 +469,9 @@ jobs:
           fetch-depth: 0
 
       - name: Fetch rust tooling
-        uses: actions-rs/toolchain@v1
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: nightly-2023-11-10
+          toolchain: nightly-2025-12-05
           override: true
 
       - name: Restore core cache
