@@ -41,25 +41,25 @@ noinline = [ "ledger-mob-core/noinline" ]
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-ledger_device_sdk = { version = "1.30.0", default_features = false, features=["sys"] }
-ledger-proto = { version = "0.1.0", default_features = false }
+ledger_device_sdk = { version = "1.30.0", default-features = false, features=["sys"] }
+ledger-proto = { version = "0.1.0", default-features = false }
 
-getrandom = { version = "0.2.7", default_features = false, features = [ "custom" ] }
-rand_core = { version = "0.6.3", default_features = false }
-hmac-sha512 = { version = "1.1.2", default_features = false }
-strum = { version = "0.24.1", default_features = false }
-hex_fmt = { version = "0.3.0", default_features = false }
-encdec = { version = "0.9.0", default_features = false }
-emstr = { version = "0.2.0", default_features = false }
+getrandom = { version = "0.2.7", default-features = false, features = [ "custom" ] }
+rand_core = { version = "0.6.3", default-features = false }
+hmac-sha512 = { version = "1.1.2", default-features = false }
+strum = { version = "0.24.1", default-features = false }
+hex_fmt = { version = "0.3.0", default-features = false }
+encdec = { version = "0.9.0", default-features = false }
+emstr = { version = "0.2.0", default-features = false }
 heapless = "0.8.0"
 rngcheck = "0.1.1"
 
 mc-core = { version = "6", default-features = false }
-ledger-mob-core = { path = "../core", default_features = false }
+ledger-mob-core = { path = "../core", default-features = false }
 
-curve25519-dalek = { version = "4.1.1", default_features = false }
-ed25519-dalek = { version = "2.0.0-pre.0", default_features = false }
-x25519-dalek = { version = "2.0.0-pre.2", default_features = false }
+curve25519-dalek = { version = "4.1.1", default-features = false }
+ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
+x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
 
 libc = "0.2.140"
 rlibc = "1.0.0"
@@ -70,14 +70,14 @@ critical-section = { version = "1.1.1", optional = true }
 clear_on_drop = { version = "0.2", default-features = false, features = [ "no_cc" ] }
 
 [target.'cfg(target_os = "nanox")'.dependencies]
-bytes = { version = "1.4.0", default_features = false, features = [ "use-portable-atomic" ] }
+bytes = { version = "1.4.0", default-features = false, features = [ "use-portable-atomic" ] }
 portable-atomic = { version = "1.7.0", features = ["require-cas", "critical-section"] }
 
 [build-dependencies]
 image = "0.24.3"
 anyhow = "1.0.64"
 quote = "1.0.21"
-chrono = { version = "0.4.26", default_features = false, features = [ "clock" ] }
+chrono = { version = "0.4.26", default-features = false, features = [ "clock" ] }
 
 [dev-dependencies]
 
