@@ -1,5 +1,3 @@
-cargo-features = ["per-package-target"]
-
 [package]
 name = "ledger-mob-apdu"
 description = "MobileCoin hardware wallet protocol / APDU definitions"
@@ -8,8 +6,6 @@ version = "0.16.0"
 edition = "2021"
 license = "Apache-2.0"
 publish = false
-
-default-target = "x86_64-unknown-linux-gnu"
 
 [features]
 alloc = [ "mc-transaction-types/alloc" ]
