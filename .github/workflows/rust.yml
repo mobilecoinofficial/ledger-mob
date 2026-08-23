@@ -186,7 +186,7 @@ jobs:
         tar cvf ledger-mob-cli-${{ matrix.target }}.tgz ledger-mob-cli-${{ matrix.target }}-${{ env.VERSION }}${{ matrix.ext }}
 
     - name: Upload CLI artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v7
       with:
         name: ledger-mob-cli-${{ matrix.target }}
         path: ledger-mob-cli-${{ matrix.target }}-${{ env.VERSION }}${{ matrix.ext }}
@@ -233,7 +233,7 @@ jobs:
     - name: Configure toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly-2024-12-01
+        toolchain: nightly-2025-12-05
         target:  ${{ matrix.target }}
         override: true
         components: rust-src, llvm-tools
@@ -242,7 +242,7 @@ jobs:
       run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib protobuf-compiler protobuf-c-compiler 
 
     - name: Install cargo-ledger
-      run: cargo install cargo-ledger && cargo +nightly-2024-12-01 ledger setup
+      run: cargo install cargo-ledger && cargo +nightly-2025-12-05 ledger setup
 
     - name: Load ${{ matrix.platform }} FW cache
       uses: actions/cache/restore@v3
@@ -438,7 +438,7 @@ jobs:
         ledger-mob-fw-${{ matrix.platform }}-${{ env.VERSION }}/
 
     - name: Upload firmware package artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v7
       with:
         name: ledger-mob-fw-${{ matrix.platform }}.tgz
         path: ledger-mob-fw-${{ matrix.platform }}.tgz
