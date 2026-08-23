@@ -45,12 +45,12 @@ fn get_token_info(token_id: TokenId) -> Option<&'static TokenInfo> {
 }
 
 // Format helper for values and token types
-pub fn fmt_token_val(value: i64, token_id: TokenId, buff: &mut [u8]) -> &str {
+pub fn fmt_token_val(value: i128, token_id: TokenId, buff: &mut [u8]) -> &str {
     // Match token types
     let scalar = get_token_info(token_id).map(|v| v.scalar).unwrap_or(1);
 
     // Compute and write value using scalar
-    let mut n = match emstr::write!(&mut buff[..], Fractional::<i64>::new(value, scalar)) {
+    let mut n = match emstr::write!(&mut buff[..], Fractional::<i128>::new(value, scalar as i128)) {
         Ok(v) => v,
         Err(_) => return "ENCODE_ERR",
     };
