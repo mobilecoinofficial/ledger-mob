@@ -1049,6 +1049,8 @@ checksum = "bb154a0b6f0f074d14dd7991b831a6263e68338dbb347046badc947e0999bcc4"
 dependencies = [
  "bindgen",
  "cc",
+ "critical-section",
+ "embedded-alloc",
  "glob",
 ]
 
