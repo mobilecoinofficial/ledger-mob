@@ -217,8 +217,8 @@ impl<const N: usize> bs58::encode::EncodeTarget for HeaplessEncodeTarget<N> {
 #[cfg(test)]
 mod test {
     use mc_account_keys::AccountKey;
-    use mc_transaction_types::TokenId;
     use mc_api::printable::printable_wrapper::Wrapper;
+    use mc_transaction_types::TokenId;
 
     use rand_core::OsRng;
 
@@ -331,7 +331,7 @@ mod test {
                 })),
                 ..Default::default()
             };
-            
+
             let s2 = wrapper.b58_encode().unwrap();
 
             assert_eq!(s1.as_str(), s2.as_str());
