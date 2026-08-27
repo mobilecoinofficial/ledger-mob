@@ -1059,12 +1059,11 @@ mod test {
 
             (State::SignRing(RingState::Init), Event::TxSetBlinding{ blinding: Scalar::random(&mut OsRng{}), output_blinding: Scalar::random(&mut OsRng{})}),
 
-            #[cfg(nyet)]
-            (State::BuildRing, Event::TxAddTxout(ReducedTxOut{
-                public_key: CompressedRistrettoPublic::from(&PRIVATE_KEY),
-                target_key: CompressedRistrettoPublic::from(&PRIVATE_KEY),
-                commitment: CompressedCommitment::default(),
-            })),
+            // (State::BuildRing, Event::TxAddTxout(ReducedTxOut{
+            //     public_key: CompressedRistrettoPublic::from(&PRIVATE_KEY),
+            //     target_key: CompressedRistrettoPublic::from(&PRIVATE_KEY),
+            //     commitment: CompressedCommitment::default(),
+            // })),
         ];
     }
 

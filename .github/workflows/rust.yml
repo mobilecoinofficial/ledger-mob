@@ -82,10 +82,8 @@ jobs:
           ./target
 
     - name: Run core tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: -p ledger-mob-core -p ledger-mob-apdu
+      run: |
+        cargo test -p ledger-mob-core -p ledger-mob-apdu
 
     - name: Update core cache
       if: ${{ github.ref == 'refs/heads/main' }}
