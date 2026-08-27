@@ -51,10 +51,10 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     };
 
     // Select API level
-    // TODO: find a canonical source for these
+    // TODO: find a canonical (self-updating?) source for these
     let api_level = match model {
-        Model::NanoSP => "5".to_string(),
-        Model::NanoX => "5".to_string(),
+        Model::NanoSP => "26".to_string(),
+        Model::NanoX => "26".to_string(),
         Model::NanoS => panic!("unsupported model"),
     };
 
