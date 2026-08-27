@@ -7,9 +7,6 @@ on:
       - develop
     tags: [ 'v*' ]
   pull_request:
-    branches:
-      - main
-      - develop
   workflow_dispatch:
 
 env:
@@ -237,12 +234,6 @@ jobs:
         target:  ${{ matrix.target }}
         override: true
         components: rust-src, llvm-tools
-
-    - name: Install cross toolchain 
-      run: sudo apt update && sudo apt install gcc-arm-none-eabi gcc-multilib protobuf-compiler protobuf-c-compiler 
-
-    - name: Install cargo-ledger
-      run: cargo install cargo-ledger && cargo +nightly-2025-12-05 ledger setup
 
     - name: Load ${{ matrix.platform }} FW cache
       uses: actions/cache/restore@v3
