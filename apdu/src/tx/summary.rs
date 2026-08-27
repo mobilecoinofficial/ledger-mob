@@ -375,7 +375,7 @@ const FOG_SIGNAL_TESTNET_URI: &str = "fog://fog-rpt-stg.namda.net";
 /// Signal MainNet fog URI
 const FOG_SIGNAL_MAINNET_URI: &str = "fog://fog-rpt-prd.namda.net";
 
-/// TODO: support old signal fog URLs
+// TODO: support old signal fog URLs (?)
 
 /// List of supported fogs for iteration and display
 pub const FOG_IDS: &[FogId] = &[
@@ -486,7 +486,7 @@ impl TxSummaryAddTxOutUnblinding {
             blinding: unmasked_amount.blinding.into(),
             address_spend_public,
             address_view_public,
-            tx_private_key: tx_private_key.map(Key::from).unwrap_or_default(),
+            tx_private_key: tx_private_key.unwrap_or_default(),
             fog_authority_sig,
         })
     }

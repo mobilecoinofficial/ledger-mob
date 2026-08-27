@@ -35,8 +35,10 @@ impl Default for Function {
 
 /// Enum for internal state machines to allow stack to be shared between functions
 /// and encapsulate [out-pointer](https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#out-pointers) usage to mitigate stack issues
+#[derive(Default)]
 #[allow(clippy::large_enum_variant)]
 enum FunctionType {
+    #[default]
     None,
 
     #[cfg(feature = "summary")]
@@ -47,12 +49,6 @@ enum FunctionType {
 
     #[cfg(feature = "ident")]
     Ident(Ident),
-}
-
-impl Default for FunctionType {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl Function {

@@ -50,7 +50,10 @@ pub fn fmt_token_val(value: i128, token_id: TokenId, buff: &mut [u8]) -> &str {
     let scalar = get_token_info(token_id).map(|v| v.scalar).unwrap_or(1);
 
     // Compute and write value using scalar
-    let mut n = match emstr::write!(&mut buff[..], Fractional::<i128>::new(value, scalar as i128)) {
+    let mut n = match emstr::write!(
+        &mut buff[..],
+        Fractional::<i128>::new(value, scalar as i128)
+    ) {
         Ok(v) => v,
         Err(_) => return "ENCODE_ERR",
     };

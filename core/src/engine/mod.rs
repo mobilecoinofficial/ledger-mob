@@ -462,7 +462,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
                 Event::TxSetBlinding { .. }
                 | Event::TxAddTxout(..)
                 | Event::TxSign
-                | Event::TxGetKeyImage { .. }
+                | Event::TxGetKeyImage
                 | Event::TxGetResponse { .. },
             ) => {
                 return self.ring_update(evt);
