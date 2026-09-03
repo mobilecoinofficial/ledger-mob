@@ -41,7 +41,8 @@ noinline = [ "ledger-mob-core/noinline" ]
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-ledger_device_sdk = { version = "1.30.0", default-features = false, features=["sys"] }
+ledger_device_sdk = { version = "1.36.2", default-features = false, features=["sys"] }
+ledger_secure_sdk_sys = "1.16.4"
 ledger-proto = { version = "0.1.0", default-features = false }
 
 getrandom = { version = "0.2.7", default-features = false, features = [ "custom" ] }
@@ -57,9 +58,9 @@ rngcheck = "0.1.1"
 mc-core = { version = "6", default-features = false }
 ledger-mob-core = { path = "../core", default-features = false }
 
-curve25519-dalek = { version = "4.1.1", default-features = false }
-ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
+curve25519-dalek = { version = "4.1.3", default-features = false }
+ed25519-dalek = { version = "2.2.0", default-features = false }
+x25519-dalek = { version = "2.0.0", default-features = false }
 
 libc = "0.2.140"
 rlibc = "1.0.0"

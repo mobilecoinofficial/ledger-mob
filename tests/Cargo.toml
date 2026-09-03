@@ -45,8 +45,8 @@ ledger-lib = { version = "0.1.0", default-features = false }
 
 
 curve25519-dalek = { version = "4.1.1", default-features = false }
-x25519-dalek = { version = "2.0.0-pre.2", default-features = false }
-ed25519-dalek = { version = "2.0.0-pre.0", default-features = false }
+x25519-dalek = { version = "2.0.0", default-features = false }
+ed25519-dalek = { version = "2.0.0", default-features = false }
 
 
 [dev-dependencies]
