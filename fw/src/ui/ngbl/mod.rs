@@ -3,21 +3,25 @@
 use rand_core::{CryptoRng, RngCore};
 
 use ledger_device_sdk::{screen::sdk_screen_clear, nbgl::NbglHomeAndSettings};
+use ledger_device_sdk::nvm::AtomicStorage;
+use ledger_device_sdk::NVMData;
 
 use ledger_mob_core::engine::{Driver, Engine};
 
-use crate::{MOB64X64, APP_VERSION};
+use crate::{MOB64X64, APP_VERSION, settings::{Settings, SETTINGS_STRINGS}};
 
 /// Top level User Interface implementation
 pub struct Ui {
     /// Current top-level state of UI
     pub state: UiState,
+
+    /// Last state (determines if we need to redraw the screen)
+    pub last_state: UiStateKind,
 }
 
-#[derive(Clone, Debug, PartialEq)]
 pub enum UiState {
     /// Showing main menu
-    Menu,
+    Menu(NbglHomeAndSettings),
 
     /// Showing a b58 address
     Address,
@@ -39,11 +43,40 @@ pub enum UiState {
     ),
 }
 
+impl core::fmt::Debug for UiState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            UiState::Menu(_) => write!(f, "Menu"),
+            UiState::Address => write!(f, "Address"),
+            UiState::KeyRequest(_) => write!(f, "KeyRequest"),
+            UiState::TxBlindRequest(_) => write!(f, "TxBlindRequest"),
+            UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
+            UiState::IdentRequest(_) => write!(f, "IdentRequest"),
+            UiState::Progress => write!(f, "Progress"),
+            UiState::Message(_) => write!(f, "Message"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum UiStateKind {
+    None,
+    Menu,
+    Address,
+    KeyRequest,
+    TxBlindRequest,
+    TxSummaryRequest,
+    IdentRequest,
+    Progress,
+    Message,
+}
+
 impl Ui {
     /// Create a new [Ui] instance
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            state: UiState::Menu,
+            state: UiState::menu(),
+            last_state: UiStateKind::None,
         }
     }
 
@@ -55,25 +88,51 @@ impl Ui {
     /// Render the [Ui] using the current state
     #[inline(never)]
     pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &Engine<D, R>) {
+        #[cfg(feature = "debug")]
+        ledger_device_sdk::log::debug!(
+            "UI render: {:?} (last: {:?})",
+            self.state, self.last_state
+        );
+
         match &mut self.state {
             // TODO: all this
-            _ => {
-                NbglHomeAndSettings::new()
-                    .glyph(&MOB64X64)
-                    .infos(
-                        "MobileCoin",
-                        APP_VERSION,
-                        "MobileCoin LLC.",
-                    )
-                    .show_and_return();
+            UiState::Menu(page) if self.last_state != UiStateKind::Menu => {
+                self.last_state = UiStateKind::Menu;
+                page.show_and_return();
             }
+            _ => (),
         } 
     }
 }
 
 impl UiState {
+    pub fn kind(&self) -> UiStateKind {
+        match self {
+            UiState::Menu(_) => UiStateKind::Menu,
+            UiState::Address => UiStateKind::Address,
+            UiState::KeyRequest(_) => UiStateKind::KeyRequest,
+            UiState::TxBlindRequest(_) => UiStateKind::TxBlindRequest,
+            UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
+            UiState::IdentRequest(_) => UiStateKind::IdentRequest,
+            UiState::Progress => UiStateKind::Progress,
+            UiState::Message(_) => UiStateKind::Message,
+        }
+    }
+
     pub fn menu() -> Self {
-        Self::Menu
+        let mut settings = Settings::default();
+
+        let page = NbglHomeAndSettings::new()
+            .glyph(&MOB64X64)
+            .infos(
+                "MobileCoin",
+                APP_VERSION,
+                "MobileCoin LLC.",
+            )
+            .tagline("Testing 123")
+            .settings(settings.get_mut(), SETTINGS_STRINGS);
+
+        Self::Menu(page)
     }
 
     pub fn key_request() -> Self {
