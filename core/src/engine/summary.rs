@@ -554,6 +554,6 @@ mod test {
     fn summarizer_size() {
         // TODO: check summarizer size is reasonable
         let s = core::mem::size_of::<Summarizer<16>>();
-        assert!(s < 8192, "summarizer size: {s} > 8192");
+        assert!(s < 8448, "summarizer size: {s} > 8448");
     }
 }

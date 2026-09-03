@@ -29,19 +29,19 @@ const MESSAGE_MAX: usize = 66;
 pub type SignCtx = MlsagSignCtx<Vec<CurveScalar, RESP_SIZE>>;
 
 /// Ring signing states
-#[derive(Copy, Clone, PartialEq, Debug, EnumString, Display, EnumVariantNames, EnumIter)]
+#[derive(
+    Copy, Clone, PartialEq, Debug, Default, EnumString, Display, EnumVariantNames, EnumIter,
+)]
 pub enum RingState {
+    #[default]
     Init,
     BuildRing(u8),
     Execute,
-    Complete { key_image: KeyImage, c_zero: Scalar },
+    Complete {
+        key_image: KeyImage,
+        c_zero: Scalar,
+    },
     Error,
-}
-
-impl Default for RingState {
-    fn default() -> Self {
-        Self::Init
-    }
 }
 
 /// Ring signer state machine
@@ -55,10 +55,10 @@ pub struct RingSigner {
     /// Transaction onetime private key
     onetime_private_key: Option<RistrettoPrivate>,
 
-    ///
+    /// Root view private key
     root_view_private: RootViewPrivate,
 
-    ///
+    /// Subaddress spend private key
     subaddress_spend_private: SubaddressSpendPrivate,
 
     /// Transaction value

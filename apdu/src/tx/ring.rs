@@ -95,10 +95,7 @@ impl TxRingInit {
             onetime_private_key.is_some(),
         );
 
-        let onetime_private_key = match onetime_private_key {
-            Some(v) => v,
-            None => TxOnetimeKey::default(),
-        };
+        let onetime_private_key = onetime_private_key.unwrap_or_default();
 
         Self {
             ring_size,

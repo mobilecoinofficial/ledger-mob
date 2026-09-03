@@ -75,6 +75,13 @@ impl DecodeOwned for TxState {
 #[derive(Clone, PartialEq, Encode)]
 pub struct Digest([u8; 32]);
 
+impl Default for Digest {
+    /// Create a new (empty) state digest
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Digest {
     /// Create a new (empty) state digest
     pub const fn new() -> Self {

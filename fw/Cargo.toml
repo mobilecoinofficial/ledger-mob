@@ -118,6 +118,9 @@ overflow-checks = false
 #debug-assertions = false
 #overflow-checks = false
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("apex_p", "stax", "flex", "nanos", "nanox", "nanosplus"))'] }
+
 [patch.crates-io]
 
 # Fork and rename to use "OG" dalek-cryptography.

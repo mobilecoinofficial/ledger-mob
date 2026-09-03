@@ -192,17 +192,6 @@ impl PartialEq<super::State> for Output {
     }
 }
 
-#[cfg(nope)]
-impl From<(crate::engine::State, TxDigest)> for apdu::tx::TxInfo {
-    fn from(s: (crate::engine::State, TxDigest)) -> Self {
-        apdu::tx::TxInfo {
-            state: s.0.state(),
-            value: s.0.value(),
-            digest: s.1,
-        }
-    }
-}
-
 impl crate::engine::State {
     /// Map [engine](crate::engine) states to [apdu][ledger_mob_apdu::state::TxState] states for transmission
     pub fn state(&self) -> apdu::state::TxState {

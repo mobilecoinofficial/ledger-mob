@@ -68,7 +68,6 @@ getrandom::register_custom_getrandom!(app_getrandom);
 
 // Bind getrandom via nanos_sdk call
 #[no_mangle]
-#[inline]
 pub fn app_getrandom(buff: &mut [u8]) -> Result<(), getrandom::Error> {
     ledger_device_sdk::random::rand_bytes(buff);
     Ok(())
