@@ -3,9 +3,11 @@
 use core::mem::MaybeUninit;
 
 use mc_core::{
-    account::PublicSubaddress,
     keys::{RootViewPrivate, SubaddressSpendPrivate},
 };
+#[cfg(feature = "summary")]
+use mc_core::account::PublicSubaddress;
+#[cfg(feature = "summary")]
 use mc_transaction_types::BlockVersion;
 
 use ledger_mob_apdu::tx::TxOnetimeKey;

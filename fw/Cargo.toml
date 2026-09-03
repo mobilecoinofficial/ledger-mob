@@ -19,11 +19,11 @@ path = [
 ]
 flags = "0x040"
 
-[package.metadata.ledger.nanox]
-icon = "assets/mob14x14i.gif"
-
-[package.metadata.ledger.nanosplus]
-icon = "assets/mob14x14i.gif"
+nanox = { icon = "assets/mob14x14i.gif" }
+nanosplus = { icon = "assets/mob14x14i.gif" }
+stax = { icon = "assets/mob32x32.gif" }
+flex = { icon = "assets/mob40x40.gif" }
+apex_p = { icon = "assets/mob32x32.gif" }
 
 [features]
 applet = []

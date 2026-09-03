@@ -46,6 +46,10 @@ nanosplus:
 nanox:
 	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build nanox
 
+# Build stax firmware
+stax:
+	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build stax
+
 # Run nanosplus firmware under speculos
 nanosplus-run:
 	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanosp --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/nanosplus/release/ledger-mob-fw
@@ -54,9 +58,16 @@ nanosplus-run:
 nanox-run:
 	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanox --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/nanox/release/ledger-mob-fw
 
+# Run stax firmware under speculos
+stax-run:
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model stax --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/stax/release/ledger-mob-fw
+
 # Load firmware onto device
 nanosplus-load: nanosplus
 	cd fw && cargo ledger --use-prebuilt target/nanosplus/release/ledger-mob-fw build nanosplus --load
+
+stax-load:
+	cd fw && cargo ledger --use-prebuilt target/stax/release/ledger-mob-fw build stax --load
 
 # Convert ELF to HEX for loading
 fw/target/%/release/ledger-mob-fw.hex: %
