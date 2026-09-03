@@ -90,50 +90,6 @@ pub fn platform_set_fog_id(fog_id: &FogId) {
     unsafe { FOG.write(*fog_id) };
 }
 
-// Global allocator configuration
-#[cfg(feature = "alloc")]
-pub(crate) mod allocator {
-    use core::mem::MaybeUninit;
-    use critical_section::RawRestoreState;
-
-    /// Allocator heap size
-    const HEAP_SIZE: usize = 1024;
-
-    /// Statically allocated heap memory
-    static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
-
-    /// Bind global allocator
-    #[global_allocator]
-    static HEAP: embedded_alloc::Heap = embedded_alloc::Heap::empty();
-
-    /// Error handler for allocation
-    #[alloc_error_handler]
-    fn oom(_: core::alloc::Layout) -> ! {
-        ledger_device_sdk::exit_app(250)
-    }
-
-    /// Initialise allocator
-    #[inline(never)]
-    pub fn init() {
-        unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
-    }
-
-    /// Noop critical section
-    /// (_should_ okay as we only -have- one thread)
-    struct MyCriticalSection;
-    critical_section::set_impl!(MyCriticalSection);
-
-    unsafe impl critical_section::Impl for MyCriticalSection {
-        unsafe fn acquire() -> RawRestoreState {
-            // nothing, it's all good, don't worry bout it
-        }
-
-        unsafe fn release(_token: RawRestoreState) {
-            // nothing, it's all good, don't worry bout it
-        }
-    }
-}
-
 /// Blocking request for pin validation to unlock
 pub fn request_pin_validation() {
     UxEvent::ValidatePIN.request();

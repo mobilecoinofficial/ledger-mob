@@ -85,9 +85,6 @@ extern "C" fn sample_main() {
 
     let mut redraw = true;
 
-    #[cfg(feature = "alloc")]
-    platform::allocator::init();
-
     // non-nvm fog ID global must be pre-initialised
     #[cfg(not(feature = "nvm"))]
     platform::platform_set_fog_id(&FogId::MobMain);

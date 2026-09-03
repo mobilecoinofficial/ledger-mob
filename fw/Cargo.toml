@@ -25,7 +25,6 @@ icon = "assets/mob14x14i.gif"
 [package.metadata.ledger.nanosplus]
 icon = "assets/mob14x14i.gif"
 
-
 [features]
 applet = []
 mlsag = [ "ledger-mob-core/mlsag" ]
@@ -35,13 +34,13 @@ summary = [ "alloc", "ledger-mob-core/summary" ]
 pre-release = []
 nvm = []
 
-alloc = [ "embedded-alloc", "critical-section", "ledger-mob-core/alloc" ]
+alloc = [ "embedded-alloc", "critical-section", "ledger-mob-core/alloc", "ledger_device_sdk/heap" ]
 noinline = [ "ledger-mob-core/noinline" ]
 
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
 [dependencies]
-ledger_device_sdk = { version = "1.36.2", default-features = false, features=["sys"] }
+ledger_device_sdk = { version = "1.36.2", default-features = false, features=["sys", "stack_usage"] }
 ledger_secure_sdk_sys = "1.16.4"
 ledger-proto = { version = "0.1.0", default-features = false }
 
@@ -65,7 +64,7 @@ x25519-dalek = { version = "2.0.0", default-features = false }
 libc = "0.2.140"
 rlibc = "1.0.0"
 embedded-alloc = { version = "0.5.0", optional = true }
-critical-section = { version = "1.1.1", optional = true }
+critical-section = { version = "1.2.0", optional = true }
 
 # used by bulletproofs-og, no_cc feature required for cross compilation
 clear_on_drop = { version = "0.2", default-features = false, features = [ "no_cc" ] }
