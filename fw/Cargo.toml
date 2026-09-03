@@ -55,7 +55,7 @@ emstr = { version = "0.2.0", default-features = false }
 heapless = "0.8.0"
 rngcheck = "0.1.1"
 
-mc-core = { version = "6", default-features = false }
+mc-core = { version = "7", default-features = false }
 ledger-mob-core = { path = "../core", default-features = false }
 
 curve25519-dalek = { version = "4.1.3", default-features = false }
@@ -120,10 +120,6 @@ overflow-checks = false
 #overflow-checks = false
 
 [patch.crates-io]
-
-#curve25519-dalek = { git = "https://github.com/dalek-cryptography/curve25519-dalek", rev = "99c0520aa79401b69fb51d38172cd58c6a256cfb" }
-#ed25519-dalek = { git = "https://github.com/dalek-cryptography/ed25519-dalek.git", rev = "2931c688eb11341a1145e257bc41d8ecbe36277c" }
-#x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
 
 # Fork and rename to use "OG" dalek-cryptography.
 schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
