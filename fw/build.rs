@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
 fn copy_icons() -> anyhow::Result<()> {
     let out_dir = get_output_dir();
 
-    let images = &["mob14x14i.gif", "mob16x16i.gif"];
+    let images = &["mob14x14i.gif", "mob16x16i.gif", "mob32x32.gif", "mob64x64.gif"];
 
     for i in images {
         std::fs::copy(PathBuf::from("assets").join(i), out_dir.join(i))?;
@@ -58,10 +58,12 @@ fn copy_icons() -> anyhow::Result<()> {
 }
 
 /// Images to be included in binary
-const IMAGES: &[&str] = &["mob14x14.gif", "mob16x16.gif", "mob32x32.gif"];
+const IMAGES: &[&str] = &["mob14x14.gif", "mob16x16.gif", "mob32x32.gif", "mob64x64.gif"];
 
 /// Process an image file to a Glyph object for inclusion
 fn process_image(f: &str) -> anyhow::Result<()> {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+
     let fw_dir = env::var("CARGO_MANIFEST_DIR")
         .map(PathBuf::from)
         .unwrap()
@@ -100,10 +102,19 @@ fn process_image(f: &str) -> anyhow::Result<()> {
     }
 
     // Generate object to write out
-    let o = quote! {
-        Glyph::new(&[
-            #(#buff),*
-            ], #w as u32, #h as u32 )
+    // NOTE: the glyph constructor is different between the nano* and nbgl targets
+    let o = if target_os == "nanox" || target_os == "nanosplus" {
+        quote! {
+            Glyph::new(&[
+                #(#buff),*
+                ], #w as u32, #h as u32 )
+        }
+    } else {
+        quote! {
+            Glyph::new(&[
+                #(#buff),*
+                ], #w as u16, #h as u16, 1, false )
+        }
     };
 
     // Write out source object

@@ -4,8 +4,13 @@
 
 #![allow(unused)]
 
-use ledger_device_sdk::ecc::make_bip32_path;
+use ledger_device_sdk::{ecc::make_bip32_path, include_gif};
+
+#[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
 use ledger_device_sdk::ui::bitmaps::Glyph;
+
+#[cfg(any(target_os = "stax"))]
+use ledger_device_sdk::nbgl::NbglGlyph as Glyph;
 
 use ledger_mob_core::apdu::app_info::AppFlags;
 
@@ -44,3 +49,5 @@ pub const MOB16X16: Glyph = include!(concat!(env!("OUT_DIR"), "/mob16x16.gif"));
 
 /// Mob logo in 32x32 (see build.rs for conversion)
 pub const MOB32X32: Glyph = include!(concat!(env!("OUT_DIR"), "/mob32x32.gif"));
+
+pub const MOB64X64: Glyph = include!(concat!(env!("OUT_DIR"), "/mob64x64.gif"));

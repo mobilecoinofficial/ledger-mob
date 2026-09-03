@@ -128,6 +128,8 @@ pub fn fetch_encode_device_info(buff: &mut [u8]) -> Result<usize, ApduError> {
     let target_id: u32 = 0x33100004;
     #[cfg(target_os = "nanox")]
     let target_id: u32 = 0x33000004;
+    #[cfg(target_os = "stax")]
+    let target_id: u32 = 0x33200004;
 
     // Build DeviceInfo APDU
     let r = DeviceInfoResp::new(target_id.to_be_bytes(), se_version, mcu_version, &f);

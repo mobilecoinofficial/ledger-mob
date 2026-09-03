@@ -64,8 +64,6 @@ pub use ident::IdentState;
 #[cfg(feature = "summary")]
 mod summary;
 #[cfg(feature = "summary")]
-use summary::OutputAddress;
-#[cfg(feature = "summary")]
 pub use summary::SummaryState;
 
 use crate::helpers::digest_public_address;
@@ -77,6 +75,18 @@ const MSG_SIZE: usize = 32;
 #[cfg(feature = "summary")]
 const MAX_RECORDS: usize = 16;
 
+/// Cached output address for later rendering
+pub struct OutputAddress {
+    /// Short address hash, matched against report entries
+    pub short_hash: ShortAddressHash,
+    /// Public address
+    pub address: PublicSubaddress,
+    /// Fog information
+    pub fog_id: FogId,
+    /// Fog signature
+    pub fog_sig: Option<[u8; 64]>,
+}
+
 /// Engine internal state enumeration
 #[derive(Copy, Clone, PartialEq, Debug, EnumString, Display, EnumVariantNames, EnumIter)]
 pub enum State {
@@ -84,6 +94,7 @@ pub enum State {
     Init,
 
     /// Identity request pending approval
+    #[cfg(feature = "ident")]
     Ident(IdentState),
 
     /// Transaction init, building memos
@@ -717,6 +728,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     }
 
     // Sign the provided memo, returning an `Output::MemoHmac` on success
+    #[cfg(feature = "memo")]
     #[cfg_attr(feature = "noinline", inline(never))]
     fn memo_sign(
         &mut self,

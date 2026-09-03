@@ -22,7 +22,7 @@ use mc_transaction_types::{
     Amount, BlockVersion, MaskedAmount, TxInSummary, TxOutSummary, UnmaskedAmount,
 };
 
-use crate::{apdu::tx::TxPrivateKey, helpers::digest_public_address};
+use crate::{apdu::tx::TxPrivateKey, engine::OutputAddress, helpers::digest_public_address};
 
 use super::{Error, Event};
 
@@ -48,18 +48,6 @@ pub enum SummaryState {
     AddTxOut(usize),
     Ready,
     Complete,
-}
-
-/// Cached output address for later rendering
-pub struct OutputAddress {
-    /// Short address hash, matched against report entries
-    pub short_hash: ShortAddressHash,
-    /// Public address
-    pub address: PublicSubaddress,
-    /// Fog information
-    pub fog_id: FogId,
-    /// Fog signature
-    pub fog_sig: Option<[u8; 64]>,
 }
 
 impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
