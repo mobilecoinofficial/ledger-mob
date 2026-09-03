@@ -42,6 +42,9 @@ use consts::*;
 mod platform;
 use platform::*;
 
+#[cfg(any(target_os = "stax"))]
+pub mod settings;
+
 mod ui;
 #[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
 use ui::nano::*;
@@ -88,6 +91,16 @@ extern "C" fn sample_main() {
     let mut message_timeout = 0;
 
     let mut redraw = true;
+
+    // Bind the comm to the nbgl
+    #[cfg(any(target_os = "stax"))]
+    ledger_device_sdk::nbgl::init_comm(&mut comm);
+
+    #[cfg(feature = "debug")]
+    ledger_device_sdk::log::debug!(
+        "Start app: {} v{} (git: {}, build: {})",
+        APP_NAME, APP_VERSION, GIT_VERSION, BUILD_TIME
+    );
 
     // non-nvm fog ID global must be pre-initialised
     #[cfg(not(feature = "nvm"))]

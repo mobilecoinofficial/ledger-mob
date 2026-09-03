@@ -61,3 +61,6 @@ mc-util-serial = { path = "./vendor/mob/util/serial" }
 
 # patched to support ledger required 1.67.0 MSRV
 mc-rand = { path = "./vendor/mc-rand" }
+
+ledger-lib = { git = "https://github.com/ledger-community/rust-ledger.git", branch = "main" }
+ledger-proto = { git = "https://github.com/ledger-community/rust-ledger.git", branch = "main" }

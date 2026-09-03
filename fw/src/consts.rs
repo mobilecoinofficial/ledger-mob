@@ -50,4 +50,8 @@ pub const MOB16X16: Glyph = include!(concat!(env!("OUT_DIR"), "/mob16x16.gif"));
 /// Mob logo in 32x32 (see build.rs for conversion)
 pub const MOB32X32: Glyph = include!(concat!(env!("OUT_DIR"), "/mob32x32.gif"));
 
+#[cfg(any(target_os = "nanox", target_os = "nanosplus"))]
 pub const MOB64X64: Glyph = include!(concat!(env!("OUT_DIR"), "/mob64x64.gif"));
+
+#[cfg(any(target_os = "stax", target_os = "nanosplus"))]
+pub const MOB64X64: Glyph = Glyph::from_include(include_gif!("assets/mob64x64.png", NBGL));
