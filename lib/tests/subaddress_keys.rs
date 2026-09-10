@@ -1,4 +1,4 @@
-use log::info;
+use tracing::info;
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use bip39::{Language, Mnemonic, Seed};

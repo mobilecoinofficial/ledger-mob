@@ -9,7 +9,7 @@ use helpers::*;
 #[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "ident"), ignore = "ident feature disabled")]
 async fn ident() -> anyhow::Result<()> {
-    let _ = simplelog::SimpleLogger::init(log::LevelFilter::Debug, Default::default());
+    setup_logging();
 
     for v in VECTORS {
         // Setup engine with provided seed

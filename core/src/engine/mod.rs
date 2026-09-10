@@ -13,6 +13,9 @@ use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 use zeroize::Zeroize;
 
+#[cfg(feature = "log")]
+use tracing::{debug, error, info, warn};
+
 use mc_core::{
     account::{Account, PublicSubaddress, RingCtAddress, ShortAddressHash},
     keys::{SubaddressViewPublic, TxOutPublic},
@@ -188,7 +191,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     #[cfg_attr(feature = "noinline", inline(never))]
     pub fn update(&mut self, evt: &Event) -> Result<Output, Error> {
         #[cfg(feature = "log")]
-        log::debug!("event: {:02x?}", evt);
+        debug!("event: {:02x?}", evt);
 
         // Update state digest (only applied for mutating events)
         if let Some(h) = evt.hash() {
@@ -483,7 +486,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // Handle unexpected events
             _e => {
                 #[cfg(feature = "log")]
-                log::error!("Unexpected event in state {:?}: {:02x?}", self.state, _e);
+                error!("Unexpected event in state {:?}: {:02x?}", self.state, _e);
 
                 return Err(Error::UnexpectedEvent);
             }
@@ -698,7 +701,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         };
 
         #[cfg(feature = "log")]
-        log::debug!("ident get, state: {:?}", s);
+        debug!("ident get, state: {:?}", s);
 
         // Ensure identity request has been approved
         if s != IdentState::Approved {
@@ -781,7 +784,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         let mut subaddress = account.subaddress(subaddress_index);
 
         #[cfg(feature = "log")]
-        log::info!("using subaddress {}: {:#?}", subaddress_index, subaddress);
+        info!("using subaddress {}: {:#?}", subaddress_index, subaddress);
 
         // Count signed rings
         if self.function.ring_signer_ref().is_some() {
@@ -815,7 +818,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             Ok(v) => v,
             Err(e) => {
                 #[cfg(feature = "log")]
-                log::error!("ring init failed: {:?}", e);
+                error!("ring init failed: {:?}", e);
 
                 self.function.clear();
                 self.state = State::Error;
@@ -846,7 +849,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             Ok(v) => v,
             Err(e) => {
                 #[cfg(feature = "log")]
-                log::warn!("ring update failed: {:?}", e);
+                warn!("ring update failed: {:?}", e);
 
                 self.state = State::Error;
                 return Err(e);
@@ -900,7 +903,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             &change_subaddress,
         ) {
             #[cfg(feature = "log")]
-            log::error!("summarizer init failed: {:?}", e);
+            error!("summarizer init failed: {:?}", e);
 
             account.zeroize();
 
@@ -993,7 +996,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // Or handle errors
             Err(e) => {
                 #[cfg(feature = "log")]
-                log::warn!("summary update failed: {:?}", e);
+                warn!("summary update failed: {:?}", e);
 
                 self.state = State::Error;
                 return Err(e);
@@ -1100,6 +1103,8 @@ mod test {
     /// Step through valid events and states
     #[test]
     fn valid_events() {
+        crate::test_setup_logging();
+
         let mut e = Engine::new(TestDriver::new());
 
         for (_state, evt) in &*TESTS {
@@ -1114,6 +1119,8 @@ mod test {
     /// Ensure we're handling unexpected events
     #[test]
     fn invalid_events() {
+        crate::test_setup_logging();
+
         for (okay_state, evt) in &*TESTS {
             let mut e = Engine::new(TestDriver::new());
 
@@ -1143,6 +1150,8 @@ mod test {
 
     #[test]
     fn ring_progress() {
+        crate::test_setup_logging();
+
         let tests = &[
             (0, 0, 2, 0),
             (50, 0, 2, 25),
@@ -1162,6 +1171,8 @@ mod test {
     /// Check engine rejects key requests while locked
     #[test]
     fn lock_unlock() {
+        crate::test_setup_logging();
+
         let mut e = Engine::new(TestDriver::new());
 
         // Locked, return pending message
@@ -1198,12 +1209,7 @@ mod test {
     // see: [`mc_crypto_ring_signature::mlsag::mlsag_tests`]
     #[test]
     fn test_sign() {
-        let _ = simplelog::TermLogger::init(
-            log::LevelFilter::Debug,
-            Default::default(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        );
+        crate::test_setup_logging();
 
         let seed = [0u8; 32];
         let mut rng: RngType = SeedableRng::from_seed(seed);
@@ -1347,9 +1353,9 @@ mod test {
 
         #[cfg(feature = "log")]
         {
-            log::debug!("c_zero: {}", CurveScalar::from(c_zero));
-            log::debug!("responses: {:#?}", responses);
-            log::debug!("key_image: {:#?}", key_image);
+            debug!("c_zero: {}", CurveScalar::from(c_zero));
+            debug!("responses: {:#?}", responses);
+            debug!("key_image: {:#?}", key_image);
         }
 
         // Recover spend and onetime key for receiver

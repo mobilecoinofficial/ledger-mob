@@ -319,6 +319,8 @@ mod test {
     /// Miri test for function init / state changes
     #[test]
     fn miri_function_states() {
+        crate::test_setup_logging();
+
         let mut f = Function::new();
 
         // Collect state transition functions

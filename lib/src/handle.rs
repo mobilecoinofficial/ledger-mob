@@ -11,9 +11,9 @@ use async_trait::async_trait;
 use ed25519_dalek::VerifyingKey;
 use ledger_lib::Device;
 use ledger_proto::{ApduBase, ApduReq};
-use log::debug;
 use rand_core::OsRng;
 use tokio::sync::Mutex;
+use tracing::debug;
 
 use ledger_mob_apdu::{
     app_info::AppFlags,

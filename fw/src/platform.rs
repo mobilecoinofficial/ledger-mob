@@ -159,7 +159,7 @@ fn test_rng_internal(mut rng: impl rand_core::RngCore) -> Result<(), rngcheck::E
     rng.fill_bytes(&mut a);
 
     // Check we filled -something- before attempting more in-depth tests
-    if &a[..2] == &[0xFF; 2] && &a[a.len() - 2..] == &[0xFF; 2] {
+    if a[..2] == [0xFF; 2] && a[a.len() - 2..] == [0xFF; 2] {
         return Err(rngcheck::Error::RngFailed);
     }
 

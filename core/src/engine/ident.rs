@@ -61,7 +61,7 @@ impl Ident {
     /// Compute identity challenge signature using the provide private key
     pub fn compute(&self, private_key: &Slip10Key) -> Output {
         #[cfg(feature = "log")]
-        log::debug!("computing identity proof");
+        tracing::debug!("computing identity proof");
 
         // Convert to public key type
         let keys = ed25519_dalek::SigningKey::try_from(private_key.as_ref()).unwrap();
@@ -122,6 +122,8 @@ mod test {
 
     #[test]
     fn slip0013_derive_full() {
+        crate::test_setup_logging();
+
         for v in VECTORS {
             // Derive seed from mnemonic
             let seed = v.seed();

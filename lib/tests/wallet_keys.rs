@@ -3,8 +3,8 @@ use std::time::Duration;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use bip39::{Language, Mnemonic, Seed};
 use curve25519_dalek::scalar::Scalar;
-use log::info;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 use mc_core::keys::*;
 

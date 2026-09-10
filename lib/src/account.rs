@@ -6,8 +6,8 @@ use std::{sync::Arc, time::Duration};
 
 use futures::executor::block_on;
 use ledger_lib::Device;
-use log::debug;
 use tokio::sync::Mutex;
+use tracing::debug;
 
 use ledger_mob_apdu::{
     key_image::{KeyImageReq, KeyImageResp},

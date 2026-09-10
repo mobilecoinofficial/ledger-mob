@@ -7,6 +7,9 @@ use ledger_mob_apdu::tx::TxOnetimeKey;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 use zeroize::Zeroize;
 
+#[cfg(feature = "log")]
+use tracing::{debug, error};
+
 use super::{Error, Event, Output};
 use mc_core::keys::{RootViewPrivate, SubaddressSpendPrivate};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
@@ -184,7 +187,7 @@ impl RingSigner {
         rng: impl RngCore + CryptoRng,
     ) -> Result<(RingState, Output), Error> {
         #[cfg(feature = "log")]
-        log::debug!("ring update (state: {:?}): {:?}", self.state, evt);
+        debug!("ring update (state: {:?}): {:?}", self.state, evt);
 
         match (self.state, evt) {
             // Add blinding scalars for ring
@@ -210,7 +213,7 @@ impl RingSigner {
                     // Initialise the ring signing context and recover the onetime_private_key
                     if let Err(e) = self.ring_init(txout, rng) {
                         #[cfg(feature = "log")]
-                        log::error!("ring init failed: {:?}", e);
+                        error!("ring init failed: {:?}", e);
 
                         self.state = RingState::Error;
                         return Err(e);
@@ -220,7 +223,7 @@ impl RingSigner {
                 // Add tx_out to ring
                 if let Err(e) = self.ring_update(*index as usize, txout) {
                     #[cfg(feature = "log")]
-                    log::error!("ring update failed: {:?}", e);
+                    error!("ring update failed: {:?}", e);
 
                     self.state = RingState::Error;
                     return Err(e);
@@ -241,7 +244,7 @@ impl RingSigner {
                     Ok(v) => v,
                     Err(e) => {
                         #[cfg(feature = "log")]
-                        log::error!("ring sign failed: {:?}", e);
+                        error!("ring sign failed: {:?}", e);
 
                         self.state = RingState::Error;
                         return Err(e);
@@ -464,7 +467,7 @@ impl RingSigner {
             Ok(v) => v,
             Err(_e) => {
                 #[cfg(feature = "log")]
-                log::error!("Ring signing failed: {:?}", _e);
+                error!("Ring signing failed: {:?}", _e);
                 return Err(Error::SignError);
             }
         };
@@ -494,12 +497,7 @@ mod test {
     // see: [`mc_crypto_ring_signature::mlsag::mlsag_tests`]
     #[test]
     fn ring_sign() {
-        let _ = simplelog::TermLogger::init(
-            log::LevelFilter::Debug,
-            Default::default(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        );
+        crate::test_setup_logging();
 
         let seed = [0u8; 32];
         let mut rng: RngType = SeedableRng::from_seed(seed);
@@ -636,9 +634,9 @@ mod test {
 
         #[cfg(feature = "log")]
         {
-            log::debug!("c_zero: {}", CurveScalar::from(c_zero));
-            log::debug!("responses: {:#?}", responses);
-            log::debug!("key_image: {:#?}", key_image);
+            debug!("c_zero: {}", CurveScalar::from(c_zero));
+            debug!("responses: {:#?}", responses);
+            debug!("key_image: {:#?}", key_image);
         }
 
         // Recover spend and onetime key for receiver

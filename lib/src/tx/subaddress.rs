@@ -3,7 +3,7 @@
 //! Subaddress API
 
 use futures::executor::block_on;
-use log::debug;
+use tracing::debug;
 
 use ledger_mob_apdu::subaddress_keys::{SubaddressKeyReq, SubaddressKeyResp};
 use mc_core::{account::ViewSubaddress, subaddress::Subaddress};

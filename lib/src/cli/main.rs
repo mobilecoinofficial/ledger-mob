@@ -6,9 +6,10 @@ use std::{path::Path, time::Duration};
 
 use clap::Parser;
 use ledger_lib::{Device, Filters, LedgerProvider, Transport};
-use log::{debug, error, info, LevelFilter};
 use mc_transaction_extra::UnsignedTx;
 use serde::{de::DeserializeOwned, Serialize};
+use tracing::{debug, error, info};
+use tracing_subscriber::{filter::LevelFilter, EnvFilter, FmtSubscriber};
 
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_signer::{
@@ -113,7 +114,18 @@ async fn main() -> anyhow::Result<()> {
     let args = Options::parse();
 
     // Setup logging
-    simplelog::SimpleLogger::init(args.log_level, simplelog::Config::default()).unwrap();
+    let filter = EnvFilter::from_default_env()
+        .add_directive("hyper=warn".parse()?)
+        .add_directive("rocket=warn".parse()?)
+        .add_directive("btleplug=warn".parse()?)
+        .add_directive(args.log_level.into());
+
+    let _ = FmtSubscriber::builder()
+        .compact()
+        .without_time()
+        .with_max_level(args.log_level)
+        .with_env_filter(filter)
+        .try_init();
 
     // Connect to ledger device
     let mut p = LedgerProvider::init().await;

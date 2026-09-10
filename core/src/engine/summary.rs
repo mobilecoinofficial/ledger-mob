@@ -7,6 +7,9 @@ use heapless::Vec;
 use ledger_mob_apdu::tx::FogId;
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 
+#[cfg(feature = "log")]
+use tracing::{debug, error};
+
 use mc_core::{
     account::{PublicSubaddress, ShortAddressHash},
     keys::{RootViewPrivate, SubaddressViewPublic, TxOutPublic, TxOutTargetPublic},
@@ -189,7 +192,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             Some(v) => v,
             None => {
                 #[cfg(feature = "log")]
-                log::error!("add_output_unblinding missing output for unblinding");
+                error!("add_output_unblinding missing output for unblinding");
 
                 return Err(Error::SummaryMissingOutput);
             }
@@ -199,7 +202,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             Some(v) => v,
             None => {
                 #[cfg(feature = "log")]
-                log::error!("add_output_unblinding missing verifier");
+                error!("add_output_unblinding missing verifier");
 
                 return Err(Error::InvalidState);
             }
@@ -234,7 +237,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             Ok(_) => (),
             Err(e) => {
                 #[cfg(feature = "log")]
-                log::error!("add_output_unblinding failed: {:?}", e);
+                error!("add_output_unblinding failed: {:?}", e);
 
                 return Err(Error::Unknown);
             }
@@ -276,7 +279,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             Some(v) => v,
             None => {
                 #[cfg(feature = "log")]
-                log::error!("add_input missing verifier");
+                error!("add_input missing verifier");
 
                 return Err(Error::UnexpectedEvent);
             }
@@ -287,7 +290,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             Ok(_) => (),
             Err(e) => {
                 #[cfg(feature = "log")]
-                log::error!("add_input failed: {:?}", e);
+                error!("add_input failed: {:?}", e);
 
                 return Err(Error::Unknown);
             }
@@ -318,7 +321,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             Some(v) => v,
             None => {
                 #[cfg(feature = "log")]
-                log::error!("finalize missing verifier");
+                error!("finalize missing verifier");
 
                 return Err(Error::UnexpectedEvent);
             }
@@ -349,7 +352,7 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         let total = self.num_inputs + self.num_outputs + 1;
 
         #[cfg(feature = "log")]
-        log::debug!("progress: {:?} / {}", self.state, total);
+        debug!("progress: {:?} / {}", self.state, total);
 
         let index = match self.state {
             SummaryState::Init => 0,
@@ -380,11 +383,11 @@ mod test {
     use core::mem::MaybeUninit;
     use core::str::FromStr;
 
-    use log::*;
     use mc_core::consts::CHANGE_SUBADDRESS_INDEX;
     use mc_core::{account::Account, keys::Key, subaddress::Subaddress};
     use mc_transaction_summary::verify_tx_summary;
     use rand_core::OsRng;
+    use tracing::*;
 
     use ledger_mob_tests::transaction::{test, TRANSACTIONS};
 
@@ -392,12 +395,7 @@ mod test {
 
     #[test]
     fn tx_summary() {
-        let _ = simplelog::TermLogger::init(
-            log::LevelFilter::Debug,
-            Default::default(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        );
+        crate::test_setup_logging();
 
         // Load transaction and account info
         let account = TRANSACTIONS[2].account();

@@ -250,6 +250,8 @@ mod tests {
     // Ensure state mappings match
     #[test]
     fn state_encode_decode() {
+        crate::test_setup_logging();
+
         let tests = &[
             (State::Init, TxState::Init),
             (State::Ready, TxState::Ready),

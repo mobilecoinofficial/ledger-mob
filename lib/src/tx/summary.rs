@@ -1,9 +1,9 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
-use log::warn;
 use std::ops::Deref;
 
 use ledger_lib::Device;
+use tracing::{debug, warn};
 
 use mc_core::account::ShortAddressHash;
 use mc_transaction_core::{BlockVersion, TxSummary};
@@ -76,7 +76,7 @@ impl<T: Device + Send> TransactionHandle<T> {
             check_state(resp.state, TxState::SummaryAddTxOut)?;
             //check_digest::<T>(&resp.digest, &ctx.digest)?;
 
-            log::debug!("Address: {:?}", u.address);
+            debug!("Address: {:?}", u.address);
 
             let fog_info = match u
                 .address

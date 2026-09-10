@@ -86,3 +86,20 @@ pub mod engine;
 pub mod helpers;
 
 pub use mc_transaction_types::TokenId;
+
+/// Helper to setup logging for tests
+#[cfg(test)]
+pub(crate) fn test_setup_logging() {
+    use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+    let filter = EnvFilter::from_default_env()
+        .add_directive("hyper=warn".parse().unwrap())
+        .add_directive("rocket=warn".parse().unwrap())
+        .add_directive("btleplug=warn".parse().unwrap());
+
+    let _ = FmtSubscriber::builder()
+        .compact()
+        .without_time()
+        .with_env_filter(filter)
+        .try_init();
+}

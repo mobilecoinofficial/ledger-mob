@@ -29,7 +29,7 @@ async fn mob_ident() -> anyhow::Result<()> {
 // TODO: this will change with TxSummary support
 #[allow(unused)]
 pub async fn approve_ident(h: &GenericHandle) {
-    log::debug!("UI: Approve ident");
+    tracing::debug!("UI: Approve ident");
 
     let buttons = &[
         // Right button to move to URI screen
