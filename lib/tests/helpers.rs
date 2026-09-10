@@ -16,6 +16,7 @@ use ledger_lib::{
 };
 use ledger_sim::*;
 
+
 const CONNECT_TIMEOUT_S: usize = 10;
 
 // Setup speculos instance and TCP connector with an optional seed
