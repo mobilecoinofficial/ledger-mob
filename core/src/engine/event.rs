@@ -25,6 +25,9 @@ use ledger_proto::{ApduError, ApduStatic};
 pub enum Event {
     None,
 
+    /// Fetch application information
+    GetAppInfo,
+
     /// Fetch wallet keys
     GetWalletKeys {
         account_index: u32,
@@ -176,6 +179,7 @@ impl Event {
     #[cfg_attr(feature = "noinline", inline(never))]
     pub fn parse(ins: u8, buff: &[u8]) -> Result<Self, ApduError> {
         match ins {
+            AppInfoReq::INS => Ok(Event::GetAppInfo),
             WalletKeyReq::INS => decode_event::<WalletKeyReq>(buff),
             SubaddressKeyReq::INS => decode_event::<SubaddressKeyReq>(buff),
             KeyImageReq::INS => decode_event::<KeyImageReq>(buff),

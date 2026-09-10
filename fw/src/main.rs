@@ -25,12 +25,10 @@ use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp, DeviceInfoReq};
 use ledger_mob_core::{
     apdu::{
         self,
-        app_info::{
-            AppFlags as MobAppFlags, AppInfoReq as MobAppInfoReq, AppInfoResp as MobAppInfoResp,
-        },
+        app_info::AppFlags as MobAppFlags,
         tx::FogId,
     },
-    engine::{Engine, Error, Event, IdentState, Output, State},
+    engine::{Engine, Error, Event, IdentState, Output, State, EngineAppInfo},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
 
@@ -88,11 +86,23 @@ extern "C" fn sample_main() {
     #[cfg(not(feature = "nvm"))]
     platform::platform_set_fog_id(&FogId::MobMain);
 
+    #[cfg(feature = "summary")]
+    let base_flags = MobAppFlags::HAS_TX_SUMMARY;
+    #[cfg(not(feature = "summary"))]
+    let base_flags = MobAppFlags::empty();
+
+    let app_info = EngineAppInfo {
+        app_name: APP_NAME,
+        app_version: APP_VERSION,
+        git_version: GIT_VERSION,
+        base_flags,
+    };
+
     // Initialise and bind globally allocated contexts
     let (engine, ui, event, output) = unsafe {
         let p = &mut *APP_CTX.as_mut_ptr();
 
-        Engine::init(&mut p.engine, LedgerDriver {}, LedgerRng {});
+        Engine::init(&mut p.engine, LedgerDriver {}, LedgerRng {}, app_info);
         Ui::init(&mut p.ui);
         Event::init(&mut p.event);
         Output::init(&mut p.output);
@@ -344,9 +354,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Ledger standard application info
         (AppInfoReq::CLA | 0, AppInfoReq::INS) => {
             let r = AppInfoResp::new(APP_NAME, APP_VERSION, AppFlags::empty());
-            match r.encode(&mut comm.apdu_buffer) {
+            match r.encode(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -359,9 +369,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         }
         // Ledger standard device info
         (DeviceInfoReq::CLA, DeviceInfoReq::INS) => {
-            match fetch_encode_device_info(&mut comm.apdu_buffer) {
+            match fetch_encode_device_info(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -375,25 +385,6 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Ledger exit app command
         (0xb0, 0xa7) => {
             ledger_device_sdk::exit_app(0);
-        }
-        // MobileCoin application info
-        (MobAppInfoReq::CLA, MobAppInfoReq::INS) => {
-            let mut flags = app_flags();
-            flags.set(MobAppFlags::UNLOCKED, engine.is_unlocked());
-
-            let r = MobAppInfoResp::new(MOB_PROTO_VERSION, APP_NAME, APP_VERSION, flags);
-            match r.encode(&mut comm.apdu_buffer) {
-                Ok(n) => {
-                    comm.tx = n;
-                    comm.reply_ok();
-                }
-                Err(_e) => {
-                    let r = 0x6d00 | (Error::EncodingFailed as u8) as u16;
-                    comm.reply(Reply(r));
-                }
-            }
-
-            return false;
         }
         _ => (),
     }
@@ -521,7 +512,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     }
 
     // Encode engine output to response APDU
-    let n = match output.encode(&mut comm.apdu_buffer) {
+    let n = match output.encode(&mut comm.io_buffer) {
         Ok(v) => v,
         Err(_e) => {
             comm.reply(SyscallError::Overflow);
@@ -530,7 +521,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     };
 
     // Send response
-    comm.tx = n;
+    comm.tx_length = n;
     comm.reply_ok();
 
     // Return render flag
