@@ -10,15 +10,16 @@ use tracing::{debug, level_filters::LevelFilter};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use ledger_lib::{
-    transport::{GenericDevice, TcpInfo, TcpTransport},
-    Transport,
+    info::{ConnInfo, Model as LedgerModel},
+    transport::TcpInfo,
+    LedgerHandle, LedgerInfo, LedgerProvider, Transport,
 };
 use ledger_sim::*;
 
 const CONNECT_TIMEOUT_S: usize = 10;
 
 // Setup speculos instance and TCP connector with an optional seed
-pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, GenericDevice) {
+pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, LedgerHandle) {
     // Setup logging
     let log_level = match std::env::var("LOG_LEVEL").map(|v| LevelFilter::from_str(&v)) {
         Ok(Ok(l)) => l,
@@ -122,10 +123,17 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         .await
         .expect("Simulator launch failed");
 
-    // Setup TCP ADPU connector
-    let mut t = TcpTransport::new().expect("APDU connection failed");
-    let info = TcpInfo {
-        addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
+    // Setup ledger provider and TCP APDU connection info
+    let mut provider = LedgerProvider::init().await;
+    let info = LedgerInfo {
+        model: match model {
+            Model::NanoSP => LedgerModel::NanoSPlus,
+            Model::NanoX => LedgerModel::NanoX,
+            Model::NanoS => panic!("unsupported model"),
+        },
+        conn: ConnInfo::Tcp(TcpInfo {
+            addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
+        }),
     };
 
     // Wait so the simulator has a chance to launch
@@ -139,7 +147,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     let mut device = None;
     for i in 0..CONNECT_TIMEOUT_S {
         // Attempt to connect to simulator
-        match t.connect(info.clone()).await {
+        match provider.connect(info.clone()).await {
             Ok(v) => {
                 device = Some(v);
                 break;
@@ -164,7 +172,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
-    (driver, s, device.into())
+    (driver, s, device)
 }
 
 /// Run unlock UI where required for tests
