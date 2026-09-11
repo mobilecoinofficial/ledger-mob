@@ -8,7 +8,7 @@
 use core::ptr::addr_of_mut;
 
 use heapless::Vec;
-use ledger_mob_apdu::{MOB_PROTO_VERSION, prelude::AppFlags, tx::TxOnetimeKey};
+use ledger_mob_apdu::{prelude::AppFlags, tx::TxOnetimeKey, MOB_PROTO_VERSION};
 use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 use zeroize::Zeroize;
@@ -231,14 +231,14 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             // NOTE: this is a mob-specific request/response, there's also a generic ledger
             // method that must be handled in the FW for io_legacy.
             (_, Event::GetAppInfo) => {
-                let mut flags = self.info.base_flags.clone();
+                let mut flags = self.info.base_flags;
                 flags.set(AppFlags::UNLOCKED, self.unlocked);
 
                 return Ok(Output::AppInfo {
                     proto: MOB_PROTO_VERSION,
                     app_name: self.info.app_name,
                     app_version: self.info.app_version,
-                    flags: flags,
+                    flags,
                 });
             }
 
@@ -1142,7 +1142,7 @@ mod test {
     fn valid_events() {
         crate::test_setup_logging();
 
-        let mut e = Engine::new(TestDriver::new());
+        let mut e = Engine::new(TestDriver::new(), Default::default());
 
         for (_state, evt) in &*TESTS {
             // Fire expected event
@@ -1159,7 +1159,7 @@ mod test {
         crate::test_setup_logging();
 
         for (okay_state, evt) in &*TESTS {
-            let mut e = Engine::new(TestDriver::new());
+            let mut e = Engine::new(TestDriver::new(), Default::default());
 
             // Fire the same event to every other state
             for state in State::iter() {
@@ -1210,7 +1210,7 @@ mod test {
     fn lock_unlock() {
         crate::test_setup_logging();
 
-        let mut e = Engine::new(TestDriver::new());
+        let mut e = Engine::new(TestDriver::new(), Default::default());
 
         // Locked, return pending message
         let r = e.update(&Event::GetWalletKeys { account_index: 0 });
@@ -1261,7 +1261,7 @@ mod test {
         // Setup engine
         let mut e = MaybeUninit::uninit();
         let mut engine = unsafe {
-            Engine::init(e.as_mut_ptr(), drv, rng);
+            Engine::init(e.as_mut_ptr(), drv, rng, Default::default());
             e.assume_init()
         };
 

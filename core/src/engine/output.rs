@@ -7,7 +7,7 @@ use mc_core::keys::{
 };
 use mc_crypto_ring_signature::{KeyImage, Scalar};
 
-pub use ledger_mob_apdu::{state::Digest as TxDigest, app_info::AppFlags};
+pub use ledger_mob_apdu::{app_info::AppFlags, state::Digest as TxDigest};
 
 use crate::{apdu, engine::ring::RingState};
 

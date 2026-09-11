@@ -23,12 +23,8 @@ use ledger_device_sdk::{
 use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp, DeviceInfoReq};
 
 use ledger_mob_core::{
-    apdu::{
-        self,
-        app_info::AppFlags as MobAppFlags,
-        tx::FogId,
-    },
-    engine::{Engine, Error, Event, IdentState, Output, State, EngineAppInfo},
+    apdu::{self, app_info::AppFlags as MobAppFlags, tx::FogId},
+    engine::{Engine, EngineAppInfo, Error, Event, IdentState, Output, State},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
 

@@ -14,7 +14,7 @@ async fn memo_sign() -> anyhow::Result<()> {
     let mnemonic = Mnemonic::from_phrase(MNEMONIC, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
 
-    let e = TestEngine::new(Engine::new(TestDriver::new(seed)));
+    let e = TestEngine::new(Engine::new(TestDriver::new(seed), Default::default()));
 
     ledger_mob_tests::memo::hmac(e, mnemonic, RING_SIZE)
         .await

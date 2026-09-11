@@ -14,7 +14,7 @@ async fn ident() -> anyhow::Result<()> {
     for v in VECTORS {
         // Setup engine with provided seed
         let seed = v.seed();
-        let e = TestEngine::new(Engine::new(TestDriver { seed }));
+        let e = TestEngine::new(Engine::new(TestDriver { seed }, Default::default()));
 
         ledger_mob_tests::ident::test(e.clone(), || approve_ident(&e), v)
             .await
