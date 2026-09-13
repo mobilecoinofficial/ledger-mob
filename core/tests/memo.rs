@@ -9,7 +9,7 @@ use helpers::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn memo_sign() -> anyhow::Result<()> {
-    let _ = simplelog::SimpleLogger::init(log::LevelFilter::Debug, Default::default());
+    setup_logging();
 
     let mnemonic = Mnemonic::from_phrase(MNEMONIC, Language::English)?;
     let seed = Seed::new(&mnemonic, "");

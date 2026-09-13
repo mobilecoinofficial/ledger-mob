@@ -13,7 +13,7 @@ memo = [ "mc-crypto-memo-mac" ]
 summary = [ "alloc", "mc-transaction-summary" ]
 ident = []
 
-log = [ "dep:log" ]
+log = [ "dep:tracing" ]
 alloc = [
     "mc-transaction-types/alloc",
     "mc-crypto-digestible/alloc",
@@ -41,7 +41,6 @@ num_enum = { version = "0.5.7", default-features = false }
 bitflags = "1.3.2"
 byteorder = { version = "1.4.3", default-features = false }
 zeroize = { version = "1.5", default-features = false }
-log = { version = "0.4.17", default-features = false, optional = true }
 heapless = { version = "0.8.0", default-features = false }
 hkdf = { version = "0.12.3", default-features = false }
 rand_core = { version = "0.6.4", default-features = false, features = [ "getrandom" ] }
@@ -51,6 +50,7 @@ encdec = { version = "0.9.0", default-features = false }
 thiserror = { version = "1.0.38", optional = true }
 emstr = { version = "0.2.1", default-features = false }
 prost = { version = "0.11.0", default-features = false, features = [ "prost-derive" ] }
+tracing = { version = "0.1", features = [ "log" ], optional = true }
 crc = { version = "3.0.0", default-features = false }
 curve25519-dalek = { version = "4.1.1", default-features = false, features = [ "zeroize" ] }
 ed25519-dalek = { version = "2.0.0", default-features = false }
@@ -95,8 +95,8 @@ thiserror = "1.0.37"
 tiny-bip39 = "1.0"
 rand = "0.8.5"
 lazy_static = "1.4.0"
-log = "0.4.17"
-simplelog = { version = "0.12.0", default-features = false }
+tracing = { version = "0.1", features = [ "log" ] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 slip10_ed25519 = { version = "0.1.3", default-features = false }
 tokio = { version = "1.20.1", features = [ "full" ] }
 async-trait = "0.1.57"

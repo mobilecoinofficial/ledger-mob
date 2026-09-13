@@ -1,6 +1,6 @@
 use std::{path::PathBuf, time::Duration};
 
-use log::{debug, info};
+use tracing::{debug, info};
 
 use bip39::{Language, Mnemonic, Seed};
 

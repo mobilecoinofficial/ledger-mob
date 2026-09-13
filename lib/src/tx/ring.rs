@@ -5,8 +5,8 @@
 //!
 
 use futures::executor::block_on;
-use log::{debug, info};
 use rand_core::CryptoRngCore;
+use tracing::{debug, error, info};
 
 use ledger_lib::Device;
 
@@ -42,7 +42,7 @@ impl<T: Device> RingSigner for TransactionHandle<T> {
             })
             .map_err(|e| {
                 // TODO: convert signer errors back from ledger error types
-                log::error!("Ring signer error: {:?}", e);
+                error!("Ring signer error: {:?}", e);
                 SignerError::Unknown
             })
         })

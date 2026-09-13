@@ -6,7 +6,8 @@ use std::time::Duration;
 use async_trait::async_trait;
 use bip39::Seed;
 use ledger_proto::{ApduBase, ApduReq};
-use log::{debug, trace};
+use tracing::{debug, trace};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use ledger_mob_core::engine::{Driver, Engine, Error, Event};
 use mc_core::slip10::Slip10Key;
@@ -128,4 +129,18 @@ pub async fn approve_ident(e: &TestEngine) {
 
     let mut e = e.engine.lock().unwrap();
     e.ident_approve(true);
+}
+
+// Setup logging
+pub fn setup_logging() {
+    let filter = EnvFilter::from_default_env()
+        .add_directive("hyper=warn".parse().unwrap())
+        .add_directive("rocket=warn".parse().unwrap())
+        .add_directive("btleplug=warn".parse().unwrap());
+
+    let _ = FmtSubscriber::builder()
+        .compact()
+        .without_time()
+        .with_env_filter(filter)
+        .try_init();
 }

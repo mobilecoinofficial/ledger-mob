@@ -5,11 +5,10 @@ use ledger_mob_tests::transaction::{test, TRANSACTIONS};
 
 mod helpers;
 use helpers::*;
-use simplelog::{ColorChoice, TerminalMode};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn tx1() -> anyhow::Result<()> {
-    let _ = simplelog::SimpleLogger::init(log::LevelFilter::Debug, Default::default());
+    setup_logging();
 
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[0].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
@@ -27,7 +26,7 @@ async fn tx1() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn tx2() -> anyhow::Result<()> {
-    let _ = simplelog::SimpleLogger::init(log::LevelFilter::Debug, Default::default());
+    setup_logging();
 
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[1].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
@@ -45,12 +44,7 @@ async fn tx2() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn tx3() -> anyhow::Result<()> {
-    let _ = simplelog::TermLogger::init(
-        log::LevelFilter::Debug,
-        Default::default(),
-        TerminalMode::Mixed,
-        ColorChoice::Auto,
-    );
+    setup_logging();
 
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[2].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
@@ -68,12 +62,7 @@ async fn tx3() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn tx4() -> anyhow::Result<()> {
-    let _ = simplelog::TermLogger::init(
-        log::LevelFilter::Debug,
-        Default::default(),
-        TerminalMode::Mixed,
-        ColorChoice::Auto,
-    );
+    setup_logging();
 
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[3].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");

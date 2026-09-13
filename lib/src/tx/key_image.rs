@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use futures::executor::block_on;
-use log::debug;
+use tracing::debug;
 
 use ledger_lib::Device;
 use ledger_mob_apdu::key_image::{KeyImageReq, KeyImageResp};

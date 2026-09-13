@@ -1,4 +1,4 @@
-use log::info;
+use tracing::info;
 
 use bip39::{Language, Mnemonic, Seed};
 

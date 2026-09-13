@@ -5,9 +5,9 @@ use std::{
     time::Duration,
 };
 
-use log::{debug, LevelFilter};
 use portpicker::pick_unused_port;
-use simplelog::SimpleLogger;
+use tracing::{debug, level_filters::LevelFilter};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use ledger_lib::{
     transport::{GenericDevice, TcpInfo, TcpTransport},
@@ -22,15 +22,22 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     // Setup logging
     let log_level = match std::env::var("LOG_LEVEL").map(|v| LevelFilter::from_str(&v)) {
         Ok(Ok(l)) => l,
-        _ => LevelFilter::Debug,
+        _ => LevelFilter::DEBUG,
     };
 
-    let log_cfg = simplelog::ConfigBuilder::new()
-        .add_filter_ignore_str("bollard")
-        .add_filter_ignore_str("reqwest")
-        .build();
+    // Setup logging
+    let filter = EnvFilter::from_default_env()
+        .add_directive("hyper=warn".parse().unwrap())
+        .add_directive("rocket=warn".parse().unwrap())
+        .add_directive("btleplug=warn".parse().unwrap())
+        .add_directive(log_level.into());
 
-    let _ = SimpleLogger::init(log_level, log_cfg);
+    let _ = FmtSubscriber::builder()
+        .compact()
+        .without_time()
+        .with_max_level(log_level)
+        .with_env_filter(filter)
+        .try_init();
 
     // Find open ports
     let http_port = pick_unused_port().unwrap();

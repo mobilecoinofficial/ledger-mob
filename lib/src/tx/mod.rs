@@ -5,9 +5,9 @@
 //!
 
 use async_trait::async_trait;
-use log::debug;
 use std::{cell::RefCell, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
+use tracing::debug;
 
 use ledger_lib::Device;
 use ledger_proto::{ApduBase, ApduReq};
