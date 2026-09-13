@@ -13,7 +13,7 @@ async fn tx1() -> anyhow::Result<()> {
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[0].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
 
-    let e = TestEngine::new(Engine::new(TestDriver::new(seed)));
+    let e = TestEngine::new(Engine::new(TestDriver::new(seed), Default::default()));
 
     e.unlock();
 
@@ -31,7 +31,7 @@ async fn tx2() -> anyhow::Result<()> {
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[1].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
 
-    let e = TestEngine::new(Engine::new(TestDriver::new(seed)));
+    let e = TestEngine::new(Engine::new(TestDriver::new(seed), Default::default()));
 
     e.unlock();
 
@@ -49,7 +49,7 @@ async fn tx3() -> anyhow::Result<()> {
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[2].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
 
-    let e = TestEngine::new(Engine::new(TestDriver::new(seed)));
+    let e = TestEngine::new(Engine::new(TestDriver::new(seed), Default::default()));
 
     e.unlock();
 
@@ -67,7 +67,7 @@ async fn tx4() -> anyhow::Result<()> {
     let mnemonic = Mnemonic::from_phrase(TRANSACTIONS[3].mnemonic, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
 
-    let e = TestEngine::new(Engine::new(TestDriver::new(seed)));
+    let e = TestEngine::new(Engine::new(TestDriver::new(seed), Default::default()));
 
     e.unlock();
 

@@ -15,15 +15,6 @@ pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const GIT_VERSION: &str = env!("GIT_TAG");
 pub const BUILD_TIME: &str = env!("BUILD_TIME");
 
-pub fn app_flags() -> AppFlags {
-    let mut f = AppFlags::empty();
-
-    #[cfg(feature = "summary")]
-    f.set(AppFlags::HAS_TX_SUMMARY, true);
-
-    f
-}
-
 /// Application timeout (exit after no user input)
 pub const LOCK_TIMEOUT_S: u32 = 5 * 60;
 

@@ -161,8 +161,10 @@ impl<'a> Decode<'a> for AppInfoResp<'a> {
         let flags_len = buff[3] as usize;
         index += 4;
 
+        let expected_len = 4 + name_len + version_len + flags_len;
+
         // Check full buffer length (MOB-06.7)
-        if buff.len() < 4 + name_len + version_len + flags_len {
+        if buff.len() < expected_len {
             return Err(ApduError::InvalidLength);
         }
 
@@ -266,5 +268,21 @@ mod test {
 
         let mut buff = [0u8; 128];
         encode_decode_apdu(&mut buff, &apdu);
+    }
+
+    #[test]
+    fn app_info_resp_apdu_real() {
+        let data = [
+            0x01, 0x0a, 0x06, 0x03, 0x4d, 0x6f, 0x62, 0x69, 0x6c, 0x65, 0x43, 0x6f, 0x69, 0x6e,
+            0x30, 0x2e, 0x31, 0x36, 0x2e, 0x33, 0x02, 0x01, 0x01,
+        ];
+        let (apdu, index) = AppInfoResp::decode(&data).unwrap();
+
+        assert_eq!(apdu.proto, 1);
+        assert_eq!(apdu.name, "MobileCoin");
+        assert_eq!(apdu.version, "0.16.3");
+        assert_eq!(apdu.flags, AppFlags::UNLOCKED | AppFlags::HAS_TX_SUMMARY);
+
+        assert_eq!(index, data.len());
     }
 }
