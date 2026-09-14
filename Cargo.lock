@@ -2154,7 +2154,7 @@ checksum = "03087c2bad5e1034e8cace5926dec053fb3790248370865f5117a7d0213354c8"
 [[package]]
 name = "ledger-lib"
 version = "0.1.0"
-source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Fcleanup-logging#4c6929ebb96b01312c129777940f69edda70cc98"
+source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Fcleanup-logging#e52737e5cfce92d7daaf60aa195c90b96d49cff4"
 dependencies = [
  "async-trait",
  "btleplug",
@@ -2353,7 +2353,7 @@ dependencies = [
 [[package]]
 name = "ledger-proto"
 version = "0.1.0"
-source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Fcleanup-logging#4c6929ebb96b01312c129777940f69edda70cc98"
+source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Fcleanup-logging#e52737e5cfce92d7daaf60aa195c90b96d49cff4"
 dependencies = [
  "bitflags 2.13.2",
  "displaydoc",
