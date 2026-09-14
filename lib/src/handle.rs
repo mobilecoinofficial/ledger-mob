@@ -9,7 +9,7 @@ use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use ed25519_dalek::VerifyingKey;
-use ledger_lib::Device;
+use ledger_lib::{Device, Error as LedgerError};
 use ledger_proto::{ApduBase, ApduReq};
 use rand_core::OsRng;
 use tokio::sync::Mutex;
@@ -184,15 +184,35 @@ impl<T: Device + Send> DeviceHandle<T> {
 
         // Poll on app unlock state
         for i in 0..self.user_timeout_s {
-            let info = self.app_info().await?;
-            match info.flags.contains(AppFlags::UNLOCKED) {
-                true => break,
-                false if i == self.user_timeout_s - 1 => return Err(Error::UserTimeout),
-                false => {
-                    debug!("Waiting for user approval: {}s", i);
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            // NOTE: for NBGL devices when we're in a UI flow the app will respond
+            // with a busy status instead of an actual APDU.
+            match self.app_info().await {
+                // If the app response with an info APDU and the unlocked flag set, break
+                Ok(info) if info.flags.contains(AppFlags::UNLOCKED) => break,
+                // NOTE: for some reason the actual hardware can respond with an empty response
+                // here which is not an error and does not occur in the emulator.
+                Ok(_) | Err(Error::Transport(LedgerError::Timeout)) | Err(Error::Transport(LedgerError::EmptyResponse))=> {
+                    debug!("Awaiting approval");
+                },
+                // XXX: do we care about specific status codes here?
+                // XXX: add this status code to the upstream?
+                Err(Error::Transport(LedgerError::UnknownStatus(a, b))) => {
+                    debug!("Awaiting approval (status: {a:02x?} {b:02x?})")
+                }
+                Err(e) => {
+                    debug!("Error while polling for user approval: {:?}", e);
+                    return Err(e);
                 }
             }
+
+            // Handle timeouts / wait for approval
+            if i == self.user_timeout_s - 1 {
+                return Err(Error::UserTimeout)
+            } else {
+                debug!("Waiting for user approval: {}s", i);
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
+
         }
 
         // Re-issue request
