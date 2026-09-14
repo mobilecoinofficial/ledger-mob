@@ -1,16 +1,28 @@
+use core::sync::atomic::{AtomicBool, Ordering};
 use rand_core::{CryptoRng, RngCore};
 
 use ledger_device_sdk::{nbgl::NbglHomeAndSettings, screen::sdk_screen_clear};
 
-use ledger_mob_core::engine::{Driver, Engine};
+use ledger_mob_core::engine::{Driver, Engine, FogId};
+use mc_core::{account::PublicSubaddress, consts::DEFAULT_SUBADDRESS_INDEX};
 
 use crate::{
+    platform::platform_get_fog_id,
     settings::{Settings, SETTINGS_STRINGS},
     APP_VERSION,
 };
 
 mod sync_request;
 pub use sync_request::SyncRequest;
+
+mod address;
+pub use address::{AddressEvent, AddressView};
+
+static SHOW_ADDRESS: AtomicBool = AtomicBool::new(false);
+
+pub fn take_show_address_request() -> bool {
+    SHOW_ADDRESS.swap(false, Ordering::Relaxed)
+}
 
 /// Top level User Interface implementation
 pub struct Ui {
@@ -26,7 +38,7 @@ pub enum UiState {
     Menu(NbglHomeAndSettings),
 
     /// Showing a b58 address
-    Address,
+    Address(AddressView),
 
     KeyRequest(SyncRequest),
 
@@ -47,7 +59,7 @@ impl core::fmt::Debug for UiState {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             UiState::Menu(_) => write!(f, "Menu"),
-            UiState::Address => write!(f, "Address"),
+            UiState::Address(_) => write!(f, "Address"),
             UiState::KeyRequest(_) => write!(f, "KeyRequest"),
             UiState::TxBlindRequest(_) => write!(f, "TxBlindRequest"),
             UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
@@ -86,33 +98,85 @@ impl Ui {
         core::ptr::write(p, Self::new());
     }
 
+    /// Handle touch events (update internal state based on flags set in UI callbacks)
+    pub fn handle_touch<D: Driver, R: RngCore + CryptoRng>(
+        &mut self,
+        engine: &mut Engine<D, R>,
+    ) -> bool {
+        ledger_device_sdk::log::debug!("Handling touch in state {:?}", self.state);
+        match &mut self.state {
+            UiState::Menu(_) if take_show_address_request() => {
+                ledger_device_sdk::log::debug!("Switching to Address UI");
+
+                // Fetch subaddress from engine
+                let fog_id = platform_get_fog_id();
+                let s = engine.get_subaddress(0, DEFAULT_SUBADDRESS_INDEX, fog_id);
+
+                self.state = UiState::address(
+                    &s.address,
+                    s.fog_id,
+                    s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
+                );
+                return true;
+            }
+            UiState::Address(view) => {
+                ledger_device_sdk::log::debug!("Touch event in Address UI");
+
+                match view.handle_event() {
+                    // Return to the menu when the user exits the page
+                    AddressEvent::Exit => {
+                        self.state = UiState::menu();
+                        return true;
+                    }
+                    // Draw the new page on navigation
+                    AddressEvent::Update => return true,
+                    AddressEvent::None => (),
+                }
+
+                // Otherwise redraw if something has taken over the screen
+                if !view.is_live() {
+                    return true;
+                }
+            }
+            _ => (),
+        }
+        false
+    }
+
     /// Render the [Ui] using the current state
     #[inline(never)]
     pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &mut Engine<D, R>) {
-        #[cfg(feature = "debug")]
         ledger_device_sdk::log::debug!("UI render: {:?} (last: {:?})", self.state, self.last_state);
 
         match &mut self.state {
             // TODO: all this
             UiState::Menu(page) if self.last_state != UiStateKind::Menu => {
+                ledger_device_sdk::log::debug!("Rendering Menu UI");
                 self.last_state = UiStateKind::Menu;
+
                 page.show_and_return();
             }
-            UiState::Address if self.last_state != UiStateKind::Address => {
+            UiState::Address(view)
+                if self.last_state != UiStateKind::Address || !view.is_live() =>
+            {
+                ledger_device_sdk::log::debug!("Rendering Address UI");
+
                 self.last_state = UiStateKind::Address;
-                // TODO: Render the address page here
+
+                if let Err(_e) = view.draw() {
+                    ledger_device_sdk::log::debug!("Address page draw failed: {:?}", _e);
+                }
             }
             UiState::KeyRequest(s) if self.last_state != UiStateKind::KeyRequest => {
-                self.last_state = UiStateKind::KeyRequest;
-                #[cfg(feature = "debug")]
                 ledger_device_sdk::log::debug!("Rendering KeyRequest UI");
+
+                self.last_state = UiStateKind::KeyRequest;
 
                 match s.show_blocking() {
                     true => engine.unlock(),
                     false => engine.lock(),
                 }
 
-                #[cfg(feature = "debug")]
                 ledger_device_sdk::log::debug!("Finished KeyRequest UI");
 
                 self.state = UiState::menu();
@@ -129,7 +193,7 @@ impl UiState {
     pub fn kind(&self) -> UiStateKind {
         match self {
             UiState::Menu(_) => UiStateKind::Menu,
-            UiState::Address => UiStateKind::Address,
+            UiState::Address(_) => UiStateKind::Address,
             UiState::KeyRequest(_) => UiStateKind::KeyRequest,
             UiState::TxBlindRequest(_) => UiStateKind::TxBlindRequest,
             UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
@@ -146,9 +210,17 @@ impl UiState {
             .glyph(&crate::consts::MOB128X128)
             .infos("MobileCoin", APP_VERSION, "MobileCoin LLC.")
             .tagline("Testing 123")
-            .settings(settings.get_mut(), SETTINGS_STRINGS);
+            .settings(settings.get_mut(), SETTINGS_STRINGS)
+            .action("Show Address", || {
+                ledger_device_sdk::log::debug!("Show Address triggered");
+                SHOW_ADDRESS.store(true, Ordering::Relaxed);
+            });
 
         Self::Menu(page)
+    }
+
+    pub fn address(address: &PublicSubaddress, fog_id: FogId, fog_authority_sig: &[u8]) -> Self {
+        Self::Address(AddressView::new(address, fog_id, fog_authority_sig))
     }
 
     pub fn key_request() -> Self {

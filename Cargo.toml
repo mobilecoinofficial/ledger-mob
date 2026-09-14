@@ -25,6 +25,9 @@ exclude = [
     "vendor/rs/ledger-transport-zemu",
 ]
 
+[workspace.package]
+repository = "https://github.com/mobilecoinofficial/ledger-mob.git"
+license = "SEE PACKAGES"
 
 [profile.test]
 overflow-checks = true
