@@ -1,6 +1,7 @@
+use core::sync::atomic::{AtomicBool, Ordering};
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_device_sdk::{nbgl::NbglHomeAndSettings, screen::sdk_screen_clear};
+use ledger_device_sdk::{nbgl::{NbglHomeAndSettings, NbglStatus}, screen::sdk_screen_clear};
 
 use ledger_mob_core::engine::{Driver, Engine};
 
@@ -11,6 +12,10 @@ use crate::{
 
 mod sync_request;
 pub use sync_request::SyncRequest;
+
+static SHOW_ADDRESS: AtomicBool = AtomicBool::new(false);
+
+pub fn take_show_address_request() -> bool { SHOW_ADDRESS.swap(false, Ordering::Relaxed) }
 
 /// Top level User Interface implementation
 pub struct Ui {
@@ -26,7 +31,8 @@ pub enum UiState {
     Menu(NbglHomeAndSettings),
 
     /// Showing a b58 address
-    Address,
+    // TODO: just using an existing type here to test the trigger
+    Address(NbglStatus),
 
     KeyRequest(SyncRequest),
 
@@ -47,7 +53,7 @@ impl core::fmt::Debug for UiState {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             UiState::Menu(_) => write!(f, "Menu"),
-            UiState::Address => write!(f, "Address"),
+            UiState::Address(_) => write!(f, "Address"),
             UiState::KeyRequest(_) => write!(f, "KeyRequest"),
             UiState::TxBlindRequest(_) => write!(f, "TxBlindRequest"),
             UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
@@ -86,33 +92,56 @@ impl Ui {
         core::ptr::write(p, Self::new());
     }
 
+    /// Handle touch events (update internal state based on flags set in UI callbacks)
+    pub fn handle_touch(&mut self) -> bool {
+        ledger_device_sdk::log::debug!("Handling touch in state {:?}", self.state);
+        match self.state {
+            UiState::Menu(_) if take_show_address_request() => {
+                ledger_device_sdk::log::debug!("Switching to Address UI");
+                self.state = UiState::address();
+                return true;
+            }
+            UiState::Address(_) => {
+                ledger_device_sdk::log::debug!("Touch event in Address UI");
+                // TODO: temporary logic for testing UI things
+                self.state = UiState::menu();
+                return true;
+            }
+            _ => (),
+        }
+        false
+    }
+
     /// Render the [Ui] using the current state
     #[inline(never)]
     pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &mut Engine<D, R>) {
-        #[cfg(feature = "debug")]
         ledger_device_sdk::log::debug!("UI render: {:?} (last: {:?})", self.state, self.last_state);
 
         match &mut self.state {
             // TODO: all this
             UiState::Menu(page) if self.last_state != UiStateKind::Menu => {
+                ledger_device_sdk::log::debug!("Rendering Menu UI");
                 self.last_state = UiStateKind::Menu;
+
                 page.show_and_return();
             }
-            UiState::Address if self.last_state != UiStateKind::Address => {
+            UiState::Address(page) if self.last_state != UiStateKind::Address => {
+                ledger_device_sdk::log::debug!("Rendering Address UI");
+
                 self.last_state = UiStateKind::Address;
-                // TODO: Render the address page here
+                
+                page.show(true);
             }
             UiState::KeyRequest(s) if self.last_state != UiStateKind::KeyRequest => {
-                self.last_state = UiStateKind::KeyRequest;
-                #[cfg(feature = "debug")]
                 ledger_device_sdk::log::debug!("Rendering KeyRequest UI");
+
+                self.last_state = UiStateKind::KeyRequest;
 
                 match s.show_blocking() {
                     true => engine.unlock(),
                     false => engine.lock(),
                 }
 
-                #[cfg(feature = "debug")]
                 ledger_device_sdk::log::debug!("Finished KeyRequest UI");
 
                 self.state = UiState::menu();
@@ -129,7 +158,7 @@ impl UiState {
     pub fn kind(&self) -> UiStateKind {
         match self {
             UiState::Menu(_) => UiStateKind::Menu,
-            UiState::Address => UiStateKind::Address,
+            UiState::Address(_) => UiStateKind::Address,
             UiState::KeyRequest(_) => UiStateKind::KeyRequest,
             UiState::TxBlindRequest(_) => UiStateKind::TxBlindRequest,
             UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
@@ -146,9 +175,17 @@ impl UiState {
             .glyph(&crate::consts::MOB128X128)
             .infos("MobileCoin", APP_VERSION, "MobileCoin LLC.")
             .tagline("Testing 123")
-            .settings(settings.get_mut(), SETTINGS_STRINGS);
+            .settings(settings.get_mut(), SETTINGS_STRINGS)
+            .action("Test Action", || {
+                ledger_device_sdk::log::debug!("Test Action triggered");
+                SHOW_ADDRESS.store(true, Ordering::Relaxed);
+            });
 
         Self::Menu(page)
+    }
+
+    pub fn address() -> Self {
+        Self::Address(NbglStatus::new().text("Testing 345"))
     }
 
     pub fn key_request() -> Self {
