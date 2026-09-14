@@ -14,17 +14,19 @@ use core::mem::MaybeUninit;
 use encdec::Encode;
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_device_sdk::ui::layout::{Layout, Location, StringPlace};
+#[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
+use ledger_device_sdk::buttons::ButtonEvent;
 use ledger_device_sdk::{
-    buttons::ButtonEvent,
     io::{self, ApduHeader, Reply, SyscallError},
     random::LedgerRng,
 };
 use ledger_proto::apdus::{AppFlags, AppInfoReq, AppInfoResp, DeviceInfoReq};
 
+#[cfg(feature = "ident")]
+use ledger_mob_core::engine::IdentState;
 use ledger_mob_core::{
     apdu::{self, app_info::AppFlags as MobAppFlags, tx::FogId},
-    engine::{Engine, EngineAppInfo, Error, Event, IdentState, Output, State},
+    engine::{Engine, EngineAppInfo, Error, Event, Output, State},
 };
 use mc_core::consts::DEFAULT_SUBADDRESS_INDEX;
 
@@ -35,7 +37,13 @@ mod platform;
 use platform::*;
 
 mod ui;
-use ui::*;
+#[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
+use ui::nano::*;
+#[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+use ui::touch::*;
+
+#[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+mod settings;
 
 const APDU_HEADER_LEN: usize = 5;
 
@@ -112,23 +120,11 @@ extern "C" fn sample_main() {
     {
         use ButtonEvent::*;
 
+        // TODO: all this could be in the UI module?
         clear_screen();
-        "Pending Review".place(Location::Middle, Layout::Centered, false);
+        show_pending_review();
+        #[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
         screen_update();
-
-        loop {
-            let evt = comm.next_event::<ApduHeader>();
-
-            match evt {
-                io::Event::Button(LeftButtonRelease | RightButtonRelease | BothButtonsRelease) => {
-                    break
-                }
-                io::Event::Command(_cmd) => {
-                    comm.reply(SyscallError::Security);
-                }
-                _ => (),
-            }
-        }
     }
 
     // Run platform tests prior to init
@@ -143,13 +139,22 @@ extern "C" fn sample_main() {
         // Handle input events and update UI state
         match &evt {
             // Handle button presses
+            #[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
             io::Event::Button(btn) => {
                 if handle_btn(engine, ui, btn) {
                     // Set redraw flag on changes
                     redraw = true
                 }
 
-                // Update timeout on button press
+                // Update screen lock timeout on any button press
+                lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);
+            }
+
+            #[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+            io::Event::TouchEvent => {
+                // TODO(ryan): do we need to do any touch event handling here?
+
+                // Update screen lock timeout on any touch event
                 lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);
             }
             // Handle incoming APDUs
@@ -167,7 +172,7 @@ extern "C" fn sample_main() {
                 // Return to menu state after message timeout
                 if ui.state.is_message() && ticks >= message_timeout {
                     // Reset to menu state
-                    ui.state = UiState::Menu;
+                    ui.state = UiState::menu();
                     redraw = true;
 
                     // Reset engine to init state
@@ -203,6 +208,7 @@ extern "C" fn sample_main() {
 }
 
 /// Handle button events, returning true if UI should be redrawn
+#[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
 #[cfg_attr(feature = "noinline", inline(never))]
 fn handle_btn<RNG: RngCore + CryptoRng>(
     engine: &mut Engine<LedgerDriver, RNG>,
@@ -221,16 +227,16 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                         let s = engine.get_subaddress(0, DEFAULT_SUBADDRESS_INDEX, fog_id);
 
                         // Set UI state to display subaddress
-                        ui.state = UiState::Address(Address::new(
+                        ui.state = UiState::address(
                             &s.address,
                             s.fog_id,
                             s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
-                        ));
+                        );
                     }
-                    MenuState::Version => ui.state = UiState::AppInfo(AppInfo::new()),
+                    MenuState::Version => ui.state = UiState::app_info(),
                     MenuState::Settings => {
                         let fog_id = platform_get_fog_id();
-                        ui.state = UiState::Settings(Settings::new(fog_id))
+                        ui.state = UiState::settings(fog_id)
                     }
                     MenuState::Exit => ledger_device_sdk::exit_app(0),
                     _ => (),
@@ -412,7 +418,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
             if !engine.is_unlocked() && !ui.state.is_key_request() =>
         {
             // Update UI to key request acknowledge state
-            ui.state = UiState::KeyRequest(SyncApprover::new());
+            ui.state = UiState::key_request();
 
             // Return empty APDU to signify late response
             // TODO: check on how other apps do this
@@ -439,7 +445,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Update to identity approver on request
         #[cfg(feature = "ident")]
         State::Ident(IdentState::Pending) if !ui.state.is_ident_request() => {
-            ui.state = UiState::IdentRequest(IdentApprover::new());
+            ui.state = UiState::ident_request();
             render = true;
         }
         // Show identity state on changes
@@ -461,7 +467,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Update to progress while loading transaction
         #[cfg(feature = "summary")]
         State::Summary(..) if !ui.state.is_progress() => {
-            ui.state = UiState::Progress(Progress::new());
+            ui.state = UiState::progress();
             render = true;
         }
 
@@ -469,21 +475,18 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         State::Pending if !ui.state.is_tx_request() => match engine.report() {
             #[cfg(feature = "summary")]
             Some(r) => {
-                ui.state = UiState::TxSummaryRequest(TxSummaryApprover::new(
-                    r.outputs.len(),
-                    r.totals.len(),
-                ));
+                ui.state = UiState::tx_summary_request(r.outputs.len(), r.totals.len());
                 render = true;
             }
             _ => {
-                ui.state = UiState::TxRequest(TxBlindApprover::new());
+                ui.state = UiState::tx_blind_request();
                 render = true;
             }
         },
 
         // Update to progress while signing transaction
         State::SignRing(..) if !ui.state.is_progress() => {
-            ui.state = UiState::Progress(Progress::new());
+            ui.state = UiState::progress();
             render = true;
         }
 
@@ -530,15 +533,17 @@ fn platform_tests(comm: &mut io::Comm) {
 
     // Ensure RNG is operating as expected
     if let Err(_e) = test_rng() {
-        "ERROR".place(Location::Top, Layout::Centered, true);
-        "RNG UNAVAILABLE".place(Location::Middle, Layout::Centered, false);
-        "EXIT?".place(Location::Bottom, Layout::Centered, false);
+        // TODO(ryan): this will become a blocking UI call and exit for touch devices?
+        show_rng_error();
 
         loop {
             let evt = comm.next_event::<ApduHeader>();
 
             match evt {
+                #[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
                 io::Event::Button(_btn) => ledger_device_sdk::exit_app(30),
+                #[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+                io::Event::TouchEvent => ledger_device_sdk::exit_app(30),
                 io::Event::Command(_cmd) => {
                     comm.reply(SyscallError::Security);
                 }

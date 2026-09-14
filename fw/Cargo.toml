@@ -19,11 +19,11 @@ path = [
 ]
 flags = "0x040"
 
-[package.metadata.ledger.nanox]
-icon = "assets/mob14x14i.gif"
-
-[package.metadata.ledger.nanosplus]
-icon = "assets/mob14x14i.gif"
+nanox = { icon = "assets/mob14x14i.gif" }
+nanosplus = { icon = "assets/mob14x14i.gif" }
+stax = { icon = "assets/mob32x32.gif" }
+flex = { icon = "assets/mob40x40.gif" }
+apex_p = { icon = "assets/mob32x32.gif" }
 
 [features]
 applet = []
@@ -36,6 +36,7 @@ nvm = []
 
 alloc = [ "embedded-alloc", "critical-section", "ledger-mob-core/alloc", "ledger_device_sdk/heap" ]
 noinline = [ "ledger-mob-core/noinline" ]
+debug = [ "ledger_device_sdk/debug", "ledger_device_sdk/log_debug" ]
 
 default = [ "applet", "mlsag", "memo", "alloc", "summary", "ident", "noinline" ]
 
