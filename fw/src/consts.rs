@@ -4,8 +4,13 @@
 
 #![allow(unused)]
 
-use ledger_device_sdk::ecc::make_bip32_path;
+use ledger_device_sdk::{ecc::make_bip32_path, include_gif};
+
+#[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
 use ledger_device_sdk::ui::bitmaps::Glyph;
+
+#[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+use ledger_device_sdk::nbgl::NbglGlyph as Glyph;
 
 use ledger_mob_core::apdu::app_info::AppFlags;
 
@@ -27,11 +32,26 @@ pub const TICKS_PER_S: u32 = 10;
 /// BIP32 configuration
 pub const BIP32_PATH: [u32; 5] = make_bip32_path(b"m/44'/866'/0'/0/0");
 
-/// Mob logo in 14x14 (see build.rs for conversion)
-pub const MOB14X14: Glyph = include!(concat!(env!("OUT_DIR"), "/mob14x14.gif"));
-
 /// Mob logo in 16x16 (see build.rs for conversion)
+#[cfg(any(target_os = "nanox", target_os = "nanosplus"))]
 pub const MOB16X16: Glyph = include!(concat!(env!("OUT_DIR"), "/mob16x16.gif"));
 
+#[cfg(not(any(target_os = "nanox", target_os = "nanosplus")))]
+pub const MOB16X16: Glyph = Glyph::from_include(include_gif!("assets/mob16x16.png", NBGL));
+
 /// Mob logo in 32x32 (see build.rs for conversion)
+#[cfg(any(target_os = "nanox", target_os = "nanosplus"))]
 pub const MOB32X32: Glyph = include!(concat!(env!("OUT_DIR"), "/mob32x32.gif"));
+
+#[cfg(not(any(target_os = "nanox", target_os = "nanosplus")))]
+pub const MOB32X32: Glyph = Glyph::from_include(include_gif!("assets/mob32x32.png", NBGL));
+
+/// Mob logo in 64x64
+#[cfg(any(target_os = "nanox", target_os = "nanosplus"))]
+pub const MOB64X64: Glyph = Glyph::from_include(include_gif!("assets/mob64x64.png", BAGL));
+
+#[cfg(not(any(target_os = "nanox", target_os = "nanosplus")))]
+pub const MOB64X64: Glyph = Glyph::from_include(include_gif!("assets/mob64x64.png", NBGL));
+
+#[cfg(not(any(target_os = "nanox", target_os = "nanosplus")))]
+pub const MOB128X128: Glyph = Glyph::from_include(include_gif!("assets/mob128x128.png", NBGL));
