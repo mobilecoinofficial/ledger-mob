@@ -145,5 +145,7 @@ bytes = { git = "https://github.com/ryankurte/rust-bytes.git", branch = "v1.4.0-
 # TODO(ryan): remove these patches once we have updated releases
 # Update to latest ledger-proto for encdec@0.10
 ledger-proto = { git = "https://github.com/ledger-community/rust-ledger.git", branch = "main" }
-# Update to patched ledger device SDK with fix for NBGL /io_new build
-ledger_device_sdk = { git = "https://github.com/ryan-sentz/ledger-device-rust-sdk.git", branch = "ryan/disable-pending-io-new" }
+# Patch to vendored ledger-device-rust-sdk for the moment so we can easily implement 
+# features and fixes locally. This should be removed when upstream has the features we require.
+ledger_device_sdk = { path = "../vendor/ledger-device-rust-sdk/ledger_device_sdk" }
+ledger_secure_sdk_sys = { path = "../vendor/ledger-device-rust-sdk/ledger_secure_sdk_sys" }

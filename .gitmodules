@@ -10,3 +10,6 @@
 	path = vendor/speculos
 	url = ../../LedgerHQ/speculos.git
 
+[submodule "vendor/ledger-device-rust-sdk"]
+	path = vendor/ledger-device-rust-sdk
+	url = ../../ryan-sentz/ledger-device-rust-sdk.git

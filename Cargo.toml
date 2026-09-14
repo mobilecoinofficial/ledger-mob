@@ -25,6 +25,9 @@ exclude = [
     "vendor/rs/ledger-transport-zemu",
 ]
 
+[workspace.package]
+repository = "https://github.com/mobilecoinofficial/ledger-mob.git"
+license = "SEE PACKAGES"
 
 [profile.test]
 overflow-checks = true
@@ -65,4 +68,4 @@ mc-rand = { path = "./vendor/mc-rand" }
 # TODO(ryan): remove these patches once we have updated releases
 # Update to latest ledger-(proto|lib) for encdec@0.10
 ledger-proto = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/cleanup-logging" }
-ledger-lib = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/cleanup-logging" }
+ledger-lib = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/update-btleplug" }

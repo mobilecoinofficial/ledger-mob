@@ -146,7 +146,10 @@ impl UiState {
             .glyph(&crate::consts::MOB128X128)
             .infos("MobileCoin", APP_VERSION, "MobileCoin LLC.")
             .tagline("Testing 123")
-            .settings(settings.get_mut(), SETTINGS_STRINGS);
+            .settings(settings.get_mut(), SETTINGS_STRINGS)
+            .action("Test Action", || {
+                ledger_device_sdk::log::debug!("Test Action triggered");
+            });
 
         Self::Menu(page)
     }

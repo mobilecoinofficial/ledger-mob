@@ -163,6 +163,10 @@ extern "C" fn sample_main() {
             #[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
             io::Event::TouchEvent => {
                 // TODO(ryan): do we need to do any touch event handling here?
+                // YES this is where we can handle state to update the UI
+                // (which is gonna need some cursed callback/state stuff)
+
+                ledger_device_sdk::log::debug!("Touch event!");
 
                 // Update screen lock timeout on any touch event
                 lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);
