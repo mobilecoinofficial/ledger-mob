@@ -36,10 +36,10 @@ use platform::*;
 mod ui;
 #[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
 use ui::nano::*;
-#[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+#[cfg(any(target_os = "stax", target_os = "flex", target_os = "apex_p"))]
 use ui::touch::*;
 
-#[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+#[cfg(any(target_os = "stax", target_os = "flex", target_os = "apex_p"))]
 mod settings;
 
 const APDU_HEADER_LEN: usize = 5;
@@ -147,7 +147,7 @@ extern "C" fn sample_main() {
                 lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);
             }
 
-            #[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+            #[cfg(any(target_os = "stax", target_os = "flex", target_os = "apex_p"))]
             io::Event::TouchEvent => {
                 // TODO(ryan): do we need to do any touch event handling here?
 
@@ -416,7 +416,7 @@ fn platform_tests(comm: &mut io::Comm) {
             match evt {
                 #[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
                 io::Event::Button(_btn) => ledger_device_sdk::exit_app(30),
-                #[cfg(not(any(target_os = "nanosplus", target_os = "nanox")))]
+                #[cfg(any(target_os = "stax", target_os = "flex", target_os = "apex_p"))]
                 io::Event::TouchEvent => ledger_device_sdk::exit_app(30),
                 io::Event::Command(_cmd) => {
                     comm.reply(SyscallError::Security);

@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Context};
 use quote::quote;
 use std::{env, path::PathBuf};
 
@@ -5,6 +6,7 @@ fn main() -> anyhow::Result<()> {
     // Rebuild on linker script changes
     println!("cargo:rerun-if-changed=script.ld");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-env-changed=VERSION");
     println!("cargo:rerun-if-env-changed=CI_SHA_SHORT");
 
@@ -33,8 +35,8 @@ fn main() -> anyhow::Result<()> {
     let build_time = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
     println!("cargo:rustc-env=BUILD_TIME={build_time}");
 
-    // Copy icons to build dir
-    copy_icons()?;
+    // Copy the app icon to the build dir
+    copy_app_icon()?;
 
     // Process image files
     for i in IMAGES {
@@ -44,15 +46,34 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Copy icons to build output dir
-fn copy_icons() -> anyhow::Result<()> {
-    let out_dir = get_output_dir();
+/// Copy the install icon declared in `[package.metadata.ledger.<device>]` to the build
+/// output dir, under both its own name and the device-independent alias `app_icon.gif`.
+///
+/// The alias is what `make package-%` and CI packaging consume, so neither needs to carry
+/// its own copy of the device -> icon mapping.
+fn copy_app_icon() -> anyhow::Result<()> {
+    let device = env::var("CARGO_CFG_TARGET_OS").context("CARGO_CFG_TARGET_OS not set")?;
 
-    let images = &["mob14x14i.gif", "mob16x16i.gif"];
+    let icon = app_icon_path(&device)?;
+    let src = PathBuf::from(&icon);
 
-    for i in images {
-        std::fs::copy(PathBuf::from("assets").join(i), out_dir.join(i))?;
+    if !src.is_file() {
+        return Err(anyhow!(
+            "install icon `{icon}` declared in [package.metadata.ledger.{device}] does not exist under {}",
+            env::current_dir()?.display(),
+        ));
     }
+    println!("cargo:rerun-if-changed={icon}");
+
+    let out_dir = get_output_dir();
+    let name = src
+        .file_name()
+        .ok_or_else(|| anyhow!("icon path has no file name: {icon}"))?;
+
+    std::fs::copy(&src, out_dir.join(name))
+        .with_context(|| format!("copying {} to {}", src.display(), out_dir.display()))?;
+    std::fs::copy(&src, out_dir.join("app_icon.gif"))
+        .with_context(|| format!("copying {} to app_icon.gif", src.display()))?;
 
     Ok(())
 }
@@ -111,6 +132,25 @@ fn process_image(f: &str) -> anyhow::Result<()> {
     std::fs::write(out_path.join(f), o.to_string())?;
 
     Ok(())
+}
+
+/// Read `package.metadata.ledger.<device>.icon` from this crate's manifest, the same
+/// table `ledger_device_sdk`'s build script reads to generate the install parameters.
+fn app_icon_path(device: &str) -> anyhow::Result<String> {
+    let manifest: toml::Value = std::fs::read_to_string("Cargo.toml")
+        .context("reading Cargo.toml")?
+        .parse()
+        .context("parsing Cargo.toml")?;
+
+    manifest
+        .get("package")
+        .and_then(|p| p.get("metadata"))
+        .and_then(|m| m.get("ledger"))
+        .and_then(|l| l.get(device))
+        .and_then(|d| d.get("icon"))
+        .and_then(|i| i.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| anyhow!("missing `package.metadata.ledger.{device}.icon` in fw/Cargo.toml"))
 }
 
 fn get_output_dir() -> PathBuf {
