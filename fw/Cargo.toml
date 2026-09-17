@@ -79,6 +79,7 @@ image = "0.24.3"
 anyhow = "1.0.64"
 quote = "1.0.21"
 chrono = { version = "0.4.26", default-features = false, features = [ "clock" ] }
+toml = { version = "0.8", default-features = false, features = [ "parse" ] }
 
 [dev-dependencies]
 
@@ -120,7 +121,7 @@ overflow-checks = false
 #overflow-checks = false
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("apex_p", "stax", "flex", "nanos", "nanox", "nanosplus"))'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("apex_p", "stax", "flex", "nanox", "nanosplus"))'] }
 
 [patch.crates-io]
 
