@@ -8,7 +8,7 @@
 use core::ptr::addr_of_mut;
 
 use heapless::Vec;
-use ledger_mob_apdu::tx::TxOnetimeKey;
+use ledger_mob_apdu::{prelude::AppFlags, tx::TxOnetimeKey, MOB_PROTO_VERSION};
 use rand_core::{CryptoRngCore, OsRng};
 use strum::{Display, EnumIter, EnumString, EnumVariantNames};
 use zeroize::Zeroize;
@@ -113,6 +113,7 @@ pub enum State {
 /// [Engine] provides hardware-independent support for MobileCoin wallet operations
 ///
 pub struct Engine<DRV: Driver, RNG: CryptoRngCore = OsRng> {
+    info: EngineAppInfo,
     state: State,
     unlocked: bool,
 
@@ -146,14 +147,33 @@ impl<T: Driver> Driver for &mut T {
 impl<DRV: Driver> Engine<DRV> {
     /// Create a new transaction engine instance with the provided driver,
     /// using the default [OsRng]
-    pub const fn new(drv: DRV) -> Self {
-        Self::new_with_rng(drv, OsRng {})
+    pub const fn new(drv: DRV, info: EngineAppInfo) -> Self {
+        Self::new_with_rng(drv, OsRng {}, info)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, Eq, Hash)]
+pub struct EngineAppInfo {
+    pub app_name: &'static str,
+    pub app_version: &'static str,
+    pub git_version: &'static str,
+    pub base_flags: AppFlags,
+}
+
+impl Default for EngineAppInfo {
+    fn default() -> Self {
+        Self {
+            app_name: "",
+            app_version: "",
+            git_version: "",
+            base_flags: AppFlags::empty(),
+        }
     }
 }
 
 impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     /// Create a new transaction engine instance with the provided driver and rng
-    pub const fn new_with_rng(drv: DRV, rng: RNG) -> Self {
+    pub const fn new_with_rng(drv: DRV, rng: RNG, info: EngineAppInfo) -> Self {
         Self {
             state: State::Init,
             unlocked: false,
@@ -165,6 +185,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
             ring_count: 0,
             rng,
             drv,
+            info,
         }
     }
 
@@ -173,7 +194,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
     /// TODO: add checks that init and new_with_rng match
     /// # Safety
     /// per-field init is okay so long as we init _all_ fields
-    pub unsafe fn init(p: *mut Self, drv: DRV, rng: RNG) {
+    pub unsafe fn init(p: *mut Self, drv: DRV, rng: RNG, app_info: EngineAppInfo) {
         addr_of_mut!((*p).state).write(State::Init);
         addr_of_mut!((*p).unlocked).write(false);
         addr_of_mut!((*p).message).write(Vec::new());
@@ -184,6 +205,7 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         addr_of_mut!((*p).ring_count).write(0);
         addr_of_mut!((*p).rng).write(rng);
         addr_of_mut!((*p).drv).write(drv);
+        addr_of_mut!((*p).info).write(app_info);
     }
 
     /// Handle incoming transaction events
@@ -204,6 +226,21 @@ impl<DRV: Driver, RNG: CryptoRngCore> Engine<DRV, RNG> {
         match (self.state, evt) {
             // Empty event, do nothing
             (_, Event::None) => (),
+
+            // Response to a request for application information
+            // NOTE: this is a mob-specific request/response, there's also a generic ledger
+            // method that must be handled in the FW for io_legacy.
+            (_, Event::GetAppInfo) => {
+                let mut flags = self.info.base_flags;
+                flags.set(AppFlags::UNLOCKED, self.unlocked);
+
+                return Ok(Output::AppInfo {
+                    proto: MOB_PROTO_VERSION,
+                    app_name: self.info.app_name,
+                    app_version: self.info.app_version,
+                    flags,
+                });
+            }
 
             // Fetch wallet keys
             (_, Event::GetWalletKeys { account_index }) => {
@@ -1105,7 +1142,7 @@ mod test {
     fn valid_events() {
         crate::test_setup_logging();
 
-        let mut e = Engine::new(TestDriver::new());
+        let mut e = Engine::new(TestDriver::new(), Default::default());
 
         for (_state, evt) in &*TESTS {
             // Fire expected event
@@ -1122,7 +1159,7 @@ mod test {
         crate::test_setup_logging();
 
         for (okay_state, evt) in &*TESTS {
-            let mut e = Engine::new(TestDriver::new());
+            let mut e = Engine::new(TestDriver::new(), Default::default());
 
             // Fire the same event to every other state
             for state in State::iter() {
@@ -1173,7 +1210,7 @@ mod test {
     fn lock_unlock() {
         crate::test_setup_logging();
 
-        let mut e = Engine::new(TestDriver::new());
+        let mut e = Engine::new(TestDriver::new(), Default::default());
 
         // Locked, return pending message
         let r = e.update(&Event::GetWalletKeys { account_index: 0 });
@@ -1224,7 +1261,7 @@ mod test {
         // Setup engine
         let mut e = MaybeUninit::uninit();
         let mut engine = unsafe {
-            Engine::init(e.as_mut_ptr(), drv, rng);
+            Engine::init(e.as_mut_ptr(), drv, rng, Default::default());
             e.assume_init()
         };
 

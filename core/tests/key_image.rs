@@ -14,7 +14,7 @@ async fn key_image() -> anyhow::Result<()> {
     let mnemonic = Mnemonic::from_phrase(MNEMONIC, Language::English)?;
     let seed = Seed::new(&mnemonic, "");
 
-    let e = TestEngine::new(Engine::new(TestDriver::new(seed)));
+    let e = TestEngine::new(Engine::new(TestDriver::new(seed), Default::default()));
 
     e.unlock();
 

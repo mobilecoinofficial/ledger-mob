@@ -1,14 +1,13 @@
 // Copyright (c) 2022-2023 The MobileCoin Foundation
 
 use encdec::Encode;
-
 use ledger_proto::ApduError;
 use mc_core::keys::{
     RootSpendPublic, RootViewPrivate, SubaddressSpendPublic, SubaddressViewPrivate,
 };
 use mc_crypto_ring_signature::{KeyImage, Scalar};
 
-pub use ledger_mob_apdu::state::Digest as TxDigest;
+pub use ledger_mob_apdu::{app_info::AppFlags, state::Digest as TxDigest};
 
 use crate::{apdu, engine::ring::RingState};
 
@@ -22,6 +21,13 @@ use super::ident::IdentState;
 #[derive(Clone, PartialEq, Debug)]
 pub enum Output {
     None,
+
+    AppInfo {
+        proto: u8,
+        app_name: &'static str,
+        app_version: &'static str,
+        flags: AppFlags,
+    },
 
     /// Engine state
     State {
@@ -98,6 +104,18 @@ impl Output {
     pub fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         match self.clone() {
             Output::None => Ok(0),
+            Output::AppInfo {
+                app_name,
+                app_version,
+                flags,
+                proto,
+            } => apdu::app_info::AppInfoResp {
+                name: app_name,
+                version: app_version,
+                flags,
+                proto,
+            }
+            .encode(buff),
             Output::State { state, digest } => apdu::tx::TxInfo {
                 state: state.state(),
                 value: state.value(),
