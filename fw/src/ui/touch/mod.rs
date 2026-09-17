@@ -1,6 +1,6 @@
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_device_sdk::{nbgl::NbglHomeAndSettings, screen::sdk_screen_clear};
+use ledger_device_sdk::{nbgl::{NbglHomeAndSettings}, screen::sdk_screen_clear};
 
 use ledger_mob_core::engine::{Driver, Engine};
 
@@ -8,6 +8,9 @@ use crate::{
     settings::{Settings, SETTINGS_STRINGS},
     APP_VERSION,
 };
+
+mod sync_request;
+pub use sync_request::SyncRequest;
 
 /// Top level User Interface implementation
 pub struct Ui {
@@ -25,7 +28,7 @@ pub enum UiState {
     /// Showing a b58 address
     Address,
 
-    KeyRequest(()),
+    KeyRequest(SyncRequest),
 
     TxBlindRequest(()),
 
@@ -85,7 +88,7 @@ impl Ui {
 
     /// Render the [Ui] using the current state
     #[inline(never)]
-    pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &Engine<D, R>) {
+    pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &mut Engine<D, R>) {
         #[cfg(feature = "debug")]
         ledger_device_sdk::log::debug!("UI render: {:?} (last: {:?})", self.state, self.last_state);
 
@@ -94,6 +97,28 @@ impl Ui {
             UiState::Menu(page) if self.last_state != UiStateKind::Menu => {
                 self.last_state = UiStateKind::Menu;
                 page.show_and_return();
+            }
+            UiState::Address if self.last_state != UiStateKind::Address => {
+                self.last_state = UiStateKind::Address;
+                // TODO: Render the address page here
+            }
+            UiState::KeyRequest(s) if self.last_state != UiStateKind::KeyRequest => {
+                self.last_state = UiStateKind::KeyRequest;
+                #[cfg(feature = "debug")]
+                ledger_device_sdk::log::debug!("Rendering KeyRequest UI");
+
+                match s.show_blocking() {
+                    true => engine.unlock(),
+                    false => engine.lock(),
+                }
+
+                #[cfg(feature = "debug")]
+                ledger_device_sdk::log::debug!("Finished KeyRequest UI");
+
+                self.state = UiState::menu();
+                if let UiState::Menu(page) = &mut self.state {
+                    page.show_and_return();
+                }
             }
             _ => (),
         }
@@ -127,8 +152,7 @@ impl UiState {
     }
 
     pub fn key_request() -> Self {
-        // TODO
-        Self::KeyRequest(())
+        Self::KeyRequest(SyncRequest::new())
     }
 
     pub fn is_key_request(&self) -> bool {
