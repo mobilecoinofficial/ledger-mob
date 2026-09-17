@@ -1006,7 +1006,7 @@ dependencies = [
 [[package]]
 name = "ledger-proto"
 version = "0.1.0"
-source = "git+https://github.com/ledger-community/rust-ledger.git?branch=main#c8ed12e89788e78d77cdc0dc9fb8a4bd4dc24b89"
+source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Fcleanup-logging#e52737e5cfce92d7daaf60aa195c90b96d49cff4"
 dependencies = [
  "bitflags 2.13.1",
  "displaydoc",
