@@ -1,6 +1,6 @@
 # Ledger Mobilecoin
 
-A [MobileCoin][1] NanoApp for [Ledger][2] `nanosplus` and `nanox` devices.
+A [MobileCoin][1] NanoApp for [Ledger][2] `nanosplus`, `nanox`, `stax`, `flex` and `apex_p` (Nano Gen5) devices.
 You can grab the latest (unsigned) firmware and tooling [here](https://github.com/mobilecoinofficial/ledger-mob/releases), or follow the [Getting Started](#Getting-Started) instructions to build your own.
 
 For application interaction or integration see the [library](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob/index.html), [Engine](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob_core/index.html) and [APDU](https://mobilecoinofficial.github.io/ledger-mob/ledger_mob_apdu/index.html) documentation.
@@ -17,6 +17,11 @@ For application interaction or integration see the [library](https://mobilecoino
 - [x] Ledger NanoSPlus
 - [ ] Ledger NanoX [#27](https://github.com/mobilecoinofficial/ledger-mob/issues/27)
 - [ ] Ledger Stax [#60](https://github.com/mobilecoinofficial/ledger-mob/issues/60)
+- [ ] Ledger Flex [#60](https://github.com/mobilecoinofficial/ledger-mob/issues/60)
+- [ ] Ledger Nano Gen5 / Apex P [#60](https://github.com/mobilecoinofficial/ledger-mob/issues/60)
+
+The touch devices (Stax, Flex, Apex P) currently build and show a home screen, but the NBGL
+UI is not yet implemented, so transactions cannot be reviewed or approved on them.
 
 ## Usage
 
@@ -47,7 +52,7 @@ This repository uses submodules, clone with the `--recurse-submodules` option or
 
 - [apdu](./apdu) provides APDU / protocol definitions for communication with a hardware wallet
 - [core](./core) contains platform-independent hardware wallet engine, used by `fw` and `lib`
-- [fw](./fw) contains ledger firmware for `nanosplus` and `nanox` targets
+- [fw](./fw) contains ledger firmware for `nanosplus`, `nanox`, `stax`, `flex` and `apex_p` targets
 - [lib](./lib) provides a library for interacting with the MobileCoin NanoApp and a CLI for basic interaction.
 - [tests](./tests) provides high-level functional tests, used in `core` and `lib`, as well as a CLI for manually exercising these against the simulator or a physical device.
 - [vendor](./vendor) contains forked and vendored dependencies, with the intent that these will be removed as contributions are merged upstream.
@@ -95,10 +100,13 @@ You will also need to make sure your python path is set up correctly for `ledger
 A top level [Makefile](Makefile) exposes common functions for building / testing the project.
 
 - `make fw` to build `nanosplus` and `nanox` firmware
+- `make stax`, `make flex` or `make apex_p` to build firmware for a touch device
 - `make lib` to build the library and CLI
 - `make test` to build and run all tests
-- `make nanosplus-run` or `make nanox-run` to build and run the firmware under speculos
-- `make nanosplus-load` to build firmware and load onto a `nanosplus` device (it is not possible to sideload onto the `nanox`)
+- `make <device>-run` to run the firmware under speculos, for any of
+  `nanosplus`, `nanox`, `stax`, `flex`, `apex_p` (touch devices also expose VNC on port 41000)
+- `make <device>-load` to build firmware and load it onto an attached device (it is not
+  possible to sideload onto the `nanox`)
 - `make nanosplus-test` or `make nanox-test` to run integration tests via the simulator
 - `make lint` to check `cargo fmt` and `cargo clippy` lints
 - `make miri` to run miri tests over out-pointer based functions (extremely slow)  
