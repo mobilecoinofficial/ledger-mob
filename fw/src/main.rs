@@ -162,11 +162,7 @@ extern "C" fn sample_main() {
 
             #[cfg(any(target_os = "stax", target_os = "flex", target_os = "apex_p"))]
             io::Event::TouchEvent => {
-                // TODO(ryan): do we need to do any touch event handling here?
-                // YES this is where we can handle state to update the UI
-                // (which is gonna need some cursed callback/state stuff)
-
-                ledger_device_sdk::log::debug!("Touch event!");
+                // Handle touch events and update UI state
                 if ui.handle_touch(engine) {
                     redraw = true;
                 }
@@ -347,14 +343,14 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         #[cfg(feature = "ident")]
         State::Ident(IdentState::Approved) => {
             if !ui.state.is_message() {
-                ui.state = UiState::message("challenge approved");
+                ui.state = UiState::message("challenge approved", true);
                 render = true;
             }
         }
         #[cfg(feature = "ident")]
         State::Ident(IdentState::Denied) => {
             if !ui.state.is_message() {
-                ui.state = UiState::message("challenge rejected");
+                ui.state = UiState::message("challenge rejected", false);
                 render = true;
             }
         }
@@ -387,13 +383,13 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
         // Set complete message when transaction is complete
         State::Complete if !ui.state.is_message() => {
-            ui.state = UiState::message("Transaction Complete");
+            ui.state = UiState::message("Transaction Complete", true);
             render = true;
         }
 
         // Set cancelled message when transaction is aborted
         State::Deny if !ui.state.is_message() => {
-            ui.state = UiState::message("Transaction Cancelled");
+            ui.state = UiState::message("Transaction Cancelled", false);
             render = true;
         }
 
