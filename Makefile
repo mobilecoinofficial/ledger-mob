@@ -47,8 +47,6 @@ core-test:
 	cargo nextest run --package ledger-mob-core
 
 # Run simulator tests for a given device.
-# NOTE: the touch devices only implement wallet sync approval so far, the
-# transaction and identity tests skip themselves on those models.
 $(addsuffix -test,$(DEVICES)): %-test: %
 	MODEL=$* cargo nextest run --package ledger-mob
 

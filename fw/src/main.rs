@@ -358,7 +358,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Update to progress while loading transaction
         #[cfg(feature = "summary")]
         State::Summary(..) if !ui.state.is_progress() => {
-            ui.state = UiState::progress();
+            ui.state = UiState::progress("Loading Transaction");
             render = true;
         }
 
@@ -377,7 +377,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
         // Update to progress while signing transaction
         State::SignRing(..) if !ui.state.is_progress() => {
-            ui.state = UiState::progress();
+            ui.state = UiState::progress("Signing Transaction");
             render = true;
         }
 

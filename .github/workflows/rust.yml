@@ -333,8 +333,6 @@ jobs:
             experimental: false
           - platform: nanosplus
             experimental: false
-          # Touch devices only implement the wallet sync approval so far, the
-          # transaction and identity tests skip themselves on these models
           - platform: stax
             experimental: true
           - platform: flex
