@@ -1,5 +1,0 @@
-[profile.default.slow-timeout]
-period = "120s"
-terminate-after = 3
-grace-period = "10s"
-
