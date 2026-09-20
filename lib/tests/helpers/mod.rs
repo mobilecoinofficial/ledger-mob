@@ -279,3 +279,29 @@ pub async fn reject_ident_capture(model: Model, h: &GenericHandle, name: &str) {
         .await
         .expect("identity rejection failed");
 }
+
+/// Run transaction rejection UI where required for tests.
+///
+/// As with [approve_tx] this walks the approval pages, selecting the reject
+/// option rather than the approve one.
+#[allow(unused)]
+pub async fn reject_tx(model: Model, h: &GenericHandle) {
+    model
+        .ui_for(h)
+        .reject_tx()
+        .await
+        .expect("transaction rejection failed");
+}
+
+/// [reject_tx], writing a screenshot of each page visited to
+/// `../target/ui/<name>.<n>.png`
+#[allow(unused)]
+pub async fn reject_tx_capture(model: Model, h: &GenericHandle, name: &str) {
+    let prefix = PathBuf::from("../target/ui").join(name);
+
+    model
+        .ui_for_with_screenshots(h, prefix)
+        .reject_tx()
+        .await
+        .expect("transaction rejection failed");
+}
