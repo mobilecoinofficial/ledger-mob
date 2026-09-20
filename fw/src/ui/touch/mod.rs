@@ -1,6 +1,9 @@
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_device_sdk::{nbgl::NbglHomeAndSettings, screen::sdk_screen_clear};
+use ledger_device_sdk::{
+    nbgl::{NbglHomeAndSettings, NbglReviewStatus, StatusType},
+    screen::sdk_screen_clear,
+};
 
 use ledger_mob_core::engine::{Driver, Engine};
 
@@ -11,6 +14,9 @@ use crate::{
 
 mod sync_request;
 pub use sync_request::SyncRequest;
+
+mod tx_blind_request;
+pub use tx_blind_request::TxBlindRequest;
 
 /// Top level User Interface implementation
 pub struct Ui {
@@ -30,7 +36,8 @@ pub enum UiState {
 
     KeyRequest(SyncRequest),
 
-    TxBlindRequest(()),
+    /// Transaction request without summary, awaiting user input
+    TxBlindRequest(TxBlindRequest),
 
     TxSummaryRequest(()),
 
@@ -120,6 +127,45 @@ impl Ui {
                     page.show_and_return();
                 }
             }
+            UiState::TxBlindRequest(s) if self.last_state != UiStateKind::TxBlindRequest => {
+                self.last_state = UiStateKind::TxBlindRequest;
+                #[cfg(feature = "debug")]
+                ledger_device_sdk::log::debug!("Rendering TxBlindRequest UI");
+
+                // Show the blind signing review, blocking until the user chooses
+                let approved = s.show_blocking(engine);
+
+                // Update the engine state based on the user's choice
+                match approved {
+                    true => engine.approve(),
+                    false => engine.deny(),
+                }
+
+                // Then show the approved state
+                // TODO(ryan): should this status change happen elsewhere?
+                NbglReviewStatus::new()
+                    .status_type(StatusType::Transaction)
+                    .show(approved);
+
+                #[cfg(feature = "debug")]
+                ledger_device_sdk::log::debug!(
+                    "Finished TxBlindRequest UI (approved: {})",
+                    approved
+                );
+
+                match approved {
+                    // On approval the host immediately drives ring signing, so we move to the progress state.
+                    true => self.state = UiState::progress(),
+                    // On rejection return to the menu and leave the engine in `Deny`
+                    // for the host to observe.
+                    false => {
+                        self.state = UiState::menu();
+                        if let UiState::Menu(page) = &mut self.state {
+                            page.show_and_return();
+                        }
+                    }
+                }
+            }
             _ => (),
         }
     }
@@ -187,8 +233,7 @@ impl UiState {
     }
 
     pub fn tx_blind_request() -> Self {
-        // TODO
-        Self::TxBlindRequest(())
+        Self::TxBlindRequest(TxBlindRequest::new())
     }
 
     #[cfg(feature = "summary")]
