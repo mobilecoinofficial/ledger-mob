@@ -90,7 +90,10 @@ extern "C" fn sample_main() {
     #[cfg(feature = "debug")]
     ledger_device_sdk::log::debug!(
         "Start app: {} v{} (git: {}, build: {})",
-        APP_NAME, APP_VERSION, GIT_VERSION, BUILD_TIME
+        APP_NAME,
+        APP_VERSION,
+        GIT_VERSION,
+        BUILD_TIME
     );
 
     // non-nvm fog ID global must be pre-initialised
@@ -207,6 +210,7 @@ extern "C" fn sample_main() {
         }
 
         // Redraw UI on state change
+        // NOTE: on touch devices this can also mutate the engine state
         if redraw {
             ui.render(&mut *engine);
             redraw = false;

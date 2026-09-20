@@ -308,7 +308,7 @@ impl Ui {
 
     /// Render the [Ui] using the current state
     #[inline(never)]
-    pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &Engine<D, R>) {
+    pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &mut Engine<D, R>) {
         match &mut self.state {
             UiState::Menu => self.menu.render(engine),
             UiState::Address(a) => a.render(engine),

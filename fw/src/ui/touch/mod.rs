@@ -1,6 +1,6 @@
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_device_sdk::{nbgl::{NbglHomeAndSettings}, screen::sdk_screen_clear};
+use ledger_device_sdk::{nbgl::NbglHomeAndSettings, screen::sdk_screen_clear};
 
 use ledger_mob_core::engine::{Driver, Engine};
 

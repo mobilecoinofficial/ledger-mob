@@ -191,9 +191,11 @@ impl<T: Device + Send> DeviceHandle<T> {
                 Ok(info) if info.flags.contains(AppFlags::UNLOCKED) => break,
                 // NOTE: for some reason the actual hardware can respond with an empty response
                 // here which is not an error and does not occur in the emulator.
-                Ok(_) | Err(Error::Transport(LedgerError::Timeout)) | Err(Error::Transport(LedgerError::EmptyResponse))=> {
+                Ok(_)
+                | Err(Error::Transport(LedgerError::Timeout))
+                | Err(Error::Transport(LedgerError::EmptyResponse)) => {
                     debug!("Awaiting approval");
-                },
+                }
                 // XXX: do we care about specific status codes here?
                 // XXX: add this status code to the upstream?
                 Err(Error::Transport(LedgerError::UnknownStatus(a, b))) => {
@@ -207,12 +209,11 @@ impl<T: Device + Send> DeviceHandle<T> {
 
             // Handle timeouts / wait for approval
             if i == self.user_timeout_s - 1 {
-                return Err(Error::UserTimeout)
+                return Err(Error::UserTimeout);
             } else {
                 debug!("Waiting for user approval: {}s", i);
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             }
-
         }
 
         // Re-issue request
