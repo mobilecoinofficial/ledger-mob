@@ -16,7 +16,21 @@ use ledger_lib::{
 };
 use ledger_sim::*;
 
+pub mod ui;
+pub mod ui_nano;
+pub use ui::{ui_for, ui_for_with_screenshots, UiDriver};
+
 const CONNECT_TIMEOUT_S: usize = 10;
+
+/// Resolve the device [Model] under test from the `MODEL` environment
+/// variable, defaulting to the nano S plus
+pub fn model() -> Model {
+    match std::env::var("MODEL").map(|v| Model::from_str(&v)) {
+        Ok(Ok(m)) => m,
+        Ok(Err(_e)) => panic!("Invalid MODEL"),
+        Err(_e) => Model::NanoSP,
+    }
+}
 
 // Setup speculos instance and TCP connector with an optional seed
 pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, LedgerHandle) {
@@ -45,11 +59,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
     let apdu_port = pick_unused_port().unwrap();
 
     // Determine model
-    let model = match std::env::var("MODEL").map(|v| Model::from_str(&v)) {
-        Ok(Ok(m)) => m,
-        Ok(Err(_e)) => panic!("Invalid MODEL"),
-        Err(_e) => Model::NanoSP,
-    };
+    let model = model();
 
     // Fetch simulator mode
     let driver_mode = match std::env::var("DRIVER_MODE").map(|v| DriverMode::from_str(&v)) {
@@ -63,7 +73,11 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
     let api_level = match model {
         Model::NanoSP => "26".to_string(),
         Model::NanoX => "26".to_string(),
-        Model::NanoS => panic!("unsupported model"),
+        // Touch devices are not yet covered by the simulator tests, see
+        // `helpers::ui` for the state of the UI drivers
+        Model::NanoS | Model::Stax | Model::Flex | Model::NanoGen5 => {
+            panic!("unsupported model: {model}")
+        }
     };
 
     println!("Using model: {model} ({driver_mode} driver)");
@@ -75,8 +89,10 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
         seed,
         model,
         api_level: Some(api_level),
+        // NOTE: speculos defaults to the QT display, which has no X server to
+        // connect to under test and takes the simulator down with it.
+        display: Some(Display::Headless),
         //trace: true,
-        //display: Display::Headless,
         ..Default::default()
     };
 
@@ -129,7 +145,9 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
         model: match model {
             Model::NanoSP => LedgerModel::NanoSPlus,
             Model::NanoX => LedgerModel::NanoX,
-            Model::NanoS => panic!("unsupported model"),
+            Model::NanoS | Model::Stax | Model::Flex | Model::NanoGen5 => {
+                panic!("unsupported model: {model}")
+            }
         },
         conn: ConnInfo::Tcp(TcpInfo {
             addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
@@ -178,40 +196,33 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
 /// Run unlock UI where required for tests
 #[allow(unused)]
 pub async fn approve_wallet_sync(h: &GenericHandle) {
-    debug!("UI: Unlock");
-
-    let buttons = &[
-        // Right button to move from info to allow
-        Button::Right,
-        // Both buttons to select allow
-        Button::Both,
-    ];
-
-    for b in buttons {
-        h.button(*b, Action::PressAndRelease).await.unwrap();
-    }
+    ui_for(model(), h)
+        .approve_sync()
+        .await
+        .expect("wallet sync approval failed");
 }
 
-/// Run transaction approval UI where required for tests
-// TODO: this will change with TxSummary support
+/// Run transaction approval UI where required for tests.
+///
+/// This walks the approval pages until the approve page is displayed, so it
+/// covers both the blind and summary flows and transactions with differing
+/// output and total counts.
 #[allow(unused)]
-pub async fn approve_tx_blind(h: &GenericHandle) {
-    debug!("UI: Approve");
+pub async fn approve_tx(h: &GenericHandle) {
+    ui_for(model(), h)
+        .approve_tx()
+        .await
+        .expect("transaction approval failed");
+}
 
-    // TODO: we could pull events / screenshots to check we're in the right place?
+/// [approve_tx], writing a screenshot of each page visited to
+/// `../target/ui/<name>.<n>.png`
+#[allow(unused)]
+pub async fn approve_tx_capture(h: &GenericHandle, name: &str) {
+    let prefix = PathBuf::from("../target/ui").join(name);
 
-    let buttons = &[
-        // Right button to move to warning screen
-        Button::Right,
-        // Right button to move to hash screen
-        Button::Right,
-        // Right button to move to allow screen
-        Button::Right,
-        // Both buttons to select allow
-        Button::Both,
-    ];
-
-    for b in buttons {
-        h.button(*b, Action::PressAndRelease).await.unwrap();
-    }
+    ui_for_with_screenshots(model(), h, prefix)
+        .approve_tx()
+        .await
+        .expect("transaction approval failed");
 }
