@@ -13,6 +13,24 @@ ifdef MNEMONIC
 	SPECULOS_ARGS+=--seed "$(MNEMONIC)"
 endif
 
+# Supported devices, split by UI stack (BAGL buttons vs NBGL touch)
+NANO_DEVICES=nanosplus nanox
+TOUCH_DEVICES=stax flex apex_p
+DEVICES=$(NANO_DEVICES) $(TOUCH_DEVICES)
+
+# Devices that can be side-loaded (it is not possible to sideload onto the nanox)
+LOADABLE_DEVICES=nanosplus $(TOUCH_DEVICES)
+
+# Speculos model names, which differ from the cargo target name for the nanosplus
+SPECULOS_MODEL_nanosplus=nanosp
+SPECULOS_MODEL_nanox=nanox
+SPECULOS_MODEL_stax=stax
+SPECULOS_MODEL_flex=flex
+SPECULOS_MODEL_apex_p=apex_p
+
+# Touch devices need a VNC port to be interactive under speculos
+SPECULOS_TOUCH_ARGS=--vnc-port 41000 --vnc-password abc123
+
 all: fw lib
 
 # Build all firmware
@@ -38,36 +56,21 @@ nanox-test: nanox
 docs:
 	cargo doc --no-deps --workspace
 
-# Build nanosplus firmware
-nanosplus: 
-	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build nanosplus
+# Build firmware for a given device
+$(DEVICES):
+	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build $@
 
-# Build nanox firmware
-nanox:
-	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build nanox
+# Run nano firmware under speculos
+$(addsuffix -run,$(NANO_DEVICES)): %-run:
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model $(SPECULOS_MODEL_$*) --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/$*/release/ledger-mob-fw
 
-# Build stax firmware
-stax:
-	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build stax
+# Run touch firmware under speculos
+$(addsuffix -run,$(TOUCH_DEVICES)): %-run:
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 -p41000:41000 $(SPECULOS_CONTAINER) --model $(SPECULOS_MODEL_$*) --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_TOUCH_ARGS) $(SPECULOS_ARGS) /src/fw/target/$*/release/ledger-mob-fw
 
-# Run nanosplus firmware under speculos
-nanosplus-run:
-	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanosp --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/nanosplus/release/ledger-mob-fw
-
-# Run nanox firmware under speculos
-nanox-run:
-	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanox --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/nanox/release/ledger-mob-fw
-
-# Run stax firmware under speculos
-stax-run:
-	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 -p41000:41000 $(SPECULOS_CONTAINER) --model stax --display headless --apdu-port 1237 --api-port 5000 --vnc-port 41000 --vnc-password abc123 $(SPECULOS_ARGS) /src/fw/target/stax/release/ledger-mob-fw
-
-# Load firmware onto device
-nanosplus-load: nanosplus
-	cd fw && cargo ledger --use-prebuilt target/nanosplus/release/ledger-mob-fw build nanosplus --load
-
-stax-load:
-	cd fw && cargo ledger --use-prebuilt target/stax/release/ledger-mob-fw build stax --load
+# Build firmware and load it onto an attached device
+$(addsuffix -load,$(LOADABLE_DEVICES)): %-load:
+	cd fw && cargo ledger build $* --load
 
 # Convert ELF to HEX for loading
 fw/target/%/release/ledger-mob-fw.hex: %
@@ -78,8 +81,7 @@ package-%: % fw/target/%/release/ledger-mob-fw.hex
 	mkdir -p target/ledger-mob-fw-$<
 
 	cp fw/target/$</release/ledger-mob-fw.hex target/ledger-mob-fw-$<
-	cp fw/target/$</release/app_$<.json target/ledger-mob-fw-$<
-	cp fw/target/$</release/mob14x14i.gif target/ledger-mob-fw-$<
+	cp fw/target/$</release/app_icon.gif target/ledger-mob-fw-$<
 
 	tar cvf ledger-mob-fw-$<.tgz \
 		-C target \
@@ -131,4 +133,7 @@ miri:
 clean:
 	rm -rf target fw/target
 
-.PHONY: fw lib core nanosplus nanox fmt clippy clean docs
+# NOTE: `package-%` is deliberately absent -- make skips implicit/pattern rule
+# matching for phony targets, which would break it.
+.PHONY: fw lib core fmt clippy clean docs $(DEVICES) \
+	$(addsuffix -run,$(DEVICES)) $(addsuffix -load,$(LOADABLE_DEVICES))
