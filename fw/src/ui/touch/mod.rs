@@ -9,6 +9,9 @@ use crate::{
     APP_VERSION,
 };
 
+mod message;
+pub use message::Message;
+
 mod sync_request;
 pub use sync_request::SyncRequest;
 
@@ -40,7 +43,7 @@ pub enum UiState {
     Progress,
 
     /// Display a message
-    Message(&'static str),
+    Message(Message),
 }
 
 impl core::fmt::Debug for UiState {
@@ -120,6 +123,25 @@ impl Ui {
                     page.show_and_return();
                 }
             }
+            UiState::Message(m) if self.last_state != UiStateKind::Message => {
+                self.last_state = UiStateKind::Message;
+                #[cfg(feature = "debug")]
+                ledger_device_sdk::log::debug!("Rendering Message UI");
+
+                // Show the status page (blocks for the ~3s page timeout)
+                m.show_blocking();
+
+                // Reset the engine now the message has been displayed.
+                // NOTE: this is handled by the message timeout in `main.rs` on nano
+                // devices, however, here we return to the menu immediately so the
+                // tick-based reset would never fire.
+                engine.reset();
+
+                self.state = UiState::menu();
+                if let UiState::Menu(page) = &mut self.state {
+                    page.show_and_return();
+                }
+            }
             _ => (),
         }
     }
@@ -170,8 +192,8 @@ impl UiState {
         matches!(self, UiState::IdentRequest(..))
     }
 
-    pub fn message(msg: &'static str) -> Self {
-        Self::Message(msg)
+    pub fn message(msg: &'static str, success: bool) -> Self {
+        Self::Message(Message::new(msg, success))
     }
 
     pub fn is_message(&self) -> bool {

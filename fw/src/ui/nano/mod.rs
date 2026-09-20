@@ -121,8 +121,8 @@ impl UiState {
     }
 
     /// Create a new `Message` variant
-    pub fn message(value: &'static str) -> Self {
-        Self::Message(Message::new(value))
+    pub fn message(value: &'static str, success: bool) -> Self {
+        Self::Message(Message::new(value, success))
     }
 
     pub fn is_message(&self) -> bool {

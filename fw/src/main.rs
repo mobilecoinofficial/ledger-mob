@@ -340,14 +340,14 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         #[cfg(feature = "ident")]
         State::Ident(IdentState::Approved) => {
             if !ui.state.is_message() {
-                ui.state = UiState::message("challenge approved");
+                ui.state = UiState::message("challenge approved", true);
                 render = true;
             }
         }
         #[cfg(feature = "ident")]
         State::Ident(IdentState::Denied) => {
             if !ui.state.is_message() {
-                ui.state = UiState::message("challenge rejected");
+                ui.state = UiState::message("challenge rejected", false);
                 render = true;
             }
         }
@@ -380,13 +380,13 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
         // Set complete message when transaction is complete
         State::Complete if !ui.state.is_message() => {
-            ui.state = UiState::message("Transaction Complete");
+            ui.state = UiState::message("Transaction Complete", true);
             render = true;
         }
 
         // Set cancelled message when transaction is aborted
         State::Deny if !ui.state.is_message() => {
-            ui.state = UiState::message("Transaction Cancelled");
+            ui.state = UiState::message("Transaction Cancelled", false);
             render = true;
         }
 
