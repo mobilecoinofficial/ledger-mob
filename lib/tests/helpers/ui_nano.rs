@@ -2,7 +2,7 @@
 //!
 //! [1]: https://developers.ledger.com/docs/device-app/develop/ui/bagl
 
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -10,13 +10,7 @@ use tracing::debug;
 
 use ledger_sim::{Action, Button, EventFilter, GenericHandle, Handle};
 
-use super::ui::{Screen, UiDriver};
-
-/// Timeout awaiting an expected screen
-const SCREEN_TIMEOUT: Duration = Duration::from_secs(5);
-
-/// Interval between screen polls
-const POLL_INTERVAL: Duration = Duration::from_millis(100);
+use super::ui::{capture, Screen, UiDriver, POLL_INTERVAL, SCREEN_TIMEOUT};
 
 /// Upper bound on the pages traversed while navigating an approval flow.
 ///
@@ -53,6 +47,17 @@ pub const TX_APPROVE: &str = "Approve Transaction?";
 #[allow(unused)]
 pub const TX_REJECT: &str = "Reject Transaction?";
 
+/// Text matched on the identity approval page.
+///
+/// The page renders "Sign challenge?"; the leading capital is dropped by the
+/// same mangling noted above, so this matches either spelling without also
+/// matching the adjacent "Reject challenge?" page.
+pub const IDENT_APPROVE: &str = "ign challenge";
+
+/// Text matched on the identity rejection page
+#[allow(unused)]
+pub const IDENT_REJECT: &str = "Reject challenge?";
+
 /// Button-driven ([BAGL][1]) [UiDriver] for the nano devices.
 ///
 /// Approval flows on these devices are a list of pages walked with the right
@@ -68,18 +73,10 @@ pub struct NanoUi<'a> {
 }
 
 impl<'a> NanoUi<'a> {
-    /// Create a [NanoUi] driver for the provided simulator handle
-    pub fn new(h: &'a GenericHandle) -> Self {
-        Self {
-            h,
-            screenshots: None,
-        }
-    }
-
-    /// Write a screenshot of each page visited to `<prefix>.<n>.png`
-    pub fn with_screenshots(mut self, prefix: PathBuf) -> Self {
-        self.screenshots = Some(prefix);
-        self
+    /// Create a [NanoUi] driver for the provided simulator handle, optionally
+    /// writing a screenshot of each page visited to `<prefix>.<n>.png`
+    pub fn new(h: &'a GenericHandle, screenshots: Option<PathBuf>) -> Self {
+        Self { h, screenshots }
     }
 
     /// Fetch the text currently displayed, waiting for a non-empty screen.
@@ -135,7 +132,7 @@ impl<'a> NanoUi<'a> {
         for _ in 0..MAX_PAGES {
             debug!("UI: {current:?}");
 
-            self.capture(visited.len()).await?;
+            capture(self.h, &self.screenshots, visited.len()).await?;
             visited.push(current.clone());
 
             if current.iter().any(|l| l.contains(text)) {
@@ -175,25 +172,6 @@ impl<'a> NanoUi<'a> {
 
         Ok(visited)
     }
-
-    /// Write a screenshot of the current page where screenshots are enabled
-    async fn capture(&self, n: usize) -> anyhow::Result<()> {
-        let prefix = match &self.screenshots {
-            Some(v) => v,
-            None => return Ok(()),
-        };
-
-        if let Some(dir) = prefix.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-
-        let name = prefix.file_name().and_then(|v| v.to_str()).unwrap_or("ui");
-        let img = self.h.screenshot().await?;
-
-        img.save(prefix.with_file_name(format!("{name}.{n}.png")))?;
-
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -220,5 +198,11 @@ impl UiDriver for NanoUi<'_> {
         debug!("UI: reject transaction");
 
         self.navigate_and_select(TX_REJECT).await
+    }
+
+    async fn approve_ident(&self) -> anyhow::Result<Vec<Screen>> {
+        debug!("UI: approve ident");
+
+        self.navigate_and_select(IDENT_APPROVE).await
     }
 }

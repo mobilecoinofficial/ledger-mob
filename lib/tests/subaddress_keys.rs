@@ -21,10 +21,10 @@ async fn mob_default_subaddress() -> anyhow::Result<()> {
     info!("seed: '{}'", STANDARD.encode(&seed));
 
     // Setup simulator
-    let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
+    let (d, s, t, m) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Run default subaddress test
-    subaddress::test(t, || approve_wallet_sync(&s), mnemonic, 16).await?;
+    subaddress::test(t, || approve_wallet_sync(m, &s), mnemonic, 16).await?;
 
     // Exit simulator
     d.exit(s).await?;

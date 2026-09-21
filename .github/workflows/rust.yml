@@ -323,13 +323,24 @@ jobs:
   test-sim:
     runs-on: ubuntu-latest
     needs: [ build-tests, build-fw ]
+    continue-on-error: ${{ matrix.experimental }}
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: nanox
+            experimental: false
           - platform: nanosplus
+            experimental: false
+          # Touch devices only implement the wallet sync approval so far, the
+          # transaction and identity tests skip themselves on these models
+          - platform: stax
+            experimental: true
+          - platform: flex
+            experimental: true
+          - platform: apex_p
+            experimental: true
 
     steps:
     - uses: actions/checkout@v7
