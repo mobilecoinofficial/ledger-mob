@@ -18,7 +18,7 @@ async fn memo_hmac() -> anyhow::Result<()> {
     info!("using mnemonic: '{}'", mnemonic.phrase());
 
     // Setup simulator
-    let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
+    let (d, s, t, _m) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Run memo signing test
     memo::hmac(t, mnemonic, 11).await?;

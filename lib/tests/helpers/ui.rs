@@ -1,21 +1,24 @@
 //! UI drivers for simulator integration tests.
 //!
 //! Tests drive the on-device approval flows through the speculos HTTP API.
-//! Rather than replaying a fixed sequence of button presses, drivers read the
-//! displayed text back via the `/events` API and navigate until the expected
-//! screen is shown, so a test fails where the UI diverges instead of silently
-//! pressing its way through the wrong pages.
 //!
-//! Only the button-driven (BAGL) nano devices are implemented, see
-//! [NanoUi][super::ui_nano::NanoUi].
+//! Two UI stacks are implemented:
+//! - [NanoUi][super::ui_nano::NanoUi] for button driven (BAGL) nano devices
+//! - [TouchUi][super::ui_touch::TouchUi] for touchscreen (NBGL) devices.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use async_trait::async_trait;
 
-use ledger_sim::{GenericHandle, Model};
+use ledger_sim::{GenericHandle, Handle, Model};
 
-use super::ui_nano::NanoUi;
+use super::{ui_nano::NanoUi, ui_touch::TouchUi};
+
+/// Timeout awaiting an expected screen
+pub const SCREEN_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Interval between screen polls
+pub const POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 /// The text displayed on one screen, one entry per rendered string
 pub type Screen = Vec<String>;
@@ -39,29 +42,70 @@ pub trait UiDriver {
 
     /// Reject a transaction request, returning the screens visited
     async fn reject_tx(&self) -> anyhow::Result<Vec<Screen>>;
+
+    /// Approve an identity (challenge signing) request, returning the screens
+    /// visited
+    async fn approve_ident(&self) -> anyhow::Result<Vec<Screen>>;
 }
 
-/// Fetch the [UiDriver] for a given simulator [Model]
-pub fn ui_for(model: Model, h: &GenericHandle) -> Box<dyn UiDriver + Send + Sync + '_> {
-    match model {
-        Model::NanoS | Model::NanoSP | Model::NanoX => Box::new(NanoUi::new(h)),
-        // Touch (NBGL) approval pages are not yet implemented in the firmware,
-        // see `fw/src/ui/touch`
-        m => unimplemented!("no UI driver for model: {m}"),
+/// Extension trait for the [Model] type to provide test UI helpers.
+pub trait ModelUiExt {
+    fn is_touch(&self) -> bool;
+
+    fn ui_for<'a>(&self, h: &'a GenericHandle) -> Box<dyn UiDriver + Send + Sync + 'a>;
+
+    fn ui_for_with_screenshots<'a>(
+        &self,
+        h: &'a GenericHandle,
+        prefix: PathBuf,
+    ) -> Box<dyn UiDriver + Send + Sync + 'a>;
+}
+
+impl ModelUiExt for Model {
+    fn is_touch(&self) -> bool {
+        matches!(self, Model::Stax | Model::Flex | Model::NanoGen5)
+    }
+
+    fn ui_for<'a>(&self, h: &'a GenericHandle) -> Box<dyn UiDriver + Send + Sync + 'a> {
+        ui_inner(*self, h, None)
+    }
+
+    fn ui_for_with_screenshots<'a>(
+        &self,
+        h: &'a GenericHandle,
+        prefix: PathBuf,
+    ) -> Box<dyn UiDriver + Send + Sync + 'a> {
+        ui_inner(*self, h, Some(prefix))
     }
 }
 
-/// Fetch the [UiDriver] for a given simulator [Model], writing a screenshot of
-/// each page visited to `<prefix>.<n>.png`
-pub fn ui_for_with_screenshots(
+fn ui_inner<'a>(
     model: Model,
-    h: &GenericHandle,
-    prefix: PathBuf,
-) -> Box<dyn UiDriver + Send + Sync + '_> {
+    h: &'a GenericHandle,
+    prefix: Option<PathBuf>,
+) -> Box<dyn UiDriver + Send + Sync + 'a> {
     match model {
-        Model::NanoS | Model::NanoSP | Model::NanoX => {
-            Box::new(NanoUi::new(h).with_screenshots(prefix))
-        }
-        m => unimplemented!("no UI driver for model: {m}"),
+        Model::NanoS | Model::NanoSP | Model::NanoX => Box::new(NanoUi::new(h, prefix)),
+        Model::Stax | Model::Flex | Model::NanoGen5 => Box::new(TouchUi::new(model, h, prefix)),
     }
+}
+
+/// Write a screenshot of the current page to `<prefix>.<n>.png` where a prefix
+/// is configured, shared by the [UiDriver] implementations.
+pub async fn capture(h: &GenericHandle, prefix: &Option<PathBuf>, n: usize) -> anyhow::Result<()> {
+    let prefix = match prefix {
+        Some(v) => v,
+        None => return Ok(()),
+    };
+
+    if let Some(dir) = prefix.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+
+    let name = prefix.file_name().and_then(|v| v.to_str()).unwrap_or("ui");
+    let img = h.screenshot().await?;
+
+    img.save(prefix.with_file_name(format!("{name}.{n}.png")))?;
+
+    Ok(())
 }

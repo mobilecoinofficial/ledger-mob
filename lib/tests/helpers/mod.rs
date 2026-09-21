@@ -18,7 +18,8 @@ use ledger_sim::*;
 
 pub mod ui;
 pub mod ui_nano;
-pub use ui::{ui_for, ui_for_with_screenshots, UiDriver};
+pub mod ui_touch;
+pub use ui::{ModelUiExt, UiDriver};
 
 const CONNECT_TIMEOUT_S: usize = 10;
 
@@ -33,7 +34,7 @@ pub fn model() -> Model {
 }
 
 // Setup speculos instance and TCP connector with an optional seed
-pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, LedgerHandle) {
+pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, LedgerHandle, Model) {
     // Setup logging
     let log_level = match std::env::var("LOG_LEVEL").map(|v| LevelFilter::from_str(&v)) {
         Ok(Ok(l)) => l,
@@ -71,13 +72,11 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
     // Select API level
     // TODO: find a canonical (self-updating?) source for these
     let api_level = match model {
-        Model::NanoSP => "26".to_string(),
-        Model::NanoX => "26".to_string(),
-        // Touch devices are not yet covered by the simulator tests, see
-        // `helpers::ui` for the state of the UI drivers
-        Model::NanoS | Model::Stax | Model::Flex | Model::NanoGen5 => {
-            panic!("unsupported model: {model}")
-        }
+        Model::NanoSP | Model::NanoX => Some("26".to_string()),
+        // Touch devices carry their API level in the app ELF, let speculos
+        // read it from there rather than tracking SDK versions per model
+        Model::Stax | Model::Flex | Model::NanoGen5 => None,
+        Model::NanoS => panic!("unsupported model: {model}"),
     };
 
     println!("Using model: {model} ({driver_mode} driver)");
@@ -88,7 +87,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
         apdu_port: Some(apdu_port),
         seed,
         model,
-        api_level: Some(api_level),
+        api_level,
         // NOTE: speculos defaults to the QT display, which has no X server to
         // connect to under test and takes the simulator down with it.
         display: Some(Display::Headless),
@@ -102,13 +101,14 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
         .map(PathBuf::from)
         .unwrap_or(PathBuf::from("../fw"));
 
-    let app_path = match (nanoapp_path, model) {
+    let app_path = match nanoapp_path {
         // If we have a nanoapp env argument, use this directly
-        (Ok(v), _) => v,
-        // Otherwise look for target dir under NANOAPP_ROOT
-        (_, Model::NanoSP) => nanoapp_root.join("target/nanosplus/release/ledger-mob-fw"),
-        (_, Model::NanoX) => nanoapp_root.join("target/nanox/release/ledger-mob-fw"),
-        _ => unimplemented!("Could not determine nanoapp file"),
+        Ok(v) => v,
+        // Otherwise look for the build target dir under NANOAPP_ROOT
+        Err(_) => nanoapp_root.join(format!(
+            "target/{}/release/ledger-mob-fw",
+            model.target_name()
+        )),
     };
 
     // Check app exists
@@ -145,9 +145,10 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
         model: match model {
             Model::NanoSP => LedgerModel::NanoSPlus,
             Model::NanoX => LedgerModel::NanoX,
-            Model::NanoS | Model::Stax | Model::Flex | Model::NanoGen5 => {
-                panic!("unsupported model: {model}")
-            }
+            Model::Stax => LedgerModel::Stax,
+            Model::Flex => LedgerModel::Flex,
+            Model::NanoGen5 => LedgerModel::NanoGen5,
+            Model::NanoS => panic!("unsupported model: {model}"),
         },
         conn: ConnInfo::Tcp(TcpInfo {
             addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
@@ -179,24 +180,28 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
 
     let device = device.unwrap();
 
-    // Press _something_ to dismiss `Review Pending` message
-    for i in 0..CONNECT_TIMEOUT_S {
-        match s.button(Button::Right, Action::PressAndRelease).await {
-            Ok(_) => break,
-            Err(_) if i < CONNECT_TIMEOUT_S - 1 => (),
-            Err(e) => panic!("Failed to exit review pending state {e:?}"),
-        }
+    // Press _something_ to dismiss `Review Pending` message.
+    // Touch devices have no pending review screen and ignore button requests.
+    if !model.is_touch() {
+        for i in 0..CONNECT_TIMEOUT_S {
+            match s.button(Button::Right, Action::PressAndRelease).await {
+                Ok(_) => break,
+                Err(_) if i < CONNECT_TIMEOUT_S - 1 => (),
+                Err(e) => panic!("Failed to exit review pending state {e:?}"),
+            }
 
-        tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
     }
 
-    (driver, s, device)
+    (driver, s, device, model)
 }
 
 /// Run unlock UI where required for tests
 #[allow(unused)]
-pub async fn approve_wallet_sync(h: &GenericHandle) {
-    ui_for(model(), h)
+pub async fn approve_wallet_sync(model: Model, h: &GenericHandle) {
+    model
+        .ui_for(h)
         .approve_sync()
         .await
         .expect("wallet sync approval failed");
@@ -208,20 +213,32 @@ pub async fn approve_wallet_sync(h: &GenericHandle) {
 /// covers both the blind and summary flows and transactions with differing
 /// output and total counts.
 #[allow(unused)]
-pub async fn approve_tx(h: &GenericHandle) {
-    ui_for(model(), h)
+pub async fn approve_tx(model: Model, h: &GenericHandle) {
+    model
+        .ui_for(h)
         .approve_tx()
         .await
         .expect("transaction approval failed");
 }
 
+/// Run identity approval UI where required for tests
+#[allow(unused)]
+pub async fn approve_ident(model: Model, h: &GenericHandle) {
+    model
+        .ui_for(h)
+        .approve_ident()
+        .await
+        .expect("identity approval failed");
+}
+
 /// [approve_tx], writing a screenshot of each page visited to
 /// `../target/ui/<name>.<n>.png`
 #[allow(unused)]
-pub async fn approve_tx_capture(h: &GenericHandle, name: &str) {
+pub async fn approve_tx_capture(model: Model, h: &GenericHandle, name: &str) {
     let prefix = PathBuf::from("../target/ui").join(name);
 
-    ui_for_with_screenshots(model(), h, prefix)
+    model
+        .ui_for_with_screenshots(h, prefix)
         .approve_tx()
         .await
         .expect("transaction approval failed");
