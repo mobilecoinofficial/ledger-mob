@@ -9,6 +9,7 @@ use std::{future::Future, time::Duration};
 use bip39::{Language, Mnemonic, Seed};
 use ed25519_dalek::{Signature, VerifyingKey};
 use ledger_lib::Device;
+use ledger_mob::DeviceHandle;
 
 use ledger_mob_apdu::{
     ident::{IdentGetReq, IdentResp, IdentSignReq},
@@ -74,8 +75,8 @@ pub const VECTORS: &[Vector] = &[
     },
 ];
 
-/// Test identity requests
-pub async fn test<T, F>(mut t: T, approve: impl Fn() -> F, v: &Vector) -> anyhow::Result<()>
+/// Test (approved) identity requests
+pub async fn test_approve<T, F>(mut t: T, approve: impl Fn() -> F, v: &Vector) -> anyhow::Result<()>
 where
     T: Device,
     F: Future<Output = ()>,
@@ -125,6 +126,77 @@ where
     let public_key = VerifyingKey::from_bytes(&resp.public_key).unwrap();
     public_key
         .verify_strict(&challenge, &Signature::from(resp.signature))
+        .unwrap();
+
+    Ok(())
+}
+
+/// Test rejecting identity requests
+pub async fn test_reject<T, F>(mut t: T, reject: impl Fn() -> F, v: &Vector) -> anyhow::Result<()>
+where
+    T: Device,
+    F: Future<Output = ()>,
+{
+    let mut buff = [0u8; 256];
+
+    // Issue identity request
+    let challenge: [u8; 32] = rand::random();
+    let req = IdentSignReq::new(v.index, v.uri, &challenge);
+
+    let resp = t
+        .request::<TxInfo>(req, &mut buff, Duration::from_secs(1))
+        .await
+        .expect("TxInfo APDU exchange failed");
+
+    // Check pending state
+    assert_eq!(resp.state, TxState::IdentPending, "expected ident pending");
+
+    // Execute rejecter
+    reject().await;
+
+    // Check denied state
+    let resp = t
+        .request::<TxInfo>(TxInfoReq, &mut buff, Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(resp.state, TxState::IdentDenied, "expected ident denied");
+
+    // Check no identity response is available following rejection
+    let resp = t
+        .request::<IdentResp>(IdentGetReq, &mut buff, Duration::from_secs(1))
+        .await;
+    assert!(
+        resp.is_err(),
+        "expected no identity response after rejection"
+    );
+
+    Ok(())
+}
+
+/// Test identity requests via [DeviceHandle::identity], approving on the
+/// device while the handle polls for the outcome
+pub async fn test_handle<T, F>(t: T, approve: impl Fn() -> F, v: &Vector) -> anyhow::Result<()>
+where
+    T: Device + Send,
+    F: Future<Output = ()>,
+{
+    let mut d = DeviceHandle::from(t);
+
+    // Issue identity request, approving concurrently
+    let challenge: [u8; 32] = rand::random();
+    let (resp, _) = tokio::join!(d.identity(v.index, v.uri, &challenge), approve());
+    let (public_key, signature) = resp?;
+
+    // Check response public key matches expectation
+    assert_eq!(
+        public_key.to_bytes(),
+        v.public_key_bytes(),
+        "public key derivation mismatch"
+    );
+
+    // Check challenge signature
+    public_key
+        .verify_strict(&challenge, &Signature::from(signature))
         .unwrap();
 
     Ok(())

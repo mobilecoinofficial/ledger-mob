@@ -87,6 +87,7 @@ pub enum State {
     Init,
 
     /// Identity request pending approval
+    #[cfg(feature = "ident")]
     Ident(IdentState),
 
     /// Transaction init, building memos

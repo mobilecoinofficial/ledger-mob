@@ -79,7 +79,7 @@ extern "C" fn sample_main() {
 
     let mut ticks = 0u32;
     let mut lock_timeout = LOCK_TIMEOUT_S * TICKS_PER_S;
-    let mut message_timeout = 0;
+    let mut message_timeout = None;
 
     let mut redraw = true;
 
@@ -144,8 +144,6 @@ extern "C" fn sample_main() {
         // Wait for next event
         let evt = comm.next_event::<ApduHeader>();
 
-        let last_state_is_message = ui.state.is_message();
-
         // Handle input events and update UI state
         match &evt {
             // Handle button presses
@@ -183,7 +181,9 @@ extern "C" fn sample_main() {
                 ticks = ticks.wrapping_add(1);
 
                 // Return to menu state after message timeout
-                if ui.state.is_message() && ticks >= message_timeout {
+                // `None` signifies that the timer is not armed.
+                if ui.state.is_message() && message_timeout.is_some_and(|timeout| ticks == timeout)
+                {
                     // Reset to menu state
                     ui.state = UiState::menu();
                     redraw = true;
@@ -207,9 +207,18 @@ extern "C" fn sample_main() {
             }
         };
 
-        // Set message timer on state entry
-        if !last_state_is_message && ui.state.is_message() {
-            message_timeout = ticks.wrapping_add(MESSAGE_TIMEOUT_S * TICKS_PER_S);
+        // Arm the message timer if it's disarmed and we have entered the message state,
+        // disarm it in any other state.
+        // NOTE: this check is because on touch devices the render function can change states.
+        // NOTE: if a new message was entered from directly from the message state
+        // this would not be reset, but, we never do that.
+        match ui.state.is_message() {
+            true if message_timeout.is_none() => {
+                // `.max(1)` avoids a wrapped deadline colliding with the unarmed state
+                message_timeout = Some(ticks.wrapping_add(MESSAGE_TIMEOUT_S * TICKS_PER_S).max(1));
+            }
+            false => message_timeout = None,
+            _ => (),
         }
 
         // Redraw UI on state change
