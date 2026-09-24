@@ -1,14 +1,13 @@
-use std::{path::PathBuf, time::Duration};
+use tracing::info;
 
-use tracing::{debug, info};
+use ledger_sim::Driver;
 
 use bip39::{Language, Mnemonic, Seed};
 
 use ledger_mob_tests::transaction::{test, TransactionExpectation, TRANSACTIONS};
-use ledger_sim::*;
 
 mod helpers;
-use helpers::setup;
+use helpers::{approve_tx_capture, setup};
 
 async fn tx<'a>(v: &TransactionExpectation<'a>, n: usize) -> anyhow::Result<()> {
     // Generate mnemonic
@@ -21,7 +20,8 @@ async fn tx<'a>(v: &TransactionExpectation<'a>, n: usize) -> anyhow::Result<()> 
     let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Run transaction signing test
-    test(t, || approve_tx(&s, n, BUTTONS_BLIND), v).await?;
+    let name = format!("tx-{n}");
+    test(t, || approve_tx_capture(&s, &name), v).await?;
 
     // Exit simulator
     d.exit(s).await?;
@@ -54,7 +54,7 @@ async fn tx3() -> anyhow::Result<()> {
     let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Run transaction signing test
-    test(t, || approve_tx(&s, 3, BUTTONS_SUMMARY), v).await?;
+    test(t, || approve_tx_capture(&s, "tx-3"), v).await?;
 
     // Exit simulator
     d.exit(s).await?;
@@ -77,66 +77,10 @@ async fn tx4() -> anyhow::Result<()> {
     let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Run transaction signing test
-    test(t, || approve_tx(&s, 3, BUTTONS_SUMMARY), v).await?;
+    test(t, || approve_tx_capture(&s, "tx-4"), v).await?;
 
     // Exit simulator
     d.exit(s).await?;
 
     Ok(())
-}
-
-const BUTTONS_BLIND: &[Button] = &[
-    // Right button to move to warning screen
-    Button::Right,
-    // Right button to move to hash screen
-    Button::Right,
-    // Right button to move to allow screen
-    Button::Right,
-    // Both buttons to select allow
-    Button::Both,
-];
-
-const BUTTONS_SUMMARY: &[Button] = &[
-    // Right button to show balance
-    Button::Right,
-    // Right button to show send
-    Button::Right,
-    // Right button to show fee
-    Button::Right,
-    // Right button to show allow
-    Button::Right,
-    // Both buttons to select allow
-    Button::Both,
-];
-
-/// Run transaction approval UI where required for tests
-// TODO: this will change with TxSummary support
-#[allow(unused)]
-pub async fn approve_tx(h: &GenericHandle, n: usize, buttons: &[Button]) {
-    debug!("UI: Approve");
-
-    // Setup output directory
-    let out_dir = PathBuf::from("../target/ui");
-    let _ = std::fs::create_dir_all(&out_dir);
-
-    let mut i = 0;
-
-    // Take initial screenshot
-    let img = h.screenshot().await.unwrap();
-    img.save(out_dir.join(format!("tx-{n}.{i}.png"))).unwrap();
-    i += 1;
-
-    for b in buttons {
-        // Apply button press
-        h.button(*b, Action::PressAndRelease).await.unwrap();
-
-        // Wait a moment
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
-        // Screenshot after each button press
-        let img = h.screenshot().await.unwrap();
-        img.save(out_dir.join(format!("tx-{n}.{i}.png"))).unwrap();
-
-        i += 1;
-    }
 }
