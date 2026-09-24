@@ -108,9 +108,8 @@ impl AddressView {
 
     /// Handle pending touch events
     pub fn handle_event(&mut self) -> AddressEvent {
-        let e = match self.page.take_event() {
-            Some(e) => e,
-            None => return AddressEvent::None,
+        let Some(e) = self.page.take_event() else {
+            return AddressEvent::None;
         };
 
         let index = match (e.token, e.index as usize) {
