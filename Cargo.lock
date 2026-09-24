@@ -2317,7 +2317,7 @@ checksum = "03087c2bad5e1034e8cace5926dec053fb3790248370865f5117a7d0213354c8"
 [[package]]
 name = "ledger-lib"
 version = "0.1.0"
-source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Feverything#24c2b74a9ffcf9dc4461b93fdbf0d2bf21ee592a"
+source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Feverything#29f7e9eb834cee2f49a4c1647209c56dfdbbecc7"
 dependencies = [
  "async-trait",
  "btleplug",
@@ -2516,7 +2516,7 @@ dependencies = [
 [[package]]
 name = "ledger-proto"
 version = "0.1.0"
-source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Feverything#24c2b74a9ffcf9dc4461b93fdbf0d2bf21ee592a"
+source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Feverything#29f7e9eb834cee2f49a4c1647209c56dfdbbecc7"
 dependencies = [
  "bitflags 2.13.2",
  "displaydoc",
@@ -2530,7 +2530,7 @@ dependencies = [
 [[package]]
 name = "ledger-sim"
 version = "0.1.0"
-source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Feverything#e88ed3344268bf92ce4e94ad00336f5a878a7b0a"
+source = "git+https://github.com/ryan-sentz/rust-ledger.git?branch=ryan%2Feverything#29f7e9eb834cee2f49a4c1647209c56dfdbbecc7"
 dependencies = [
  "anyhow",
  "async-trait",

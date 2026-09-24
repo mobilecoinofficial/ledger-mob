@@ -29,10 +29,10 @@ async fn mob_wallet_keys() -> anyhow::Result<()> {
     info!("seed: '{}'", STANDARD.encode(&seed));
 
     // Setup simulator
-    let (d, s, t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
+    let (d, s, t, m) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
     // Test wallet key generation
-    wallet::test(t, || approve_wallet_sync(&s), mnemonic).await?;
+    wallet::test(t, || approve_wallet_sync(m, &s), mnemonic).await?;
 
     // Exit simulator
     d.exit(s).await?;
@@ -112,7 +112,7 @@ async fn mob_mnemonic_derive(wallets: &[Wallet]) -> anyhow::Result<()> {
         info!("seed: '{}'", STANDARD.encode(&seed));
 
         // Setup simulator
-        let (d, s, mut t) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
+        let (d, s, mut t, m) = setup(Some(format!("hex:{}", hex::encode(&seed)))).await;
 
         // Fetch wallet keys from device
         let r = match get_account_keys(&mut t, w.account_index).await {
@@ -120,7 +120,7 @@ async fn mob_mnemonic_derive(wallets: &[Wallet]) -> anyhow::Result<()> {
             // App requires approval
             Err(_) => {
                 // Set approved
-                approve_wallet_sync(&s).await;
+                approve_wallet_sync(m, &s).await;
 
                 // Retry request (for some reason the simulator fails the first
                 // time this is re-requested, though the device does not..?)
