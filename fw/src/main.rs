@@ -163,6 +163,13 @@ extern "C" fn sample_main() {
             #[cfg(any(target_os = "stax", target_os = "flex", target_os = "apex_p"))]
             io::Event::TouchEvent => {
                 // TODO(ryan): do we need to do any touch event handling here?
+                // YES this is where we can handle state to update the UI
+                // (which is gonna need some cursed callback/state stuff)
+
+                ledger_device_sdk::log::debug!("Touch event!");
+                if ui.handle_touch(engine) {
+                    redraw = true;
+                }
 
                 // Update screen lock timeout on any touch event
                 lock_timeout = ticks.wrapping_add(LOCK_TIMEOUT_S * TICKS_PER_S);

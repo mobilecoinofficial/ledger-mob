@@ -56,7 +56,7 @@ rand_core = "0.6.4"
 rand = "0.8.5"
 serde = { version = "1.0.144", features = [ "derive" ] }
 toml = "0.5.9"
-futures = "0.3.28"
+futures = "0.3.34"
 
 bip32 = { version = "*", features = [ "bip39" ] }
 tiny-bip39 = "1.0"
