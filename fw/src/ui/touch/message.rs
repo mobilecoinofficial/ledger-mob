@@ -55,8 +55,11 @@ impl Message {
         }
     }
 
-    /// Check for touch events, returning true if the page should be dismissed
+    /// Check for touch (dismiss) events, returning true if the page should be dismissed
     pub fn take_dismiss(&mut self) -> bool {
-        self.page.take_event().is_some()
+        if let Some(e) = self.page.take_event() {
+            return e.token == TOKEN_CLOSE;
+        }
+        false
     }
 }

@@ -146,10 +146,15 @@ impl Ui {
                     return true;
                 }
             }
-            // Any touch event in the message view dismisses the message
+            // Handle close events from the message view
             UiState::Message(m) => {
-                m.take_dismiss();
-                return true;
+                ledger_device_sdk::log::debug!("Touch event in Message UI");
+
+                // Return to the menu
+                if m.take_dismiss() {
+                    self.state = UiState::menu();
+                    return true;
+                }
             }
             _ => (),
         }
