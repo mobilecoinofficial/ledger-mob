@@ -12,6 +12,9 @@ use crate::{
     APP_VERSION,
 };
 
+mod message;
+pub use message::Message;
+
 mod sync_request;
 pub use sync_request::SyncRequest;
 
@@ -52,7 +55,7 @@ pub enum UiState {
     Progress,
 
     /// Display a message
-    Message(&'static str),
+    Message(Message),
 }
 
 impl core::fmt::Debug for UiState {
@@ -104,7 +107,10 @@ impl Ui {
         engine: &mut Engine<D, R>,
     ) -> bool {
         ledger_device_sdk::log::debug!("Handling touch in state {:?}", self.state);
+
         match &mut self.state {
+            // In the menu state, check if there's a pending request to show the address
+            // and switch to the address view if so
             UiState::Menu(_) if take_show_address_request() => {
                 ledger_device_sdk::log::debug!("Switching to Address UI");
 
@@ -119,6 +125,8 @@ impl Ui {
                 );
                 return true;
             }
+            // In the address state, handle touch events for the address view
+            // (navigation is handled in nbgl, we only see Exit and Update events here.)
             UiState::Address(view) => {
                 ledger_device_sdk::log::debug!("Touch event in Address UI");
 
@@ -135,6 +143,16 @@ impl Ui {
 
                 // Otherwise redraw if something has taken over the screen
                 if !view.is_live() {
+                    return true;
+                }
+            }
+            // Handle close events from the message view
+            UiState::Message(m) => {
+                ledger_device_sdk::log::debug!("Touch event in Message UI");
+
+                // Return to the menu
+                if m.take_dismiss() {
+                    self.state = UiState::menu();
                     return true;
                 }
             }
@@ -182,6 +200,18 @@ impl Ui {
                 self.state = UiState::menu();
                 if let UiState::Menu(page) = &mut self.state {
                     page.show_and_return();
+                }
+            }
+            // Messages are drawn without blocking, and (re)drawn whenever
+            // they are not live (ie. if displaced by the lock screen).
+            // Dismissal is handled via `handle_touch` or the message timeout in `main.rs`.
+            UiState::Message(m) => {
+                self.last_state = UiStateKind::Message;
+
+                #[allow(unused_variables)]
+                if let Err(e) = m.draw() {
+                    #[cfg(feature = "debug")]
+                    ledger_device_sdk::log::debug!("Failed to draw message: {:?}", e);
                 }
             }
             _ => (),
@@ -242,8 +272,8 @@ impl UiState {
         matches!(self, UiState::IdentRequest(..))
     }
 
-    pub fn message(msg: &'static str) -> Self {
-        Self::Message(msg)
+    pub fn message(msg: &'static str, success: bool) -> Self {
+        Self::Message(Message::new(msg, success))
     }
 
     pub fn is_message(&self) -> bool {

@@ -55,3 +55,21 @@ pub const MOB64X64: Glyph = Glyph::from_include(include_gif!("assets/mob64x64.pn
 
 #[cfg(any(target_os = "stax", target_os = "flex", target_os = "apex_p"))]
 pub const MOB128X128: Glyph = Glyph::from_include(include_gif!("assets/mob128x128.png", NBGL));
+
+/// Large success / failure status icons (from the Ledger C SDK `lib_nbgl/glyphs`),
+/// sized per-device to match `LARGE_SUCCESS_ICON` / `LARGE_FAILURE_ICON`
+#[cfg(any(target_os = "stax", target_os = "flex"))]
+pub const STATUS_SUCCESS: Glyph =
+    Glyph::from_include(include_gif!("assets/Check_Circle_64px.png", NBGL));
+
+#[cfg(any(target_os = "stax", target_os = "flex"))]
+pub const STATUS_FAILURE: Glyph =
+    Glyph::from_include(include_gif!("assets/Denied_Circle_64px.png", NBGL));
+
+#[cfg(target_os = "apex_p")]
+pub const STATUS_SUCCESS: Glyph =
+    Glyph::from_include(include_gif!("assets/Check_Circle_48px.png", NBGL));
+
+#[cfg(target_os = "apex_p")]
+pub const STATUS_FAILURE: Glyph =
+    Glyph::from_include(include_gif!("assets/Denied_Circle_48px.png", NBGL));
