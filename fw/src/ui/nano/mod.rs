@@ -156,6 +156,7 @@ impl UiState {
         }
     }
 
+    #[cfg(feature = "ident")]
     pub fn ident_request() -> Self {
         Self::IdentRequest(IdentApprover::new())
     }

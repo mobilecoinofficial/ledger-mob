@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_device_sdk::{nbgl::NbglHomeAndSettings, screen::sdk_screen_clear};
+use ledger_device_sdk::nbgl::NbglHomeAndSettings;
 
 use ledger_mob_core::engine::{Driver, Engine, FogId};
 use mc_core::{account::PublicSubaddress, consts::DEFAULT_SUBADDRESS_INDEX};
@@ -20,6 +20,11 @@ pub use sync_request::SyncRequest;
 
 mod address;
 pub use address::{AddressEvent, AddressView};
+
+#[cfg(feature = "ident")]
+mod ident_request;
+#[cfg(feature = "ident")]
+pub use ident_request::IdentRequest;
 
 static SHOW_ADDRESS: AtomicBool = AtomicBool::new(false);
 
@@ -49,7 +54,8 @@ pub enum UiState {
 
     TxSummaryRequest(()),
 
-    IdentRequest(()),
+    #[cfg(feature = "ident")]
+    IdentRequest(IdentRequest),
 
     /// Display progress
     Progress,
@@ -66,6 +72,7 @@ impl core::fmt::Debug for UiState {
             UiState::KeyRequest(_) => write!(f, "KeyRequest"),
             UiState::TxBlindRequest(_) => write!(f, "TxBlindRequest"),
             UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
+            #[cfg(feature = "ident")]
             UiState::IdentRequest(_) => write!(f, "IdentRequest"),
             UiState::Progress => write!(f, "Progress"),
             UiState::Message(_) => write!(f, "Message"),
@@ -82,6 +89,7 @@ enum UiStateKind {
     KeyRequest,
     TxBlindRequest,
     TxSummaryRequest,
+    #[cfg(feature = "ident")]
     IdentRequest,
     Progress,
     Message,
@@ -202,6 +210,48 @@ impl Ui {
                     page.show_and_return();
                 }
             }
+            #[cfg(feature = "ident")]
+            UiState::IdentRequest(s) if self.last_state != UiStateKind::IdentRequest => {
+                ledger_device_sdk::log::debug!("Rendering IdentRequest UI");
+
+                self.last_state = UiStateKind::IdentRequest;
+
+                // Blocking review, the immutable engine borrow ends with the
+                // call so the approval may be applied below
+                let approved = s.show_blocking(&*engine);
+                if let Some(v) = approved {
+                    engine.ident_approve(v);
+                }
+
+                ledger_device_sdk::log::debug!("Finished IdentRequest UI");
+
+                // Display the outcome of the identity request
+                // NOTE: we use our own message display here so that APDUs can be
+                // served while the message is displayed.
+                self.state = match approved {
+                    Some(true) => UiState::message("challenge approved", true),
+                    Some(false) => UiState::message("challenge rejected", false),
+                    // No pending request, nothing was displayed
+                    None => UiState::menu(),
+                };
+
+                // Draw the new state immediately instead of waiting for the next tick
+                match &mut self.state {
+                    UiState::Message(m) => {
+                        self.last_state = UiStateKind::Message;
+
+                        #[allow(unused_variables)]
+                        if let Err(e) = m.draw() {
+                            ledger_device_sdk::log::debug!("Failed to draw message: {:?}", e);
+                        }
+                    }
+                    UiState::Menu(page) => {
+                        self.last_state = UiStateKind::Menu;
+                        page.show_and_return();
+                    }
+                    _ => (),
+                }
+            }
             // Messages are drawn without blocking, and (re)drawn whenever
             // they are not live (ie. if displaced by the lock screen).
             // Dismissal is handled via `handle_touch` or the message timeout in `main.rs`.
@@ -227,6 +277,7 @@ impl UiState {
             UiState::KeyRequest(_) => UiStateKind::KeyRequest,
             UiState::TxBlindRequest(_) => UiStateKind::TxBlindRequest,
             UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
+            #[cfg(feature = "ident")]
             UiState::IdentRequest(_) => UiStateKind::IdentRequest,
             UiState::Progress => UiStateKind::Progress,
             UiState::Message(_) => UiStateKind::Message,
@@ -263,8 +314,7 @@ impl UiState {
 
     #[cfg(feature = "ident")]
     pub fn ident_request() -> Self {
-        // TODO
-        Self::IdentRequest(())
+        Self::IdentRequest(IdentRequest::new())
     }
 
     #[cfg(feature = "ident")]
