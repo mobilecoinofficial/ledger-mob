@@ -1,5 +1,9 @@
 //! User interface (modules|components) for Ledger devices.
 
+use core::str::from_utf8;
+
+use emstr::{helpers::Hex, EncodeStr};
+
 #[cfg(any(target_os = "nanosplus", target_os = "nanox"))]
 pub mod nano;
 
@@ -46,4 +50,41 @@ pub fn to_hex_str<'a>(data: &[u8], buff: &'a mut [u8]) -> Result<&'a str, ()> {
     let n = to_hex_slice(data, buff)?;
     let s = unsafe { core::str::from_utf8_unchecked(&buff[..n]) };
     Ok(s)
+}
+
+/// Format a paged heading, eg. `fmt_page("Send", 0, 2, ..)` -> `"Send  (1/2)"`
+#[allow(unused)]
+pub fn fmt_page<'a>(name: &str, index: usize, total: usize, buff: &'a mut [u8]) -> &'a str {
+    let n = match emstr::write!(&mut buff[..], name, "  (", index + 1, '/', total, ')') {
+        Ok(v) => v,
+        Err(_) => return "ENCODE_ERR",
+    };
+
+    match from_utf8(&buff[..n]) {
+        Ok(v) => v,
+        Err(_) => "INVALID_UTF8",
+    }
+}
+
+/// Format a short address hash for display, eg. `"(a1b2c3d4...e5f6a7b8)"`
+///
+/// Used where an address could not be resolved from the summarizer cache.
+#[allow(unused)]
+pub fn fmt_short_hash<'a>(addr: &[u8], buff: &'a mut [u8]) -> &'a str {
+    let n = match emstr::write!(
+        &mut buff[..],
+        "(",
+        Hex(&addr[..4]),
+        "...",
+        Hex(&addr[addr.len() - 4..]),
+        ")"
+    ) {
+        Ok(v) => v,
+        Err(_) => return "ENCODE_ERR",
+    };
+
+    match from_utf8(&buff[..n]) {
+        Ok(v) => v,
+        Err(_) => "INVALID_UTF8",
+    }
 }

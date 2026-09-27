@@ -7,7 +7,7 @@ use bip39::{Language, Mnemonic, Seed};
 use ledger_mob_tests::transaction::{test, test_reject, TransactionExpectation, TRANSACTIONS};
 
 mod helpers;
-use helpers::{approve_tx_capture, model, reject_tx_capture, setup, ModelUiExt};
+use helpers::{approve_tx_capture, reject_tx_capture, setup};
 
 async fn tx<'a>(v: &TransactionExpectation<'a>, n: usize) -> anyhow::Result<()> {
     // Generate mnemonic
@@ -41,8 +41,8 @@ async fn tx2() -> anyhow::Result<()> {
 
 /// [tx], rejecting the transaction on the device instead of approving it.
 ///
-/// Only the blind vectors are covered here, the summary approval UI has its
-/// own reject page and is not yet implemented on the touch devices.
+/// Covers both the blind and summary vectors; `test_reject` picks the matching
+/// host flow the same way [test] does.
 async fn tx_reject<'a>(v: &TransactionExpectation<'a>, n: usize) -> anyhow::Result<()> {
     // Generate mnemonic
     // NOTE TX MNEMONIC MUST MATCH OBJECT
@@ -75,14 +75,20 @@ async fn tx2_reject() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 #[cfg_attr(not(feature = "summary"), ignore = "requires summary feature to run")]
+async fn tx3_reject() -> anyhow::Result<()> {
+    tx_reject(&TRANSACTIONS[2], 3).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[cfg_attr(not(feature = "summary"), ignore = "requires summary feature to run")]
+async fn tx4_reject() -> anyhow::Result<()> {
+    tx_reject(&TRANSACTIONS[3], 4).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[cfg_attr(not(feature = "summary"), ignore = "requires summary feature to run")]
 async fn tx3() -> anyhow::Result<()> {
     let v = &TRANSACTIONS[2];
-
-    let m = model();
-    if m.is_touch() {
-        println!("skipping: transaction summary approval UI not yet implemented for {m}");
-        return Ok(());
-    }
 
     // Generate mnemonic
     // NOTE TX MNEMONIC MUST MATCH OBJECT
@@ -106,12 +112,6 @@ async fn tx3() -> anyhow::Result<()> {
 #[cfg_attr(not(feature = "summary"), ignore = "requires summary feature to run")]
 async fn tx4() -> anyhow::Result<()> {
     let v = &TRANSACTIONS[3];
-
-    let m = model();
-    if m.is_touch() {
-        println!("skipping: transaction summary approval UI not yet implemented for {m}");
-        return Ok(());
-    }
 
     // Generate mnemonic
     // NOTE TX MNEMONIC MUST MATCH OBJECT

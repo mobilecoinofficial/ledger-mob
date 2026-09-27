@@ -73,7 +73,11 @@ const LONG_PRESS: Duration = Duration::from_millis(3500);
 
 /// Upper bound on the pages swiped through while navigating a review, so a
 /// broken flow fails rather than swiping forever.
-const MAX_PAGES: usize = 16;
+///
+/// A summary review can carry up to `MAX_RECORDS` (16) outputs plus as many
+/// token totals, and NBGL splits a long fog address onto a page of its own, so
+/// this has to be well clear of 16.
+const MAX_PAGES: usize = 64;
 
 /// Touchscreen ([NBGL][1]) [UiDriver].
 ///
@@ -136,6 +140,33 @@ impl<'a> TouchUi<'a> {
         match tokio::time::timeout(SCREEN_TIMEOUT, poll).await {
             Ok(v) => v,
             Err(_) => Err(self.missing(text).await),
+        }
+    }
+
+    /// Await a screen containing any of `texts`, returning the matched entry
+    /// and the events that make the screen up.
+    ///
+    /// Used where the next screen depends on which flow the firmware chose, so
+    /// that waiting for one does not cost a [SCREEN_TIMEOUT] when the other
+    /// turns up.
+    async fn wait_for_any(&self, texts: &[&str]) -> anyhow::Result<(String, Vec<Event>)> {
+        let poll = async {
+            loop {
+                let events = self.h.events(EventFilter::CurrentScreen).await?;
+
+                for t in texts {
+                    if events.iter().any(|e| e.text.contains(t)) {
+                        return Ok((t.to_string(), events));
+                    }
+                }
+
+                tokio::time::sleep(POLL_INTERVAL).await;
+            }
+        };
+
+        match tokio::time::timeout(SCREEN_TIMEOUT, poll).await {
+            Ok(v) => v,
+            Err(_) => Err(self.missing(&texts.join(" or ")).await),
         }
     }
 
@@ -263,18 +294,33 @@ impl<'a> TouchUi<'a> {
         Ok(visited)
     }
 
-    /// Dismiss the blind signing warning that precedes the review, recording it
-    /// and leaving the display on the review's first page.
+    /// Await the start of a transaction review, leaving the display on its
+    /// first page.
+    ///
+    /// The two flows differ only here: a blind review
+    /// (`fw/src/ui/touch/tx_blind_request.rs`) is preceded by the SDK's blind
+    /// signing warning, a summary review
+    /// (`fw/src/ui/touch/tx_summary_request.rs`) opens on its own first page.
+    /// Which one appears depends on whether the host sent a summary, so this
+    /// waits for either and dismisses the warning where there is one.
     ///
     /// The warning page has no reject control, so waiting for one is how the
     /// review is known to have started -- without it the first
     /// [navigate][Self::navigate] poll can still see the warning and swipe
     /// straight past the review's opening page.
-    async fn enter_blind_review(&self, visited: &mut Vec<Screen>) -> anyhow::Result<()> {
-        let warn = self.wait_for(TX_BLIND_WARN).await?;
-        self.record(&warn, visited).await?;
+    async fn enter_review(&self, visited: &mut Vec<Screen>) -> anyhow::Result<()> {
+        let (matched, events) = self.wait_for_any(&[TX_BLIND_WARN, TX_REJECT]).await?;
 
-        self.tap_label(&warn, TX_BLIND_CONTINUE).await?;
+        // Summary review, already on the first page
+        if matched != TX_BLIND_WARN {
+            return Ok(());
+        }
+
+        debug!("UI: dismissing blind signing warning");
+
+        self.record(&events, visited).await?;
+
+        self.tap_label(&events, TX_BLIND_CONTINUE).await?;
 
         self.wait_for(TX_REJECT).await?;
 
@@ -304,12 +350,16 @@ impl UiDriver for TouchUi<'_> {
         self.choose_sync(SYNC_REJECT).await
     }
 
+    /// Walk a transaction review to its confirmation page and hold the sign
+    /// button. Handles both the blind and summary flows, see [enter_review].
+    ///
+    /// [enter_review]: TouchUi::enter_review
     async fn approve_tx(&self) -> anyhow::Result<Vec<Screen>> {
         debug!("UI: approve transaction");
 
         let mut visited = Vec::new();
 
-        self.enter_blind_review(&mut visited).await?;
+        self.enter_review(&mut visited).await?;
 
         // Swipe through the review to the long press page
         let finish = self.navigate(TX_HOLD, &mut visited).await?;
@@ -325,14 +375,18 @@ impl UiDriver for TouchUi<'_> {
         Ok(visited)
     }
 
+    /// Reject a transaction review from its footer control, then confirm.
+    /// Handles both the blind and summary flows, see [enter_review].
+    ///
+    /// [enter_review]: TouchUi::enter_review
     async fn reject_tx(&self) -> anyhow::Result<Vec<Screen>> {
         debug!("UI: reject transaction");
 
         let mut visited = Vec::new();
 
-        // Continue past the warning rather than taking `TX_BLIND_BACK`, so the
-        // rejection is exercised from the review itself
-        self.enter_blind_review(&mut visited).await?;
+        // On the blind flow this continues past the warning rather than taking
+        // `TX_BLIND_BACK`, so the rejection is exercised from the review itself
+        self.enter_review(&mut visited).await?;
 
         // The reject control sits in the review footer, present on every page
         let page = self.navigate(TX_REJECT, &mut visited).await?;
