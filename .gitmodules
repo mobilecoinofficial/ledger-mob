@@ -6,10 +6,6 @@
 	path = vendor/mc-rand
 	url = ../../ryankurte/mc-rand
 
-[submodule "vendor/speculos"]
-	path = vendor/speculos
-	url = ../../LedgerHQ/speculos.git
-
 [submodule "vendor/ledger-device-rust-sdk"]
 	path = vendor/ledger-device-rust-sdk
 	url = ../../ryan-sentz/ledger-device-rust-sdk.git
