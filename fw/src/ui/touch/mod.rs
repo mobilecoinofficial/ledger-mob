@@ -15,6 +15,9 @@ use crate::{
 mod message;
 pub use message::Message;
 
+mod progress;
+pub use progress::Progress;
+
 mod sync_request;
 pub use sync_request::SyncRequest;
 
@@ -52,7 +55,7 @@ pub enum UiState {
     IdentRequest(()),
 
     /// Display progress
-    Progress,
+    Progress(Progress),
 
     /// Display a message
     Message(Message),
@@ -67,7 +70,7 @@ impl core::fmt::Debug for UiState {
             UiState::TxBlindRequest(_) => write!(f, "TxBlindRequest"),
             UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
             UiState::IdentRequest(_) => write!(f, "IdentRequest"),
-            UiState::Progress => write!(f, "Progress"),
+            UiState::Progress(_) => write!(f, "Progress"),
             UiState::Message(_) => write!(f, "Message"),
         }
     }
@@ -202,6 +205,14 @@ impl Ui {
                     page.show_and_return();
                 }
             }
+            // Progress is drawn without blocking, and re-rendered on every
+            // call so the percentage advances. `Progress::render` redraws when
+            // displaced and otherwise updates only on changes.
+            UiState::Progress(p) => {
+                self.last_state = UiStateKind::Progress;
+
+                p.render(engine);
+            }
             // Messages are drawn without blocking, and (re)drawn whenever
             // they are not live (ie. if displaced by the lock screen).
             // Dismissal is handled via `handle_touch` or the message timeout in `main.rs`.
@@ -228,7 +239,7 @@ impl UiState {
             UiState::TxBlindRequest(_) => UiStateKind::TxBlindRequest,
             UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
             UiState::IdentRequest(_) => UiStateKind::IdentRequest,
-            UiState::Progress => UiStateKind::Progress,
+            UiState::Progress(_) => UiStateKind::Progress,
             UiState::Message(_) => UiStateKind::Message,
         }
     }
@@ -281,11 +292,11 @@ impl UiState {
     }
 
     pub fn progress() -> Self {
-        Self::Progress
+        Self::Progress(Progress::new())
     }
 
     pub fn is_progress(&self) -> bool {
-        matches!(self, UiState::Progress)
+        matches!(self, UiState::Progress(..))
     }
 
     pub fn tx_blind_request() -> Self {
