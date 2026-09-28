@@ -187,8 +187,8 @@ where
 /// signing, completion, signature validation) is unreachable once the user has
 /// rejected.
 ///
-/// Only blind transactions are supported, ie. those without unblinding data,
-/// as the summary flow has its own approval UI.
+/// Covers both flows: a vector without unblinding data takes the blind path,
+/// one with it streams a summary, each of which has its own approval UI.
 pub async fn test_reject<'a, T, F>(
     t: T,
     reject: impl Fn() -> F,
@@ -223,18 +223,22 @@ where
 
     // Build the digest for ring signing
     debug!("Fetching signing data");
-    let (_signing_data, _summary, unblinding, digest) =
-        req.get_signing_data(&mut OsRng {}).unwrap();
+    let (_signing_data, summary, unblinding, digest) = req.get_signing_data(&mut OsRng {}).unwrap();
 
-    if unblinding.is_some() {
-        return Err(anyhow::anyhow!(
-            "test_reject only supports blind transactions, \
-             this vector carries unblinding data"
-        ));
+    // Set the message or load the summary, as [test] does, so the device puts
+    // up the matching approval UI
+    match unblinding {
+        None => {
+            debug!("Setting tx message");
+            signer.set_message(&digest.0).await?;
+        }
+        Some(unblinding) => {
+            debug!("Loading tx summary");
+            signer
+                .set_tx_summary(req.block_version, &digest.0, &summary, &unblinding)
+                .await?;
+        }
     }
-
-    debug!("Setting tx message");
-    signer.set_message(&digest.0).await?;
 
     // Trigger rejection function
     reject().await;

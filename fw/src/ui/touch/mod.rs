@@ -29,6 +29,10 @@ pub use tx_blind_request::TxBlindRequest;
 
 mod progress;
 pub use progress::Progress;
+#[cfg(feature = "summary")]
+mod tx_summary_request;
+#[cfg(feature = "summary")]
+pub use tx_summary_request::TxSummaryRequest;
 
 static SHOW_ADDRESS: AtomicBool = AtomicBool::new(false);
 
@@ -57,7 +61,9 @@ pub enum UiState {
     /// Transaction request without summary, awaiting user input
     TxBlindRequest(TxBlindRequest),
 
-    TxSummaryRequest(()),
+    /// Transaction request with a summary, awaiting user input
+    #[cfg(feature = "summary")]
+    TxSummaryRequest(TxSummaryRequest),
 
     IdentRequest(()),
 
@@ -75,6 +81,7 @@ impl core::fmt::Debug for UiState {
             UiState::Address(_) => write!(f, "Address"),
             UiState::KeyRequest(_) => write!(f, "KeyRequest"),
             UiState::TxBlindRequest(_) => write!(f, "TxBlindRequest"),
+            #[cfg(feature = "summary")]
             UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
             UiState::IdentRequest(_) => write!(f, "IdentRequest"),
             UiState::Progress(_) => write!(f, "Progress"),
@@ -91,6 +98,7 @@ enum UiStateKind {
     Address,
     KeyRequest,
     TxBlindRequest,
+    #[cfg(feature = "summary")]
     TxSummaryRequest,
     IdentRequest,
     Progress,
@@ -176,6 +184,14 @@ impl Ui {
     pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &mut Engine<D, R>) {
         ledger_device_sdk::log::debug!("UI render: {:?} (last: {:?})", self.state, self.last_state);
 
+        // Decision from a blocking transaction review, applied after the match.
+        //
+        // NOTE: the review arms below bind out of `&mut self.state`, so they
+        // cannot call a `&mut self` method; the outcome is carried out here
+        // instead. The outer `Option` is "a review ran", the inner one is its
+        // result (see `finish_tx_review`).
+        let mut decision: Option<Option<bool>> = None;
+
         match &mut self.state {
             // TODO: all this
             UiState::Menu(page) if self.last_state != UiStateKind::Menu => {
@@ -219,43 +235,22 @@ impl Ui {
                 self.last_state = UiStateKind::Progress;
                 p.draw(engine);
             }
+            // Transaction reviews are blocking, so the decision is applied
+            // after the match; see `finish_tx_review`
             UiState::TxBlindRequest(s) if self.last_state != UiStateKind::TxBlindRequest => {
-                self.last_state = UiStateKind::TxBlindRequest;
-
                 ledger_device_sdk::log::debug!("Rendering TxBlindRequest UI");
 
-                // Show the blind signing review, blocking until the user chooses
-                let approved = s.show_blocking(engine);
+                self.last_state = UiStateKind::TxBlindRequest;
 
-                // Update the engine state based on the user's choice
-                match approved {
-                    true => engine.approve(),
-                    false => engine.deny(),
-                }
+                decision = Some(Some(s.show_blocking(&*engine)));
+            }
+            #[cfg(feature = "summary")]
+            UiState::TxSummaryRequest(s) if self.last_state != UiStateKind::TxSummaryRequest => {
+                ledger_device_sdk::log::debug!("Rendering TxSummaryRequest UI");
 
-                // Then show the approved state
-                // TODO(ryan): should this status change happen elsewhere?
-                NbglReviewStatus::new()
-                    .status_type(StatusType::Transaction)
-                    .show(approved);
+                self.last_state = UiStateKind::TxSummaryRequest;
 
-                ledger_device_sdk::log::debug!(
-                    "Finished TxBlindRequest UI (approved: {})",
-                    approved
-                );
-
-                match approved {
-                    // On approval the host immediately drives ring signing, so we move to the progress state.
-                    true => self.state = UiState::progress("Signing Transaction"),
-                    // On rejection return to the menu and leave the engine in `Deny`
-                    // for the host to observe.
-                    false => {
-                        self.state = UiState::menu();
-                        if let UiState::Menu(page) = &mut self.state {
-                            page.show_and_return();
-                        }
-                    }
-                }
+                decision = Some(s.show_blocking(&*engine));
             }
             // Messages are drawn without blocking, and (re)drawn whenever
             // they are not live (ie. if displaced by the lock screen).
@@ -271,6 +266,54 @@ impl Ui {
             }
             _ => (),
         }
+
+        if let Some(approved) = decision {
+            self.finish_tx_review(engine, approved);
+        }
+    }
+
+    /// Apply the outcome of a transaction review: tell the engine, show the
+    /// status page, and move to the next UI state.
+    ///
+    /// Shared by the blind and summary flows so the two cannot drift apart.
+    /// `approved` is [None] where nothing was displayed because no data was
+    /// available; the request is denied so the host is not left polling, and
+    /// no status page is shown for a review the user never saw.
+    #[cfg_attr(feature = "noinline", inline(never))]
+    fn finish_tx_review<D: Driver, R: RngCore + CryptoRng>(
+        &mut self,
+        engine: &mut Engine<D, R>,
+        approved: Option<bool>,
+    ) {
+        ledger_device_sdk::log::debug!("Finished transaction review (approved: {:?})", approved);
+
+        // Update the engine state based on the user's choice
+        match approved {
+            Some(true) => engine.approve(),
+            Some(false) | None => engine.deny(),
+        }
+
+        // Then show the outcome of the review
+        // TODO(ryan): should this status change happen elsewhere?
+        if approved.is_some() {
+            NbglReviewStatus::new()
+                .status_type(StatusType::Transaction)
+                .show(approved == Some(true));
+        }
+
+        match approved {
+            // On approval the host immediately drives ring signing, so we move
+            // to the progress state.
+            Some(true) => self.state = UiState::progress("Signing Transaction"),
+            // Otherwise return to the menu and leave the engine in `Deny` for
+            // the host to observe.
+            _ => {
+                self.state = UiState::menu();
+                if let UiState::Menu(page) = &mut self.state {
+                    page.show_and_return();
+                }
+            }
+        }
     }
 }
 
@@ -281,6 +324,7 @@ impl UiState {
             UiState::Address(_) => UiStateKind::Address,
             UiState::KeyRequest(_) => UiStateKind::KeyRequest,
             UiState::TxBlindRequest(_) => UiStateKind::TxBlindRequest,
+            #[cfg(feature = "summary")]
             UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
             UiState::IdentRequest(_) => UiStateKind::IdentRequest,
             UiState::Progress(_) => UiStateKind::Progress,
@@ -349,8 +393,7 @@ impl UiState {
 
     #[cfg(feature = "summary")]
     pub fn tx_summary_request(num_outputs: usize, num_totals: usize) -> Self {
-        // TODO
-        Self::TxSummaryRequest(())
+        Self::TxSummaryRequest(TxSummaryRequest::new(num_outputs, num_totals))
     }
 
     pub fn is_tx_request(&self) -> bool {

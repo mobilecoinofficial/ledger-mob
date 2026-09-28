@@ -5,7 +5,7 @@ use core::str::from_utf8;
 use rand_core::{CryptoRng, RngCore};
 use strum::{Display, EnumCount};
 
-use emstr::{helpers::Hex, EncodeStr};
+use emstr::EncodeStr;
 
 use ledger_device_sdk::sys::buttons::ButtonEvent;
 
@@ -25,6 +25,8 @@ use super::{
     helpers::{tx_approve_page, tx_deny_page},
     Address, UiResult,
 };
+
+use crate::ui::{fmt_page, fmt_short_hash};
 
 /// UI Approval Element
 ///
@@ -277,39 +279,8 @@ impl TxSummaryApprover {
     }
 }
 
-fn fmt_page<'a>(name: &str, index: usize, total: usize, buff: &'a mut [u8]) -> &'a str {
-    let n = match emstr::write!(&mut buff[..], name, "  (", index + 1, '/', total, ')') {
-        Ok(v) => v,
-        Err(_) => return "ENCODE_ERR",
-    };
-
-    match from_utf8(&buff[..n]) {
-        Ok(v) => v,
-        Err(_) => "INVALID_UTF8",
-    }
-}
-
 fn fmt_b58_addr<'a>(addr: &str, buff: &'a mut [u8]) -> &'a str {
     let n = match emstr::write!(&mut buff[..], &addr[..8], "...", &addr[addr.len() - 8..]) {
-        Ok(v) => v,
-        Err(_) => return "ENCODE_ERR",
-    };
-
-    match from_utf8(&buff[..n]) {
-        Ok(v) => v,
-        Err(_) => "INVALID_UTF8",
-    }
-}
-
-fn fmt_short_hash<'a>(addr: &[u8], buff: &'a mut [u8]) -> &'a str {
-    let n = match emstr::write!(
-        &mut buff[..],
-        "(",
-        Hex(&addr[..4]),
-        "...",
-        Hex(&addr[addr.len() - 4..]),
-        ")"
-    ) {
         Ok(v) => v,
         Err(_) => return "ENCODE_ERR",
     };
