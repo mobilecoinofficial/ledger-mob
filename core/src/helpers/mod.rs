@@ -126,14 +126,31 @@ pub(crate) fn digest_public_address(
     ShortAddressHash::from(hash)
 }
 
+/// Buffer size for b58 encoded addresses.
+///
+/// `bs58` 0.4 sizes its scratch buffer as `(input_len / 5 + 1) * 8`, and the
+/// largest fog address encodes to 178 input bytes (two 32 byte keys at 36 each,
+/// a 31 byte fog URL at 33, a 64 byte authority signature at 66, the wrapper
+/// tag and length, and the 4 byte checksum; `fog_report_id` is empty and so
+/// skipped by prost). That gives 288, leaving room for a fog URL of ~51
+/// characters against the 31 used today.
+pub const B58_MAX_LEN: usize = 320;
+
+const _: () = assert!(B58_MAX_LEN >= 288, "B58_MAX_LEN too small for fog addresses");
+
 /// Helper to b58 encode [PublicAddress] equivalent types without
 /// pulling in no-std incompatible `mc_api` dependency.
+///
+/// Encodes into `out` rather than returning by value. LLVM does not apply NRVO
+/// here, so a returned `heapless::String<N>` is copied through every frame on
+/// the way out, which the nanox cannot afford (see `fw/src/main.rs`).
 #[cfg_attr(feature = "noinline", inline(never))]
-pub fn b58_encode_public_address<const N: usize>(
+pub fn b58_encode_public_address_into<const N: usize>(
+    out: &mut heapless::String<N>,
     subaddress: impl RingCtAddress,
     fog_report_url: &str,
     fog_authority_sig: &[u8],
-) -> Result<heapless::String<N>, Error> {
+) -> Result<(), Error> {
     use printable_wrapper::*;
 
     let view_public = subaddress.view_public_key();
@@ -167,25 +184,45 @@ pub fn b58_encode_public_address<const N: usize>(
     // Force drop `p` to free up heap memory
     drop(p);
 
-    // Compute checksum for encoded address
-    let checksum = crc::Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
+    // Compute checksum for encoded address.
+    // NOTE: `NoTable` matters on the nanox. The default `Crc<u32>` carries a
+    // `[[u32; 256]; 1]` lookup table built at runtime and returned by value,
+    // which LLVM leaves as two live 1KiB stack copies here. The tableless
+    // implementation is bit-identical and costs a bitwise loop over ~178 bytes.
+    let checksum = crc::Crc::<u32, crc::NoTable>::new(&crc::CRC_32_ISO_HDLC)
         .checksum(&data[4..])
         .to_le_bytes();
 
     // Write checksum to start of buffer
     data[0..4].copy_from_slice(&checksum);
 
-    // Encode address to b58
-    let mut buff = HeaplessEncodeTarget::<N>(heapless::String::new());
-    let _n = bs58::encode(&data).into(&mut buff).unwrap();
+    // Encode address to b58 directly into the caller's buffer
+    out.clear();
+    let mut buff = HeaplessEncodeTarget(out);
+    bs58::encode(&data)
+        .into(&mut buff)
+        .map_err(|_| Error::InvalidLength)?;
 
-    Ok(buff.0)
+    Ok(())
+}
+
+/// By-value wrapper over [b58_encode_public_address_into], for hosts and touch
+/// devices where the extra copies do not matter.
+#[cfg_attr(feature = "noinline", inline(never))]
+pub fn b58_encode_public_address<const N: usize>(
+    subaddress: impl RingCtAddress,
+    fog_report_url: &str,
+    fog_authority_sig: &[u8],
+) -> Result<heapless::String<N>, Error> {
+    let mut s = heapless::String::new();
+    b58_encode_public_address_into(&mut s, subaddress, fog_report_url, fog_authority_sig)?;
+    Ok(s)
 }
 
 /// Helper to support bs58 encoding to [heapless::String] types
-struct HeaplessEncodeTarget<const N: usize>(heapless::String<N>);
+struct HeaplessEncodeTarget<'a, const N: usize>(&'a mut heapless::String<N>);
 
-impl<const N: usize> bs58::encode::EncodeTarget for HeaplessEncodeTarget<N> {
+impl<const N: usize> bs58::encode::EncodeTarget for HeaplessEncodeTarget<'_, N> {
     fn encode_with(
         &mut self,
         max_len: usize,
@@ -301,7 +338,6 @@ mod test {
         }
     }
 
-    const B58_MAX_LEN: usize = 512;
 
     #[test]
     fn b58_address_no_fog() {

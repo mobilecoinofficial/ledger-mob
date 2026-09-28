@@ -13,7 +13,7 @@ use ledger_device_sdk::ui::{
 
 use ledger_mob_core::{
     engine::{Driver, Engine, FogId},
-    helpers::b58_encode_public_address,
+    helpers::b58_encode_public_address_into,
 };
 use mc_core::account::PublicSubaddress;
 
@@ -33,21 +33,34 @@ const LINE_LEN: usize = 16;
 const PAGE_LEN: usize = LINE_LEN * NUM_LINES;
 
 impl<const N: usize> Address<N> {
+    /// Empty pager.
+    ///
+    /// `const` so it can be written into a [`UiState`](super::UiState) slot
+    /// without LLVM materialising (and copying) an `N` byte temporary.
+    pub const fn empty() -> Self {
+        Self {
+            value: String::new(),
+            page: 0,
+            num_pages: 1,
+        }
+    }
+
+    /// Encode `address` into this pager in place.
+    ///
+    /// Encoding failure degrades to an on-screen marker rather than panicking;
+    /// a b58 address that does not fit is not worth killing the app over.
     #[cfg_attr(feature = "noinline", inline(never))]
-    pub fn new(address: &PublicSubaddress, fog_id: FogId, fog_authority_sig: &[u8]) -> Self {
-        // Encode address to string
-        let value =
-            b58_encode_public_address::<N>(address, fog_id.url(), fog_authority_sig).unwrap();
+    pub fn encode(&mut self, address: &PublicSubaddress, fog_id: FogId, fog_authority_sig: &[u8]) {
+        if b58_encode_public_address_into(&mut self.value, address, fog_id.url(), fog_authority_sig)
+            .is_err()
+        {
+            self.value.clear();
+            let _ = self.value.push_str("B58 ENCODE ERROR");
+        }
 
         // Compute number of pages for display
-        let num_pages = value.as_bytes().chunks(PAGE_LEN).count();
-
-        // Setup object
-        Self {
-            value,
-            num_pages,
-            page: 0,
-        }
+        self.num_pages = self.value.as_bytes().chunks(PAGE_LEN).count().max(1);
+        self.page = 0;
     }
 
     pub fn update(&mut self, btn: &ButtonEvent) -> UiResult<()> {

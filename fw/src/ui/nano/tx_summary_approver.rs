@@ -17,7 +17,7 @@ use ledger_device_sdk::ui::{
 
 use ledger_mob_core::{
     engine::{Driver, Engine, TransactionEntity},
-    helpers::{b58_encode_public_address, fmt_token_val},
+    helpers::{b58_encode_public_address_into, fmt_token_val, B58_MAX_LEN},
 };
 
 use super::{
@@ -35,7 +35,7 @@ pub struct TxSummaryApprover {
     num_totals: usize,
     state: TxSummaryApproverState,
     selected: bool,
-    address: Option<Address<512>>,
+    address: Option<Address<B58_MAX_LEN>>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Display, EnumCount)]
@@ -110,12 +110,16 @@ impl TxSummaryApprover {
                     None => return UiResult::None,
                 };
 
-                // Setup address for rendering
-                self.address = Some(Address::new(
-                    &s.address,
-                    s.fog_id,
-                    s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
-                ));
+                // Setup address for rendering, encoding in place to avoid
+                // an extra copy of the b58 buffer (see `Address::encode`)
+                self.address = Some(Address::empty());
+                if let Some(a) = &mut self.address {
+                    a.encode(
+                        &s.address,
+                        s.fog_id,
+                        s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
+                    );
+                }
 
                 return UiResult::Update;
             }
@@ -215,15 +219,17 @@ impl TxSummaryApprover {
                         let addr_str = match engine.address(a) {
                             Some(c) => {
                                 // Encode in b58 form for display
-                                let b58 = b58_encode_public_address::<512>(
+                                let mut b58 = heapless::String::<B58_MAX_LEN>::new();
+                                let r = b58_encode_public_address_into(
+                                    &mut b58,
                                     &c.address,
                                     c.fog_id.url(),
                                     c.fog_sig.as_ref().map(|v| &v[..]).unwrap_or(&[]),
                                 );
 
                                 // Write to display string
-                                match b58 {
-                                    Ok(v) => fmt_b58_addr(&v, &mut buff),
+                                match r {
+                                    Ok(_) => fmt_b58_addr(&b58, &mut buff),
                                     Err(_) => "B58 ENCODE ERROR",
                                 }
                             }

@@ -13,3 +13,7 @@
 [submodule "vendor/ledger-device-rust-sdk"]
 	path = vendor/ledger-device-rust-sdk
 	url = ../../ryan-sentz/ledger-device-rust-sdk.git
+
+[submodule "vendor/rngs"]
+	path = vendor/rngs
+	url = ../../ryan-sentz/rngs.git

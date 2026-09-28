@@ -8,10 +8,9 @@ use mc_core::keys::SubaddressViewPrivate;
 use mc_crypto_digestible::MerlinTranscript;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoSignature};
 
-use rand_core::{
-    block::{BlockRng, BlockRngCore},
-    SeedableRng,
-};
+use core::mem::MaybeUninit;
+
+use rand_core::block::BlockRng;
 use rand_hc::Hc128Core;
 use schnorrkel_og::{context::attach_rng, SecretKey as SchnorrkelPrivate};
 
@@ -58,33 +57,19 @@ fn schnorrkel_sign(
     // NOTE: This signature is deterministic due to using the above nonce as the rng
     // seed
 
-    // Setup HC128 RNG core
-    let mut core = Hc128Core::from_seed(nonce);
-
-    // Wrap this in BlockRng
-    // using a pointer container to avoid further stack allocation
-    let container = Hc128CoreContainer(&mut core);
-    let mut csprng = BlockRng::new(container);
+    // Setup HC128 RNG core.
+    //
+    // NOTE: initialised in place. The state is 4100 bytes and `from_seed`
+    // returns it by value, which LLVM leaves as two live stack copies joined
+    // by a memcpy -- 8200 bytes, more than the nanox has stack (MOB-XX).
+    // `BlockRng` then drives it by reference so it is not moved again.
+    let mut state = MaybeUninit::uninit();
+    let core = Hc128Core::from_seed_in_place(&mut state, &nonce);
+    let mut csprng = BlockRng::new(core);
 
     let mut transcript = attach_rng(t, &mut csprng);
     RistrettoSignature::from(keypair.sign(&mut transcript))
 }
-
-/// Wrapper allowing [Hc128Core] reference to implement [BlockRngCore],
-///  working around the lack of a blanket [BlockRngCore] impl
-/// for `&mut T` where `T: BlockRngCore`.
-struct Hc128CoreContainer<'a>(&'a mut Hc128Core);
-
-impl<'a> BlockRngCore for Hc128CoreContainer<'a> {
-    type Item = u32;
-    type Results = [u32; 16];
-
-    fn generate(&mut self, results: &mut Self::Results) {
-        self.0.generate(results);
-    }
-}
-
-impl<'a> rand_core::CryptoRng for Hc128CoreContainer<'a> {}
 
 /// Canonical signing context byte string
 const CONTEXT: &[u8] = b"Fog authority signature";

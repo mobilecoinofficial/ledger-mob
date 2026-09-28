@@ -12,7 +12,10 @@ use ledger_device_sdk::nbgl::{
     Field, NbglPage, NbglPageContent, NbglPageError, NbglPageNav, TagValueList, TOKEN_FIRST_FREE,
 };
 
-use ledger_mob_core::{engine::FogId, helpers::b58_encode_public_address};
+use ledger_mob_core::{
+    engine::FogId,
+    helpers::{b58_encode_public_address, B58_MAX_LEN},
+};
 use mc_core::account::PublicSubaddress;
 
 /// Token reported by the footer quit control
@@ -23,9 +26,6 @@ const TOKEN_BACK: u8 = TOKEN_FIRST_FREE + 1;
 
 /// Token reported by the footer navigation arrows (index is the new page)
 const TOKEN_NAV: u8 = TOKEN_FIRST_FREE + 2;
-
-/// Maximum b58 encoded address length (matches `B58_MAX_LEN` in `ledger-mob-core`)
-const B58_MAX_LEN: usize = 512;
 
 /// Maximum address characters that fit on one page for each display, with
 /// margin for variable glyph widths when wrapping

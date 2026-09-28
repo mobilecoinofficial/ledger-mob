@@ -10,7 +10,10 @@ use ledger_device_sdk::{
     ui::layout::{Layout, Location, StringPlace},
 };
 
-use ledger_mob_core::engine::{Driver, Engine, FogId};
+use ledger_mob_core::{
+    engine::{Driver, Engine, FogId},
+    helpers::B58_MAX_LEN,
+};
 use mc_core::{account::PublicSubaddress, consts::DEFAULT_SUBADDRESS_INDEX};
 
 use crate::{
@@ -70,7 +73,7 @@ pub enum UiState {
     Menu,
 
     /// Showing a b58 address
-    Address(Address<512>),
+    Address(Address<B58_MAX_LEN>),
 
     /// Request for view keys, awaiting user input
     KeyRequest(SyncApprover),
@@ -105,10 +108,6 @@ impl UiState {
 
     pub fn app_info() -> Self {
         Self::AppInfo(AppInfo::new())
-    }
-
-    pub fn address(address: &PublicSubaddress, fog_id: FogId, fog_authority_sig: &[u8]) -> Self {
-        Self::Address(Address::new(address, fog_id, fog_authority_sig))
     }
 
     /// Create a new `Progress` variant
@@ -202,12 +201,19 @@ impl Ui {
                             let fog_id = platform_get_fog_id();
                             let s = engine.get_subaddress(0, DEFAULT_SUBADDRESS_INDEX, fog_id);
 
-                            // Set UI state to display subaddress
-                            self.state = UiState::address(
-                                &s.address,
-                                s.fog_id,
-                                s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
-                            );
+                            // Set UI state to display subaddress.
+                            // NOTE: encoded in place. Building the `Address`
+                            // first and moving it in costs an extra copy of the
+                            // b58 buffer per frame, which the nanox cannot
+                            // afford on the fog signing path.
+                            self.state = UiState::Address(Address::empty());
+                            if let UiState::Address(a) = &mut self.state {
+                                a.encode(
+                                    &s.address,
+                                    s.fog_id,
+                                    s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
+                                );
+                            }
                         }
                         MenuState::Version => self.state = UiState::app_info(),
                         MenuState::Settings => {
