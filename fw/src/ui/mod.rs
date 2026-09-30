@@ -5,7 +5,10 @@
 
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_mob_core::engine::{Driver, Engine};
+use ledger_mob_core::{
+    engine::{Driver, Engine},
+    helpers::B58_MAX_LEN,
+};
 
 mod helpers;
 pub use helpers::*;
@@ -59,7 +62,7 @@ pub enum UiState {
     Menu,
 
     /// Showing a b58 address
-    Address(Address<512>),
+    Address(Address<B58_MAX_LEN>),
 
     /// Request for view keys, awaiting user input
     KeyRequest(SyncApprover),

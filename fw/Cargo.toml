@@ -120,6 +120,10 @@ overflow-checks = false
 # Fork and rename to use "OG" dalek-cryptography.
 schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
 
+# Fork adding `Hc128Core::from_seed_in_place`, so the 4100 byte HC-128 state
+# is not duplicated on the stack during fog authority signing (towards nanox support).
+rand_hc = { git = "https://github.com/ryan-sentz/rngs.git", branch = "ryan/hc128-in-place-init" }
+
 # Mobilecoin core patches (replicates workspace level)
 
 mc-core = { path = "../vendor/mob/core" }

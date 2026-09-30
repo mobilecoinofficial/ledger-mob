@@ -2580,6 +2580,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tiny-bip39",
  "tokio",
+ "tracing",
  "x25519-dalek",
  "zeroize",
 ]
@@ -3187,6 +3188,8 @@ dependencies = [
 [[package]]
 name = "mc-rand"
 version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce58f86dffd114bcefd8bcc6043658feec24b1f29be9972924651fe999ecf4a8"
 dependencies = [
  "cfg-if",
  "rand 0.8.8",
@@ -4551,8 +4554,7 @@ checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
 [[package]]
 name = "rand_hc"
 version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b363d4f6370f88d62bf586c80405657bde0f0e1b8945d47d2ad59b906cb4f54"
+source = "git+https://github.com/ryan-sentz/rngs.git?branch=ryan%2Fhc128-in-place-init#66f17e0370411617f30c3ae2d4286c78e73d03f7"
 dependencies = [
  "rand_core 0.6.4",
 ]
@@ -6056,6 +6058,7 @@ version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
 dependencies = [
+ "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",

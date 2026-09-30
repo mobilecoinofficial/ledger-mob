@@ -219,11 +219,15 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
                         let s = engine.get_subaddress(0, DEFAULT_SUBADDRESS_INDEX, fog_id);
 
                         // Set UI state to display subaddress
-                        ui.state = UiState::Address(Address::new(
-                            &s.address,
-                            s.fog_id,
-                            s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
-                        ));
+                        // NOTE: encoded in place to reduce stack usage.
+                        ui.state = UiState::Address(Address::empty());
+                        if let UiState::Address(a) = &mut ui.state {
+                            a.encode(
+                                &s.address,
+                                s.fog_id,
+                                s.fog_sig.as_ref().map(|s| s.as_slice()).unwrap_or(&[]),
+                            );
+                        }
                     }
                     MenuState::Version => ui.state = UiState::AppInfo(AppInfo::new()),
                     MenuState::Settings => {

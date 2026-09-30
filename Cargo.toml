@@ -38,6 +38,10 @@ bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.
 # Fork and rename to use "OG" dalek-cryptography.
 schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel", rev = "049bf9d30f3bbe072e2ad1b5eefdf0f3c851215e" }
 
+# Fork adding `Hc128Core::from_seed_in_place`, so the 4100 byte HC-128 state
+# is not duplicated on the stack during fog authority signing (towards nanox support).
+rand_hc = { git = "https://github.com/ryan-sentz/rngs.git", branch = "ryan/hc128-in-place-init" }
+
 mc-account-keys = { path = "./vendor/mob/account-keys" }
 mc-api = { path = "./vendor/mob/api" }
 mc-core = { path = "./vendor/mob/core" }
@@ -56,9 +60,6 @@ mc-transaction-summary = { path = "./vendor/mob/transaction/summary" }
 mc-util-from-random = { path = "./vendor/mob/util/from-random" }
 mc-util-test-helper = { path = "./vendor/mob/util/test-helper" }
 mc-util-serial = { path = "./vendor/mob/util/serial" }
-
-# patched to support ledger required 1.67.0 MSRV
-mc-rand = { path = "./vendor/mc-rand" }
 
 # patches for updates to the rust-ledger repo that have not yet been merged
 ledger-proto = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/everything" }
