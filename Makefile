@@ -46,11 +46,11 @@ test: core-test nanosplus-test nanox-test
 core-test:
 	cargo nextest run --package ledger-mob-core
 
-nanosplus-test: nanosplus
-	MODEL=nanosplus cargo nextest run --package ledger-mob
-
-nanox-test: nanox
-	MODEL=nanox cargo nextest run --package ledger-mob
+# Run simulator tests for a given device.
+# NOTE: the touch devices only implement wallet sync approval so far, the
+# transaction and identity tests skip themselves on those models.
+$(addsuffix -test,$(DEVICES)): %-test: %
+	MODEL=$* cargo nextest run --package ledger-mob
 
 # Build docs
 docs:
@@ -135,5 +135,6 @@ clean:
 
 # NOTE: `package-%` is deliberately absent -- make skips implicit/pattern rule
 # matching for phony targets, which would break it.
-.PHONY: fw lib core fmt clippy clean docs $(DEVICES) \
-	$(addsuffix -run,$(DEVICES)) $(addsuffix -load,$(LOADABLE_DEVICES))
+.PHONY: fw lib core fmt clippy clean docs test core-test $(DEVICES) \
+	$(addsuffix -run,$(DEVICES)) $(addsuffix -load,$(LOADABLE_DEVICES)) \
+	$(addsuffix -test,$(DEVICES))
