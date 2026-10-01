@@ -243,3 +243,39 @@ pub async fn approve_tx_capture(model: Model, h: &GenericHandle, name: &str) {
         .await
         .expect("transaction approval failed");
 }
+
+/// Run identity rejection UI where required for tests
+#[allow(unused)]
+pub async fn reject_ident(model: Model, h: &GenericHandle) {
+    model
+        .ui_for(h)
+        .reject_ident()
+        .await
+        .expect("identity rejection failed");
+}
+
+/// [approve_ident], writing a screenshot of each page visited to
+/// `../target/ui/<name>.<n>.png`
+#[allow(unused)]
+pub async fn approve_ident_capture(model: Model, h: &GenericHandle, name: &str) {
+    let prefix = PathBuf::from("../target/ui").join(name);
+
+    model
+        .ui_for_with_screenshots(h, prefix)
+        .approve_ident()
+        .await
+        .expect("identity approval failed");
+}
+
+/// [reject_ident], writing a screenshot of each page visited to
+/// `../target/ui/<name>.<n>.png`
+#[allow(unused)]
+pub async fn reject_ident_capture(model: Model, h: &GenericHandle, name: &str) {
+    let prefix = PathBuf::from("../target/ui").join(name);
+
+    model
+        .ui_for_with_screenshots(h, prefix)
+        .reject_ident()
+        .await
+        .expect("identity rejection failed");
+}

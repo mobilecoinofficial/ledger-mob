@@ -2,13 +2,13 @@
 //!
 //! [1]: https://developers.ledger.com/docs/device-app/develop/ui/nbgl
 
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
 use tracing::debug;
 
-use ledger_sim::{Event, EventFilter, GenericHandle, Handle, Model};
+use ledger_sim::{Action, Event, EventFilter, GenericHandle, Handle, Model};
 
 use super::ui::{capture, Screen, UiDriver, POLL_INTERVAL, SCREEN_TIMEOUT};
 
@@ -25,12 +25,49 @@ pub const SYNC_REJECT: &str = "Reject";
 /// Text shown on the home page, displayed once a request page is dismissed
 pub const HOME: &str = "MobileCoin";
 
+// Text matched on the identity review pages.
+//
+// The app supplies the review titles (see `fw/src/ui/touch/ident_request.rs`)
+// and the outcome messages (see the `IdentRequest` arm of `Ui::render`),
+// everything else is drawn by the SDK's `nbgl_useCaseReview` flow.
+
+/// Label of the long press button on the last identity review page.
+///
+/// NOTE: pages are located by button label rather than by title, as NBGL wraps
+/// a title too long for the screen and speculos reports each line as its own
+/// event, which no substring match against the full title can find.
+pub const IDENT_HOLD: &str = "Hold to sign";
+
+/// Label of the reject control in the review footer
+pub const IDENT_REJECT: &str = "Reject";
+
+/// Label of the button confirming rejection on the confirmation page
+pub const IDENT_REJECT_YES: &str = "Yes, reject";
+
+/// Message shown once an identity challenge has been approved
+pub const IDENT_APPROVED: &str = "challenge approved";
+
+/// Message shown once an identity challenge has been rejected
+pub const IDENT_REJECTED: &str = "challenge rejected";
+
+/// How long a long press button must be held for NBGL to accept it.
+///
+/// `LONG_TOUCH_DURATION` in the SDK (`lib_nbgl/include/nbgl_touch.h`) is 3000ms,
+/// held a little longer here to absorb simulator jitter.
+const LONG_PRESS: Duration = Duration::from_millis(3500);
+
+/// Upper bound on the pages swiped through while navigating a review, so a
+/// broken flow fails rather than swiping forever.
+const MAX_PAGES: usize = 16;
+
 /// Touchscreen ([NBGL][1]) [UiDriver].
 ///
 /// Approval pages here are not a sequence to page through as on the nano
 /// devices, they are a single page with buttons. Text events carry the pixel
 /// box of the drawn label, so a button is located by its label and tapped at
 /// the centre of that box.
+///
+/// Reviews do span several pages, advanced by swiping.
 ///
 /// [1]: https://developers.ledger.com/docs/device-app/develop/ui/nbgl
 pub struct TouchUi<'a> {
@@ -72,23 +109,39 @@ impl<'a> TouchUi<'a> {
 
         match tokio::time::timeout(SCREEN_TIMEOUT, poll).await {
             Ok(v) => v,
-            Err(_) => {
-                let shown = self.h.events(EventFilter::CurrentScreen).await?;
-                let shown: Screen = shown.into_iter().map(|e| e.text).collect();
-
-                Err(anyhow!(
-                    "timeout awaiting screen containing {text:?} on {} (shown: {shown:?})",
-                    self.model
-                ))
-            }
+            Err(_) => Err(self.missing(text).await),
         }
     }
 
-    /// Tap the centre of the label exactly matching `label` among `events`.
+    /// Error reporting what is on screen, for a page that never turned up
+    async fn missing(&self, text: &str) -> anyhow::Error {
+        let shown = match self.h.events(EventFilter::CurrentScreen).await {
+            Ok(v) => v.into_iter().map(|e| e.text).collect::<Screen>(),
+            Err(e) => return e,
+        };
+
+        anyhow!(
+            "timeout awaiting screen containing {text:?} on {} (shown: {shown:?})",
+            self.model
+        )
+    }
+
+    /// Screen size in pixels, from `SCREEN_WIDTH` / `SCREEN_HEIGHT` in the SDK
+    /// (`lib_nbgl/include/nbgl_types.h`). Used to place swipes, which are not
+    /// anchored to any drawn text.
+    fn screen_size(&self) -> (u16, u16) {
+        match self.model {
+            Model::Flex => (480, 600),
+            Model::NanoGen5 => (300, 400),
+            _ => (400, 672),
+        }
+    }
+
+    /// Locate the centre of the label exactly matching `label` among `events`.
     ///
     /// The match is exact so that a button label is not confused with the page
     /// text containing it, e.g. the "Sync" button against "Sync Wallet?".
-    async fn tap_label(&self, events: &[Event], label: &str) -> anyhow::Result<()> {
+    fn label_centre(&self, events: &[Event], label: &str) -> anyhow::Result<(u16, u16)> {
         let e = events.iter().find(|e| e.text.trim() == label);
 
         let e = match e {
@@ -103,12 +156,80 @@ impl<'a> TouchUi<'a> {
             }
         };
 
-        // Events carry the pixel box of the drawn text, tap its centre
-        let (x, y) = (e.x + e.w / 2, e.y + e.h / 2);
+        // Events carry the pixel box of the drawn text, aim for its centre
+        Ok(((e.x + e.w / 2) as u16, (e.y + e.h / 2) as u16))
+    }
+
+    /// Tap the centre of the label exactly matching `label` among `events`.
+    async fn tap_label(&self, events: &[Event], label: &str) -> anyhow::Result<()> {
+        let (x, y) = self.label_centre(events, label)?;
 
         debug!("UI: tapping {label:?} at ({x}, {y})");
 
-        self.h.tap(x as u16, y as u16).await
+        self.h.tap(x, y).await
+    }
+
+    /// Hold the long press button labelled `label` for [LONG_PRESS].
+    ///
+    /// NBGL only fires the confirmation once a touch has been held for
+    /// `LONG_TOUCH_DURATION`, so this cannot be a [tap][Self::tap_label].
+    async fn hold_label(&self, events: &[Event], label: &str) -> anyhow::Result<()> {
+        let (x, y) = self.label_centre(events, label)?;
+
+        debug!("UI: holding {label:?} at ({x}, {y})");
+
+        self.h.touch(x, y, Action::Press).await?;
+        tokio::time::sleep(LONG_PRESS).await;
+        self.h.touch(x, y, Action::Release).await
+    }
+
+    /// Swipe right to left across the middle of the screen, advancing a review
+    /// to its next page
+    async fn swipe_next(&self) -> anyhow::Result<()> {
+        let (w, h) = self.screen_size();
+        let y = h / 2;
+
+        debug!("UI: swiping to next page");
+
+        self.h.swipe((w * 3 / 4, y), (w / 4, y)).await
+    }
+
+    /// Record the current page in `visited`, capturing a screenshot of it where
+    /// screenshots are enabled
+    async fn record(&self, events: &[Event], visited: &mut Vec<Screen>) -> anyhow::Result<()> {
+        let page: Screen = events.iter().map(|e| e.text.clone()).collect();
+        debug!("UI: {page:?}");
+
+        capture(self.h, &self.screenshots, visited.len()).await?;
+        visited.push(page);
+
+        Ok(())
+    }
+
+    /// Swipe forward until a page containing `text` is displayed, recording
+    /// every page visited on the way.
+    ///
+    /// This is the touch counterpart to `NanoUi::navigate`, where forward
+    /// navigation is a swipe rather than a right button press.
+    async fn navigate(&self, text: &str, visited: &mut Vec<Screen>) -> anyhow::Result<Vec<Event>> {
+        for _ in 0..MAX_PAGES {
+            let events = self.h.events(EventFilter::CurrentScreen).await?;
+
+            if events.iter().any(|e| e.text.contains(text)) {
+                return Ok(events);
+            }
+
+            if !events.is_empty() {
+                self.record(&events, visited).await?;
+            }
+
+            self.swipe_next().await?;
+
+            // Give the page a moment to redraw before looking again
+            tokio::time::sleep(POLL_INTERVAL).await;
+        }
+
+        Err(self.missing(text).await)
     }
 
     /// Await the sync request page, tap `label`, and wait for the home page
@@ -161,7 +282,49 @@ impl UiDriver for TouchUi<'_> {
         Err(self.unimplemented("transaction rejection"))
     }
 
+    /// Walk the identity review to its last page and hold the sign button
     async fn approve_ident(&self) -> anyhow::Result<Vec<Screen>> {
-        Err(self.unimplemented("identity approval"))
+        debug!("UI: approve ident");
+
+        let mut visited = Vec::new();
+
+        // The reject control is in the footer of every review page, so its
+        // presence is how the review is known to have started
+        self.wait_for(IDENT_REJECT).await?;
+
+        // Swipe through the review to the long press page
+        let finish = self.navigate(IDENT_HOLD, &mut visited).await?;
+        self.record(&finish, &mut visited).await?;
+
+        self.hold_label(&finish, IDENT_HOLD).await?;
+
+        // Wait for the outcome message so the caller only proceeds once the
+        // engine has been told
+        self.wait_for(IDENT_APPROVED).await?;
+        capture(self.h, &self.screenshots, visited.len()).await?;
+
+        Ok(visited)
+    }
+
+    /// Reject the identity review from its first page, then confirm
+    async fn reject_ident(&self) -> anyhow::Result<Vec<Screen>> {
+        debug!("UI: reject ident");
+
+        let mut visited = Vec::new();
+
+        let page = self.wait_for(IDENT_REJECT).await?;
+        self.record(&page, &mut visited).await?;
+
+        self.tap_label(&page, IDENT_REJECT).await?;
+
+        let confirm = self.wait_for(IDENT_REJECT_YES).await?;
+        self.record(&confirm, &mut visited).await?;
+
+        self.tap_label(&confirm, IDENT_REJECT_YES).await?;
+
+        self.wait_for(IDENT_REJECTED).await?;
+        capture(self.h, &self.screenshots, visited.len()).await?;
+
+        Ok(visited)
     }
 }

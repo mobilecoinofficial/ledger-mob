@@ -16,7 +16,7 @@ async fn ident() -> anyhow::Result<()> {
         let seed = v.seed();
         let e = TestEngine::new(Engine::new(TestDriver { seed }, Default::default()));
 
-        ledger_mob_tests::ident::test(e.clone(), || approve_ident(&e), v)
+        ledger_mob_tests::ident::test_approve(e.clone(), || approve_ident(&e), v)
             .await
             .unwrap();
     }

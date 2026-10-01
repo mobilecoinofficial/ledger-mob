@@ -55,7 +55,6 @@ pub const TX_REJECT: &str = "Reject Transaction?";
 pub const IDENT_APPROVE: &str = "ign challenge";
 
 /// Text matched on the identity rejection page
-#[allow(unused)]
 pub const IDENT_REJECT: &str = "Reject challenge?";
 
 /// Button-driven ([BAGL][1]) [UiDriver] for the nano devices.
@@ -204,5 +203,11 @@ impl UiDriver for NanoUi<'_> {
         debug!("UI: approve ident");
 
         self.navigate_and_select(IDENT_APPROVE).await
+    }
+
+    async fn reject_ident(&self) -> anyhow::Result<Vec<Screen>> {
+        debug!("UI: reject ident");
+
+        self.navigate_and_select(IDENT_REJECT).await
     }
 }

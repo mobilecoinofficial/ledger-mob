@@ -46,6 +46,10 @@ pub trait UiDriver {
     /// Approve an identity (challenge signing) request, returning the screens
     /// visited
     async fn approve_ident(&self) -> anyhow::Result<Vec<Screen>>;
+
+    /// Reject an identity (challenge signing) request, returning the screens
+    /// visited
+    async fn reject_ident(&self) -> anyhow::Result<Vec<Screen>>;
 }
 
 /// Extension trait for the [Model] type to provide test UI helpers.

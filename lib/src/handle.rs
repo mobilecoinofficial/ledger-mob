@@ -338,18 +338,35 @@ impl<T: Device + Send> DeviceHandle<T> {
         // Await user approval
         let n = self.user_timeout_s;
         for i in 0..n {
-            let resp = self
-                .request::<TxInfo>(TxInfoReq, &mut buff, self.user_timeout())
-                .await?;
-
-            match resp.state {
-                TxState::IdentApproved => break,
-                TxState::IdentPending if i + 1 < n => {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            // NOTE: for NBGL devices when we're in a UI flow the app will respond
+            // with a busy status (or not at all) instead of an actual APDU, so these
+            // are tolerated while awaiting approval (see also `Self::retry`).
+            match self
+                .request::<TxInfo>(TxInfoReq, &mut buff, self.request_timeout())
+                .await
+            {
+                Ok(resp) => match resp.state {
+                    TxState::IdentApproved => break,
+                    TxState::IdentPending => (),
+                    _ => return Err(Error::UserDenied),
+                },
+                Err(LedgerError::Timeout) | Err(LedgerError::EmptyResponse) => {
+                    debug!("Awaiting ident approval");
                 }
-                TxState::IdentPending => return Err(Error::UserTimeout),
-                _ => return Err(Error::UserDenied),
+                Err(LedgerError::UnknownStatus(a, b)) => {
+                    debug!("Awaiting ident approval (status: {a:02x?} {b:02x?})")
+                }
+                Err(e) => {
+                    debug!("Error while polling for ident approval: {:?}", e);
+                    return Err(e.into());
+                }
             }
+
+            if i + 1 == n {
+                return Err(Error::UserTimeout);
+            }
+
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
 
         // Fetch identity response
