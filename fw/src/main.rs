@@ -345,7 +345,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Update to identity approver on request
         #[cfg(feature = "ident")]
         State::Ident(IdentState::Pending) if !ui.state.is_ident_request() => {
-            ui.state = UiState::ident_request();
+            ui.state = UiState::ident_request(engine.digest().clone());
             render = true;
         }
         // Show identity state on changes
@@ -375,11 +375,15 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         State::Pending if !ui.state.is_tx_request() => match engine.report() {
             #[cfg(feature = "summary")]
             Some(r) => {
-                ui.state = UiState::tx_summary_request(r.outputs.len(), r.totals.len());
+                ui.state = UiState::tx_summary_request(
+                    r.outputs.len(),
+                    r.totals.len(),
+                    engine.digest().clone(),
+                );
                 render = true;
             }
             _ => {
-                ui.state = UiState::tx_blind_request();
+                ui.state = UiState::tx_blind_request(engine.digest().clone());
                 render = true;
             }
         },
@@ -403,6 +407,20 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         }
 
         _ => (),
+    }
+
+    // Never leave an approver displayed once the engine has left the
+    // corresponding pending state (approvals are also digest-bound)
+    let tx_stale = ui.state.is_tx_request() && engine.state() != State::Pending;
+    #[cfg(feature = "ident")]
+    let ident_stale =
+        ui.state.is_ident_request() && engine.state() != State::Ident(IdentState::Pending);
+    #[cfg(not(feature = "ident"))]
+    let ident_stale = false;
+
+    if tx_stale || ident_stale {
+        ui.state = UiState::menu();
+        render = true;
     }
 
     // Re-render progress bars on updates

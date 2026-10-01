@@ -10,7 +10,7 @@ use ledger_device_sdk::{
     ui::layout::{Layout, Location, StringPlace},
 };
 
-use ledger_mob_core::engine::{Driver, Engine, FogId};
+use ledger_mob_core::engine::{Driver, Engine, FogId, TxDigest};
 use mc_core::{account::PublicSubaddress, consts::DEFAULT_SUBADDRESS_INDEX};
 
 use crate::{
@@ -138,13 +138,13 @@ impl UiState {
         matches!(self, UiState::KeyRequest(..))
     }
 
-    pub fn tx_blind_request() -> Self {
-        Self::TxRequest(TxBlindApprover::new())
+    pub fn tx_blind_request(digest: TxDigest) -> Self {
+        Self::TxRequest(TxBlindApprover::new(digest))
     }
 
     #[cfg(feature = "summary")]
-    pub fn tx_summary_request(num_outputs: usize, num_totals: usize) -> Self {
-        Self::TxSummaryRequest(TxSummaryApprover::new(num_outputs, num_totals))
+    pub fn tx_summary_request(num_outputs: usize, num_totals: usize, digest: TxDigest) -> Self {
+        Self::TxSummaryRequest(TxSummaryApprover::new(num_outputs, num_totals, digest))
     }
 
     pub fn is_tx_request(&self) -> bool {
@@ -157,8 +157,8 @@ impl UiState {
     }
 
     #[cfg(feature = "ident")]
-    pub fn ident_request() -> Self {
-        Self::IdentRequest(IdentApprover::new())
+    pub fn ident_request(digest: TxDigest) -> Self {
+        Self::IdentRequest(IdentApprover::new(digest))
     }
 
     #[cfg(feature = "ident")]
@@ -233,26 +233,32 @@ impl Ui {
             }
             #[cfg(feature = "ident")]
             UiState::IdentRequest(ref mut a) => {
-                a.update(btn).map_exit(|v| {
-                    // Set ident approval
-                    engine.ident_approve(*v)
+                let r = a.update(btn);
+                let digest = &a.digest;
+                r.map_exit(|v| {
+                    // Set ident approval (bound to the displayed request)
+                    engine.ident_approve(*v, digest)
                 })
             }
             UiState::TxRequest(ref mut a) => {
-                a.update(btn).map_exit(|v| {
-                    // Approve or deny transaction
+                let r = a.update(btn);
+                let digest = &a.digest;
+                r.map_exit(|v| {
+                    // Approve or deny transaction (bound to the displayed request)
                     match *v {
-                        true => engine.approve(),
+                        true => engine.approve(digest),
                         false => engine.deny(),
                     }
                 })
             }
             #[cfg(feature = "summary")]
             UiState::TxSummaryRequest(ref mut a) => {
-                a.update(btn, engine).map_exit(|v| {
-                    // Approve or deny transaction
+                let r = a.update(btn, engine);
+                let digest = &a.digest;
+                r.map_exit(|v| {
+                    // Approve or deny transaction (bound to the displayed request)
                     match *v {
-                        true => engine.approve(),
+                        true => engine.approve(digest),
                         false => engine.deny(),
                     }
                 })
