@@ -3,7 +3,7 @@ use rand_core::{CryptoRng, RngCore};
 
 use ledger_device_sdk::nbgl::NbglHomeAndSettings;
 
-use ledger_mob_core::engine::{Driver, Engine, FogId};
+use ledger_mob_core::engine::{Driver, Engine, FogId, IdentState, State, TxDigest};
 use mc_core::{account::PublicSubaddress, consts::DEFAULT_SUBADDRESS_INDEX};
 
 use crate::{
@@ -50,12 +50,15 @@ pub enum UiState {
 
     KeyRequest(SyncRequest),
 
-    TxBlindRequest(()),
+    /// Blind transaction request, holding the engine digest at creation
+    /// to bind approval to the displayed request
+    TxBlindRequest(TxDigest),
 
-    TxSummaryRequest(()),
+    /// Summary transaction request, holding the engine digest at creation
+    TxSummaryRequest(TxDigest),
 
     #[cfg(feature = "ident")]
-    IdentRequest(IdentRequest),
+    IdentRequest(IdentRequest, TxDigest),
 
     /// Display progress
     Progress,
@@ -73,7 +76,7 @@ impl core::fmt::Debug for UiState {
             UiState::TxBlindRequest(_) => write!(f, "TxBlindRequest"),
             UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
             #[cfg(feature = "ident")]
-            UiState::IdentRequest(_) => write!(f, "IdentRequest"),
+            UiState::IdentRequest(..) => write!(f, "IdentRequest"),
             UiState::Progress => write!(f, "Progress"),
             UiState::Message(_) => write!(f, "Message"),
         }
@@ -211,28 +214,37 @@ impl Ui {
                 }
             }
             #[cfg(feature = "ident")]
-            UiState::IdentRequest(s) if self.last_state != UiStateKind::IdentRequest => {
+            UiState::IdentRequest(s, digest) if self.last_state != UiStateKind::IdentRequest => {
                 ledger_device_sdk::log::debug!("Rendering IdentRequest UI");
 
                 self.last_state = UiStateKind::IdentRequest;
 
                 // Blocking review, the immutable engine borrow ends with the
                 // call so the approval may be applied below
-                let approved = s.show_blocking(&*engine);
-                if let Some(v) = approved {
-                    engine.ident_approve(v);
-                }
+                let approved = match s.show_blocking(&*engine) {
+                    // Apply the approval state to the engine
+                    Some(v) => engine.ident_approve(v, digest),
+                    None => {
+                        // No approval was pending
+                        false
+                    }
+                };
 
                 ledger_device_sdk::log::debug!("Finished IdentRequest UI");
 
                 // Display the outcome of the identity request
                 // NOTE: we use our own message display here so that APDUs can be
                 // served while the message is displayed.
-                self.state = match approved {
-                    Some(true) => UiState::message("challenge approved", true),
-                    Some(false) => UiState::message("challenge rejected", false),
+                let engine_state = engine.state();
+                self.state = match engine_state {
+                    State::Ident(IdentState::Approved) if approved => {
+                        UiState::message("challenge approved", true)
+                    }
+                    State::Ident(IdentState::Denied) if !approved => {
+                        UiState::message("challenge rejected", false)
+                    }
                     // No pending request, nothing was displayed
-                    None => UiState::menu(),
+                    _ => UiState::menu(),
                 };
 
                 // Draw the new state immediately instead of waiting for the next tick
@@ -278,7 +290,7 @@ impl UiState {
             UiState::TxBlindRequest(_) => UiStateKind::TxBlindRequest,
             UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
             #[cfg(feature = "ident")]
-            UiState::IdentRequest(_) => UiStateKind::IdentRequest,
+            UiState::IdentRequest(..) => UiStateKind::IdentRequest,
             UiState::Progress => UiStateKind::Progress,
             UiState::Message(_) => UiStateKind::Message,
         }
@@ -313,8 +325,8 @@ impl UiState {
     }
 
     #[cfg(feature = "ident")]
-    pub fn ident_request() -> Self {
-        Self::IdentRequest(IdentRequest::new())
+    pub fn ident_request(digest: TxDigest) -> Self {
+        Self::IdentRequest(IdentRequest::new(), digest)
     }
 
     #[cfg(feature = "ident")]
@@ -338,15 +350,15 @@ impl UiState {
         matches!(self, UiState::Progress)
     }
 
-    pub fn tx_blind_request() -> Self {
-        // TODO
-        Self::TxBlindRequest(())
+    pub fn tx_blind_request(digest: TxDigest) -> Self {
+        // TODO: approver UI, must call `engine.approve(&digest)`
+        Self::TxBlindRequest(digest)
     }
 
     #[cfg(feature = "summary")]
-    pub fn tx_summary_request(num_outputs: usize, num_totals: usize) -> Self {
-        // TODO
-        Self::TxSummaryRequest(())
+    pub fn tx_summary_request(num_outputs: usize, num_totals: usize, digest: TxDigest) -> Self {
+        // TODO: approver UI, must call `engine.approve(&digest)`
+        Self::TxSummaryRequest(digest)
     }
 
     pub fn is_tx_request(&self) -> bool {

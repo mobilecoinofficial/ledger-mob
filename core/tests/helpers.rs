@@ -33,7 +33,8 @@ impl TestEngine {
 
     pub fn approve_ident(&self, approve: bool) {
         let mut e = self.engine.lock().unwrap();
-        e.ident_approve(approve);
+        let d = e.digest().clone();
+        e.ident_approve(approve, &d);
     }
 }
 
@@ -114,7 +115,8 @@ pub async fn approve_tx(e: &TestEngine) {
     debug!("Approve transaction");
 
     let mut e = e.engine.lock().unwrap();
-    e.approve();
+    let d = e.digest().clone();
+    e.approve(&d);
 }
 
 pub async fn unlock(e: &TestEngine) {
@@ -128,7 +130,8 @@ pub async fn approve_ident(e: &TestEngine) {
     debug!("Approve ident");
 
     let mut e = e.engine.lock().unwrap();
-    e.ident_approve(true);
+    let d = e.digest().clone();
+    e.ident_approve(true, &d);
 }
 
 // Setup logging
