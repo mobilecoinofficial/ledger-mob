@@ -69,3 +69,5 @@ mc-rand = { path = "./vendor/mc-rand" }
 # Update to latest ledger-(proto|lib) for encdec@0.10
 ledger-proto = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/everything" }
 ledger-lib = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/everything" }
+# ..and ledger-sim for the speculos `/events` API used to drive the UI in tests
+ledger-sim = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/everything" }
