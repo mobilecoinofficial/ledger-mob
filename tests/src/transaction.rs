@@ -23,7 +23,7 @@ use mc_transaction_summary::verify_tx_summary;
 
 use ledger_mob::{
     tx::{TransactionHandle, TxConfig},
-    DeviceHandle,
+    DeviceHandle, Error,
 };
 
 pub struct TransactionExpectation<'a> {
@@ -178,4 +178,76 @@ where
     validate_signature(req.block_version, &resp.tx, &mut OsRng {}).unwrap();
 
     Ok(())
+}
+
+/// Drive a transaction to the approval prompt, reject it, and check the host
+/// observes the denial.
+///
+/// Shares its setup with [test] up to the prompt; everything after it (ring
+/// signing, completion, signature validation) is unreachable once the user has
+/// rejected.
+///
+/// Only blind transactions are supported, ie. those without unblinding data,
+/// as the summary flow has its own approval UI.
+pub async fn test_reject<'a, T, F>(
+    t: T,
+    reject: impl Fn() -> F,
+    tx: &TransactionExpectation<'a>,
+) -> anyhow::Result<()>
+where
+    T: Device + Send,
+    F: Future<Output = ()>,
+{
+    // Load account and unsigned transaction
+    let req = tx.tx_req();
+
+    trace!("Request: {:?}", req);
+
+    // Setup device handle
+    let d = DeviceHandle::from(t);
+
+    info!("Starting transaction");
+
+    // Initialise transaction
+    let mut signer = TransactionHandle::new(
+        TxConfig {
+            account_index: 0,
+            num_memos: 0,
+            num_rings: req.rings.len(),
+            request_timeout: Duration::from_millis(500),
+            user_timeout: Duration::from_secs(3),
+        },
+        Arc::new(Mutex::new(d)),
+    )
+    .await?;
+
+    // Build the digest for ring signing
+    debug!("Fetching signing data");
+    let (_signing_data, _summary, unblinding, digest) =
+        req.get_signing_data(&mut OsRng {}).unwrap();
+
+    if unblinding.is_some() {
+        return Err(anyhow::anyhow!(
+            "test_reject only supports blind transactions, \
+             this vector carries unblinding data"
+        ));
+    }
+
+    debug!("Setting tx message");
+    signer.set_message(&digest.0).await?;
+
+    // Trigger rejection function
+    reject().await;
+
+    // Await user input, which must report the transaction as denied
+    debug!("Waiting for user rejection");
+
+    match signer.await_approval(20).await {
+        Err(Error::UserDenied) => {
+            info!("Transaction rejected");
+            Ok(())
+        }
+        Ok(_) => Err(anyhow::anyhow!("transaction approved following rejection")),
+        Err(e) => Err(anyhow::anyhow!("expected UserDenied, got: {e:?}")),
+    }
 }

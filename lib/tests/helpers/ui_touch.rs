@@ -49,6 +49,45 @@ pub const IDENT_APPROVED: &str = "challenge approved";
 
 /// Message shown once an identity challenge has been rejected
 pub const IDENT_REJECTED: &str = "challenge rejected";
+// Text matched on the blind transaction approval pages.
+//
+// The app supplies the review titles (see `fw/src/ui/touch/tx_blind_request.rs`),
+// everything else is drawn by the SDK's `nbgl_useCaseReviewBlindSigning` flow and
+// matched against the strings in `lib_nbgl/src/nbgl_use_case.c`.
+
+/// Text shown on the blind signing warning, displayed ahead of the review itself
+pub const TX_BLIND_WARN: &str = "Blind signing ahead";
+
+/// Label of the button that continues from the warning into the review
+pub const TX_BLIND_CONTINUE: &str = "Continue anyway";
+
+/// Label of the button that abandons the review from the warning page.
+///
+/// This rejects immediately, without the confirmation [TX_REJECT] goes through.
+#[allow(unused)]
+pub const TX_BLIND_BACK: &str = "Back to safety";
+
+/// Label of the long press button on the last review page.
+///
+/// NOTE: pages are located by button label rather than by title, as NBGL wraps
+/// a title too long for the screen and speculos reports each line as its own
+/// event -- the last review page arrives as `["Sign MobileCoin ",
+/// "transaction?", "Reject", "3 of 3", "Hold to sign"]`, which no substring
+/// match against the title can find.
+pub const TX_HOLD: &str = "Hold to sign";
+
+/// Label of the reject control in the review footer
+pub const TX_REJECT: &str = "Reject";
+
+/// Label of the button confirming rejection on the confirmation page, which is
+/// titled "Reject transaction?"
+pub const TX_REJECT_YES: &str = "Yes, reject";
+
+/// Status shown once a transaction has been signed
+pub const TX_SIGNED: &str = "Transaction signed";
+
+/// Status shown once a transaction has been rejected
+pub const TX_REJECTED: &str = "Transaction rejected";
 
 /// How long a long press button must be held for NBGL to accept it.
 ///
@@ -67,7 +106,7 @@ const MAX_PAGES: usize = 16;
 /// box of the drawn label, so a button is located by its label and tapped at
 /// the centre of that box.
 ///
-/// Reviews do span several pages, advanced by swiping.
+/// Transaction reviews do span several pages, advanced by swiping or by a button press.
 ///
 /// [1]: https://developers.ledger.com/docs/device-app/develop/ui/nbgl
 pub struct TouchUi<'a> {
@@ -87,6 +126,17 @@ impl<'a> TouchUi<'a> {
             model,
             h,
             screenshots,
+        }
+    }
+
+    /// Screen size in pixels, from `SCREEN_WIDTH` / `SCREEN_HEIGHT` in the SDK
+    /// (`lib_nbgl/include/nbgl_types.h`). Used to place swipes, which are not
+    /// anchored to any drawn text.
+    fn screen_size(&self) -> (u16, u16) {
+        match self.model {
+            Model::Flex => (480, 600),
+            Model::NanoGen5 => (300, 400),
+            _ => (400, 672),
         }
     }
 
@@ -124,17 +174,6 @@ impl<'a> TouchUi<'a> {
             "timeout awaiting screen containing {text:?} on {} (shown: {shown:?})",
             self.model
         )
-    }
-
-    /// Screen size in pixels, from `SCREEN_WIDTH` / `SCREEN_HEIGHT` in the SDK
-    /// (`lib_nbgl/include/nbgl_types.h`). Used to place swipes, which are not
-    /// anchored to any drawn text.
-    fn screen_size(&self) -> (u16, u16) {
-        match self.model {
-            Model::Flex => (480, 600),
-            Model::NanoGen5 => (300, 400),
-            _ => (400, 672),
-        }
     }
 
     /// Locate the centre of the label exactly matching `label` among `events`.
@@ -209,8 +248,8 @@ impl<'a> TouchUi<'a> {
     /// Swipe forward until a page containing `text` is displayed, recording
     /// every page visited on the way.
     ///
-    /// This is the touch counterpart to `NanoUi::navigate`, where forward
-    /// navigation is a swipe rather than a right button press.
+    /// This is the touch counterpart to [NanoUi::navigate][super::ui_nano],
+    /// where forward navigation is a swipe rather than a right button press.
     async fn navigate(&self, text: &str, visited: &mut Vec<Screen>) -> anyhow::Result<Vec<Event>> {
         for _ in 0..MAX_PAGES {
             let events = self.h.events(EventFilter::CurrentScreen).await?;
@@ -235,23 +274,39 @@ impl<'a> TouchUi<'a> {
     /// Await the sync request page, tap `label`, and wait for the home page
     /// so the caller only proceeds once the choice has been dismissed
     async fn choose_sync(&self, label: &str) -> anyhow::Result<Vec<Screen>> {
+        let mut visited = Vec::new();
+
         let events = self.wait_for(SYNC_INFO).await?;
-
-        let page: Screen = events.iter().map(|e| e.text.clone()).collect();
-        debug!("UI: {page:?}");
-
-        capture(self.h, &self.screenshots, 0).await?;
+        self.record(&events, &mut visited).await?;
 
         self.tap_label(&events, label).await?;
 
         self.wait_for(HOME).await?;
+        capture(self.h, &self.screenshots, visited.len()).await?;
 
-        capture(self.h, &self.screenshots, 1).await?;
+        Ok(visited)
+    }
 
-        Ok(vec![page])
+    /// Dismiss the blind signing warning that precedes the review, recording it
+    /// and leaving the display on the review's first page.
+    ///
+    /// The warning page has no reject control, so waiting for one is how the
+    /// review is known to have started -- without it the first
+    /// [navigate][Self::navigate] poll can still see the warning and swipe
+    /// straight past the review's opening page.
+    async fn enter_blind_review(&self, visited: &mut Vec<Screen>) -> anyhow::Result<()> {
+        let warn = self.wait_for(TX_BLIND_WARN).await?;
+        self.record(&warn, visited).await?;
+
+        self.tap_label(&warn, TX_BLIND_CONTINUE).await?;
+
+        self.wait_for(TX_REJECT).await?;
+
+        Ok(())
     }
 
     /// Error for the approval pages the touch firmware has yet to implement
+    #[allow(unused)]
     fn unimplemented(&self, flow: &str) -> anyhow::Error {
         anyhow!(
             "{flow} UI is not implemented for {} (see fw/src/ui/touch)",
@@ -275,11 +330,50 @@ impl UiDriver for TouchUi<'_> {
     }
 
     async fn approve_tx(&self) -> anyhow::Result<Vec<Screen>> {
-        Err(self.unimplemented("transaction approval"))
+        debug!("UI: approve transaction");
+
+        let mut visited = Vec::new();
+
+        self.enter_blind_review(&mut visited).await?;
+
+        // Swipe through the review to the long press page
+        let finish = self.navigate(TX_HOLD, &mut visited).await?;
+        self.record(&finish, &mut visited).await?;
+
+        self.hold_label(&finish, TX_HOLD).await?;
+
+        // Wait for the status page so the caller only proceeds once the
+        // engine has been told
+        self.wait_for(TX_SIGNED).await?;
+        capture(self.h, &self.screenshots, visited.len()).await?;
+
+        Ok(visited)
     }
 
     async fn reject_tx(&self) -> anyhow::Result<Vec<Screen>> {
-        Err(self.unimplemented("transaction rejection"))
+        debug!("UI: reject transaction");
+
+        let mut visited = Vec::new();
+
+        // Continue past the warning rather than taking `TX_BLIND_BACK`, so the
+        // rejection is exercised from the review itself
+        self.enter_blind_review(&mut visited).await?;
+
+        // The reject control sits in the review footer, present on every page
+        let page = self.navigate(TX_REJECT, &mut visited).await?;
+        self.record(&page, &mut visited).await?;
+
+        self.tap_label(&page, TX_REJECT).await?;
+
+        let confirm = self.wait_for(TX_REJECT_YES).await?;
+        self.record(&confirm, &mut visited).await?;
+
+        self.tap_label(&confirm, TX_REJECT_YES).await?;
+
+        self.wait_for(TX_REJECTED).await?;
+        capture(self.h, &self.screenshots, visited.len()).await?;
+
+        Ok(visited)
     }
 
     /// Walk the identity review to its last page and hold the sign button

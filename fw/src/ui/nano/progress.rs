@@ -16,12 +16,13 @@ use ledger_mob_core::engine::{Driver, Engine, State};
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Progress {
     init: bool,
+    message: &'static str,
 }
 
 impl Progress {
     /// Create a new [Progress] instance
-    pub fn new() -> Self {
-        Self { init: false }
+    pub fn new(message: &'static str) -> Self {
+        Self { init: false, message }
     }
 
     pub fn update(&mut self, btn: &ButtonEvent) -> UiResult<bool> {
@@ -34,15 +35,6 @@ impl Progress {
     }
 
     pub fn render<D: Driver, R: RngCore + CryptoRng>(&mut self, engine: &Engine<D, R>) {
-        // Resolve message based on engine state
-        let message = match engine.state() {
-            #[cfg(feature = "summary")]
-            State::Summary(_) => "Loading Transaction",
-            #[cfg(feature = "mlsag")]
-            State::SignRing(_) => "Signing Transaction",
-            _ => "UNKNOWN",
-        };
-
         // Run full screen setup on first render
         if !self.init {
             clear_screen();
@@ -59,7 +51,7 @@ impl Progress {
             Some(v) => {
                 let v = v as u32;
 
-                message.place(Location::Custom(16), Layout::Centered, false);
+                self.message.place(Location::Custom(16), Layout::Centered, false);
 
                 // Fill progress bar and clear null-space based on progress
                 RectFull::new().width(v).height(8).pos(14_i32, 37).display();
@@ -70,7 +62,7 @@ impl Progress {
                     .erase();
             }
             _ => {
-                message.place(Location::Middle, Layout::Centered, false);
+                self.message.place(Location::Middle, Layout::Centered, false);
             }
         }
 

@@ -112,12 +112,12 @@ impl UiState {
     }
 
     /// Create a new `Progress` variant
-    pub fn progress() -> Self {
-        Self::Progress(Progress::new())
+    pub fn progress(message: &'static str) -> Self {
+        Self::Progress(Progress::new(message))
     }
 
     pub fn is_progress(&self) -> bool {
-        matches!(self, UiState::Progress(..))
+        matches!(self, UiState::Progress(_))
     }
 
     /// Create a new `Message` variant

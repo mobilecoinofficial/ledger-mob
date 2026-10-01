@@ -1,7 +1,9 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 use rand_core::{CryptoRng, RngCore};
 
-use ledger_device_sdk::nbgl::NbglHomeAndSettings;
+use ledger_device_sdk::{
+    nbgl::{NbglHomeAndSettings, NbglReviewStatus, StatusType},
+};
 
 use ledger_mob_core::engine::{Driver, Engine, FogId};
 use mc_core::{account::PublicSubaddress, consts::DEFAULT_SUBADDRESS_INDEX};
@@ -25,6 +27,11 @@ pub use address::{AddressEvent, AddressView};
 mod ident_request;
 #[cfg(feature = "ident")]
 pub use ident_request::IdentRequest;
+mod tx_blind_request;
+pub use tx_blind_request::TxBlindRequest;
+
+mod progress;
+pub use progress::Progress;
 
 static SHOW_ADDRESS: AtomicBool = AtomicBool::new(false);
 
@@ -50,7 +57,8 @@ pub enum UiState {
 
     KeyRequest(SyncRequest),
 
-    TxBlindRequest(()),
+    /// Transaction request without summary, awaiting user input
+    TxBlindRequest(TxBlindRequest),
 
     TxSummaryRequest(()),
 
@@ -58,7 +66,7 @@ pub enum UiState {
     IdentRequest(IdentRequest),
 
     /// Display progress
-    Progress,
+    Progress(Progress),
 
     /// Display a message
     Message(Message),
@@ -74,7 +82,7 @@ impl core::fmt::Debug for UiState {
             UiState::TxSummaryRequest(_) => write!(f, "TxSummaryRequest"),
             #[cfg(feature = "ident")]
             UiState::IdentRequest(_) => write!(f, "IdentRequest"),
-            UiState::Progress => write!(f, "Progress"),
+            UiState::Progress(_) => write!(f, "Progress"),
             UiState::Message(_) => write!(f, "Message"),
         }
     }
@@ -252,6 +260,51 @@ impl Ui {
                     _ => (),
                 }
             }
+            // Progress is drawn without blocking, and re-rendered on every
+            // call so the percentage advances. `Progress::render` redraws when
+            // displaced and otherwise updates only on changes.
+            UiState::Progress(p) => {
+                self.last_state = UiStateKind::Progress;
+                p.draw(engine);
+            }
+            UiState::TxBlindRequest(s) if self.last_state != UiStateKind::TxBlindRequest => {
+                self.last_state = UiStateKind::TxBlindRequest;
+
+                ledger_device_sdk::log::debug!("Rendering TxBlindRequest UI");
+
+                // Show the blind signing review, blocking until the user chooses
+                let approved = s.show_blocking(engine);
+
+                // Update the engine state based on the user's choice
+                match approved {
+                    true => engine.approve(),
+                    false => engine.deny(),
+                }
+
+                // Then show the approved state
+                // TODO(ryan): should this status change happen elsewhere?
+                NbglReviewStatus::new()
+                    .status_type(StatusType::Transaction)
+                    .show(approved);
+
+                ledger_device_sdk::log::debug!(
+                    "Finished TxBlindRequest UI (approved: {})",
+                    approved
+                );
+
+                match approved {
+                    // On approval the host immediately drives ring signing, so we move to the progress state.
+                    true => self.state = UiState::progress("Signing Transaction"),
+                    // On rejection return to the menu and leave the engine in `Deny`
+                    // for the host to observe.
+                    false => {
+                        self.state = UiState::menu();
+                        if let UiState::Menu(page) = &mut self.state {
+                            page.show_and_return();
+                        }
+                    }
+                }
+            }
             // Messages are drawn without blocking, and (re)drawn whenever
             // they are not live (ie. if displaced by the lock screen).
             // Dismissal is handled via `handle_touch` or the message timeout in `main.rs`.
@@ -279,7 +332,7 @@ impl UiState {
             UiState::TxSummaryRequest(_) => UiStateKind::TxSummaryRequest,
             #[cfg(feature = "ident")]
             UiState::IdentRequest(_) => UiStateKind::IdentRequest,
-            UiState::Progress => UiStateKind::Progress,
+            UiState::Progress(_) => UiStateKind::Progress,
             UiState::Message(_) => UiStateKind::Message,
         }
     }
@@ -330,17 +383,16 @@ impl UiState {
         matches!(self, UiState::Message(..))
     }
 
-    pub fn progress() -> Self {
-        Self::Progress
+    pub fn progress(message: &'static str) -> Self {
+        Self::Progress(Progress::new(message))
     }
 
     pub fn is_progress(&self) -> bool {
-        matches!(self, UiState::Progress)
+        matches!(self, UiState::Progress(_))
     }
 
     pub fn tx_blind_request() -> Self {
-        // TODO
-        Self::TxBlindRequest(())
+        Self::TxBlindRequest(TxBlindRequest::new())
     }
 
     #[cfg(feature = "summary")]
