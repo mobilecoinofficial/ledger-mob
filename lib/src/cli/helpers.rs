@@ -28,18 +28,3 @@ impl<const N: usize> std::string::ToString for HexData<N> {
         hex::encode(self.0)
     }
 }
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct B64Data<const N: usize = 32>(pub [u8; N]);
-
-impl<const N: usize> std::str::FromStr for B64Data<N> {
-    type Err = base64::DecodeSliceError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut b = [0u8; N];
-
-        BASE64_STANDARD.decode_slice(s, &mut b)?;
-
-        Ok(B64Data(b))
-    }
-}

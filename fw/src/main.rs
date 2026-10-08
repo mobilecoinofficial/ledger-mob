@@ -348,9 +348,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Ledger standard application info
         (AppInfoReq::CLA | 0, AppInfoReq::INS) => {
             let r = AppInfoResp::new(APP_NAME, APP_VERSION, AppFlags::empty());
-            match r.encode(&mut comm.apdu_buffer) {
+            match r.encode(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -363,9 +363,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         }
         // Ledger standard device info
         (DeviceInfoReq::CLA, DeviceInfoReq::INS) => {
-            match fetch_encode_device_info(&mut comm.apdu_buffer) {
+            match fetch_encode_device_info(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -386,9 +386,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
             flags.set(MobAppFlags::UNLOCKED, engine.is_unlocked());
 
             let r = MobAppInfoResp::new(MOB_PROTO_VERSION, APP_NAME, APP_VERSION, flags);
-            match r.encode(&mut comm.apdu_buffer) {
+            match r.encode(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -404,7 +404,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
     // Return error for other unhandled APDUs
     if cla != MOB_APDU_CLA {
-        comm.tx = 0;
+        comm.tx_length = 0;
         comm.reply(SyscallError::NotSupported);
         return false;
     }
@@ -433,7 +433,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
             // Return empty APDU to signify late response
             // TODO: check on how other apps do this
-            comm.tx = 0;
+            comm.tx_length = 0;
             comm.reply_ok();
 
             return true;
@@ -525,7 +525,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     }
 
     // Encode engine output to response APDU
-    let n = match output.encode(&mut comm.apdu_buffer) {
+    let n = match output.encode(&mut comm.io_buffer) {
         Ok(v) => v,
         Err(_e) => {
             comm.reply(SyscallError::Overflow);
@@ -534,7 +534,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     };
 
     // Send response
-    comm.tx = n;
+    comm.tx_length = n;
     comm.reply_ok();
 
     // Return render flag
