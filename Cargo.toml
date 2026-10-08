@@ -1,6 +1,5 @@
-cargo-features = ["per-package-target"]
-
 [workspace]
+resolver = "2"
 
 members = [
     "apdu",
@@ -33,9 +32,6 @@ overflow-checks = true
 
 [patch.crates-io]
 
-# Fix issues with recent nightlies, bump curve25519-dalek version
-x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "4fbaa3343301c62cfdbc3023c9f485257e6b718a" }
-
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "9abfdc054d9ba65f1e185ea1e6eff3947ce879dc" }
 
@@ -63,3 +59,8 @@ mc-util-serial = { path = "./vendor/mob/util/serial" }
 
 # patched to support ledger required 1.67.0 MSRV
 mc-rand = { path = "./vendor/mc-rand" }
+
+# patches for updates to the rust-ledger repo that have not yet been merged
+ledger-proto = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/everything" }
+ledger-lib = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/everything" }
+ledger-sim = { git = "https://github.com/ryan-sentz/rust-ledger.git", branch = "ryan/everything" }
