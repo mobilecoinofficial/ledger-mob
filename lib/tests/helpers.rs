@@ -10,15 +10,16 @@ use portpicker::pick_unused_port;
 use simplelog::SimpleLogger;
 
 use ledger_lib::{
-    transport::{GenericDevice, TcpInfo, TcpTransport},
-    Transport,
+    info::{ConnInfo, Model as LedgerModel},
+    transport::TcpInfo,
+    LedgerHandle, LedgerInfo, LedgerProvider, Transport,
 };
 use ledger_sim::*;
 
 const CONNECT_TIMEOUT_S: usize = 10;
 
 // Setup speculos instance and TCP connector with an optional seed
-pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, GenericDevice) {
+pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, LedgerHandle) {
     // Setup logging
     let log_level = match std::env::var("LOG_LEVEL").map(|v| LevelFilter::from_str(&v)) {
         Ok(Ok(l)) => l,
@@ -53,9 +54,9 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     // Select API level
     // TODO: find a canonical source for these
     let api_level = match model {
-        Model::NanoSP => "5".to_string(),
-        Model::NanoX => "5".to_string(),
-        Model::NanoS => panic!("unsupported model"),
+        Model::NanoSP => "26".to_string(),
+        Model::NanoX => "26".to_string(),
+        _ => panic!("unsupported model"),
     };
 
     println!("Using model: {model} ({driver_mode} driver)");
@@ -67,6 +68,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         seed,
         model,
         api_level: Some(api_level),
+        image: Some("ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:5.4.8".to_string()),
         //trace: true,
         //display: Display::Headless,
         ..Default::default()
@@ -115,10 +117,17 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         .await
         .expect("Simulator launch failed");
 
-    // Setup TCP ADPU connector
-    let mut t = TcpTransport::new().expect("APDU connection failed");
-    let info = TcpInfo {
-        addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
+    // Setup ledger provider and TCP APDU connection info
+    let mut provider = LedgerProvider::init().await;
+    let info = LedgerInfo {
+        model: match model {
+            Model::NanoSP => LedgerModel::NanoSPlus,
+            Model::NanoX => LedgerModel::NanoX,
+            _ => panic!("unsupported model"),
+        },
+        conn: ConnInfo::Tcp(TcpInfo {
+            addr: SocketAddr::new(Ipv4Addr::LOCALHOST.into(), apdu_port),
+        }),
     };
 
     // Wait so the simulator has a chance to launch
@@ -132,7 +141,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
     let mut device = None;
     for i in 0..CONNECT_TIMEOUT_S {
         // Attempt to connect to simulator
-        match t.connect(info.clone()).await {
+        match provider.connect(info.clone()).await {
             Ok(v) => {
                 device = Some(v);
                 break;
@@ -157,7 +166,7 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Gener
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
-    (driver, s, device.into())
+    (driver, s, device)
 }
 
 /// Run unlock UI where required for tests
