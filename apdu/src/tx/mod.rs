@@ -37,7 +37,6 @@ impl ApduStatic for TxInfoReq {
 /// Complete transaction operation (0 length APDU)
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 #[encdec(error = "ApduError")]
-
 pub struct TxComplete;
 
 impl ApduStatic for TxComplete {

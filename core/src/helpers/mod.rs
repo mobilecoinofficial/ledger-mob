@@ -45,12 +45,12 @@ fn get_token_info(token_id: TokenId) -> Option<&'static TokenInfo> {
 }
 
 // Format helper for values and token types
-pub fn fmt_token_val(value: i64, token_id: TokenId, buff: &mut [u8]) -> &str {
+pub fn fmt_token_val(value: i128, token_id: TokenId, buff: &mut [u8]) -> &str {
     // Match token types
-    let scalar = get_token_info(token_id).map(|v| v.scalar).unwrap_or(1);
+    let scalar = get_token_info(token_id).map(|v| v.scalar).unwrap_or(1) as i128;
 
     // Compute and write value using scalar
-    let mut n = match emstr::write!(&mut buff[..], Fractional::<i64>::new(value, scalar)) {
+    let mut n = match emstr::write!(&mut buff[..], Fractional::<i128>::new(value, scalar)) {
         Ok(v) => v,
         Err(_) => return "ENCODE_ERR",
     };
@@ -214,6 +214,7 @@ impl<const N: usize> bs58::encode::EncodeTarget for HeaplessEncodeTarget<N> {
 #[cfg(test)]
 mod test {
     use mc_account_keys::AccountKey;
+    use mc_api::printable::printable_wrapper::Wrapper;
     use mc_transaction_types::TokenId;
     use rand_core::OsRng;
 
@@ -224,7 +225,7 @@ mod test {
 
     #[test]
     fn fmt_mob() {
-        let tests = &[
+        let tests: &[(i128, &str)] = &[
             (1, "0.000000000001 MOB"),
             (10_000_000, "0.00001 MOB"),
             (10_020_000, "0.00001002 MOB"),
@@ -233,9 +234,9 @@ mod test {
             (40_030_000, "0.00004003 MOB"),
             (-40_000_000, "-0.00004 MOB"),
             (-40_040_000, "-0.00004004 MOB"),
-            (400 * SCALAR_MOB, "400 MOB"),
-            (400 * SCALAR_MOB + 10_000, "400.00000001 MOB"),
-            (400 * SCALAR_MOB + 1, "400.0000000000.. MOB"),
+            (400 * SCALAR_MOB as i128, "400 MOB"),
+            (400 * SCALAR_MOB as i128 + 10_000, "400.00000001 MOB"),
+            (400 * SCALAR_MOB as i128 + 1, "400.0000000000.. MOB"),
         ];
 
         for (v, s) in tests {
@@ -314,9 +315,19 @@ mod test {
             .unwrap();
 
             // API standard b58 encoding
-            let mut wrapper = mc_api::printable::PrintableWrapper::new();
-            wrapper.set_public_address((&p).into());
-            let s2 = wrapper.b58_encode().unwrap();
+            let wrapper = mc_api::printable::PrintableWrapper {
+                wrapper: Some(Wrapper::PublicAddress(mc_api::external::PublicAddress {
+                    view_public_key: Some(mc_api::external::CompressedRistretto {
+                        data: p.view_public_key().to_bytes().to_vec(),
+                    }),
+                    spend_public_key: Some(mc_api::external::CompressedRistretto {
+                        data: p.spend_public_key().to_bytes().to_vec(),
+                    }),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            };
+            let s2 = wrapper.b58_encode();
 
             assert_eq!(s1.as_str(), s2.as_str());
         }
@@ -339,9 +350,21 @@ mod test {
                 .unwrap();
 
                 // API standard b58 encoding
-                let mut wrapper = mc_api::printable::PrintableWrapper::new();
-                wrapper.set_public_address((&p).into());
-                let s2 = wrapper.b58_encode().unwrap();
+                let wrapper = mc_api::printable::PrintableWrapper {
+                    wrapper: Some(Wrapper::PublicAddress(mc_api::external::PublicAddress {
+                        view_public_key: Some(mc_api::external::CompressedRistretto {
+                            data: p.view_public_key().to_bytes().to_vec(),
+                        }),
+                        spend_public_key: Some(mc_api::external::CompressedRistretto {
+                            data: p.spend_public_key().to_bytes().to_vec(),
+                        }),
+                        fog_report_url: p.fog_report_url().unwrap_or("").to_string(),
+                        fog_report_id: "".to_string(),
+                        fog_authority_sig: p.fog_authority_sig().unwrap_or(&[]).to_vec(),
+                    })),
+                    ..Default::default()
+                };
+                let s2 = wrapper.b58_encode();
 
                 assert_eq!(s1.as_str(), s2.as_str());
             }
