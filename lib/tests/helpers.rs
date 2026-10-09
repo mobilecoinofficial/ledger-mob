@@ -68,9 +68,9 @@ pub async fn setup(seed: Option<String>) -> (GenericDriver, GenericHandle, Ledge
         seed,
         model,
         api_level: Some(api_level),
-        image: Some("ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:5.4.8".to_string()),
+        image: Some("ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:5.4.7".to_string()),
         //trace: true,
-        //display: Display::Headless,
+        display: Some(Display::Headless),
         ..Default::default()
     };
 

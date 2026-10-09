@@ -216,9 +216,7 @@ where
         } => {
             info!(
                 "resolving key image for account {}:{} tx_public_key: {}",
-                account,
-                subaddress,
-                tx_public_key.to_string(),
+                account, subaddress, tx_public_key,
             );
 
             let tx_public_key = RistrettoPublic::try_from(tx_public_key.as_ref())

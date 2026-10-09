@@ -548,9 +548,9 @@ dependencies = [
 
 [[package]]
 name = "emstr"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c4b510ede429ea866d979900a41de36c9a461a221507c4d9ac951ea780667b5"
+checksum = "6ef9d6ab4d335b83590994de381a453a2741a062d81bad8e6a128f9b6611fcde"
 dependencies = [
  "num-traits",
 ]
@@ -1206,7 +1206,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
@@ -1221,7 +1221,7 @@ dependencies = [
 
 [[package]]
 name = "mc-core-types"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "curve25519-dalek",
  "mc-crypto-keys",
@@ -1231,7 +1231,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "cfg-if",
  "curve25519-dalek",
@@ -1244,16 +1244,16 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.105",
+ "syn 2.0.48",
 ]
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "mc-crypto-digestible",
  "signature",
@@ -1261,7 +1261,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "blake2",
  "digest",
@@ -1270,7 +1270,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "base64",
  "curve25519-dalek",
@@ -1297,7 +1297,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-memo-mac"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "hmac",
  "mc-crypto-keys",
@@ -1306,7 +1306,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ring-signature"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -1324,14 +1324,14 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "mc-crypto-keys",
 ]
 
 [[package]]
 name = "mc-transaction-summary"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "displaydoc",
  "heapless",
@@ -1348,7 +1348,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-types"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "crc",
  "displaydoc",
@@ -1365,21 +1365,21 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "generic-array",
 ]
 
 [[package]]
 name = "mc-util-vec-map"
-version = "6.0.2"
+version = "7.2.0"
 dependencies = [
  "displaydoc",
  "heapless",
@@ -1387,7 +1387,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-zip-exact"
-version = "6.0.2"
+version = "7.2.0"
 
 [[package]]
 name = "memchr"

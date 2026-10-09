@@ -21,11 +21,6 @@ pub enum Error {
     #[error("could not create HidApi instance")]
     HidInit,
 
-    /// Ledger HID Error
-    #[cfg(feature = "transport_hid")]
-    #[error("Transport error {0}")]
-    Hid(#[from] hidapi::HidError),
-
     /// Ledger IO Error
     #[error("IO error {0}")]
     Io(#[from] std::io::Error),
