@@ -12,16 +12,18 @@ use ledger_device_sdk::ui::{
 };
 
 use super::clear_screen;
-use ledger_mob_core::engine::{Driver, Engine};
+use ledger_mob_core::engine::{Driver, Engine, TxDigest};
 
 use super::UiResult;
 
 /// UI Approval Element
 ///
 /// Used for user-confirmation of key requests (and transactions, pending TxSummary availability)
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IdentApprover {
     state: ApproverState,
+    /// Engine digest at approver creation, binds approval to the displayed request
+    pub digest: TxDigest,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -35,9 +37,10 @@ enum ApproverState {
 
 impl IdentApprover {
     /// Create a new Approver with the provided message
-    pub fn new() -> Self {
+    pub fn new(digest: TxDigest) -> Self {
         Self {
             state: ApproverState::Init,
+            digest,
         }
     }
 
