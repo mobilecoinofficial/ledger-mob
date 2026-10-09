@@ -2,13 +2,34 @@ RUSTARGS=--release
 
 VERSION=$(shell git describe --dirty=+)
 
-NANOSP_ARGS=
-NANOX_ARGS=
+# Docker image for building firmware
+BUILD_CONTAINER="ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:5.4.1"
 
-SPECULOS_ARGS=--zoom=4
+# Docker image for running speculos
+SPECULOS_CONTAINER="ghcr.io/ledgerhq/speculos:latest"
+
+SPECULOS_ARGS=
 ifdef MNEMONIC
 	SPECULOS_ARGS+=--seed "$(MNEMONIC)"
 endif
+
+# Supported devices, split by UI stack (BAGL buttons vs NBGL touch)
+NANO_DEVICES=nanosplus nanox
+TOUCH_DEVICES=stax flex apex_p
+DEVICES=$(NANO_DEVICES) $(TOUCH_DEVICES)
+
+# Devices that can be side-loaded (it is not possible to sideload onto the nanox)
+LOADABLE_DEVICES=nanosplus $(TOUCH_DEVICES)
+
+# Speculos model names, which differ from the cargo target name for the nanosplus
+SPECULOS_MODEL_nanosplus=nanosp
+SPECULOS_MODEL_nanox=nanox
+SPECULOS_MODEL_stax=stax
+SPECULOS_MODEL_flex=flex
+SPECULOS_MODEL_apex_p=apex_p
+
+# Touch devices need a VNC port to be interactive under speculos
+SPECULOS_TOUCH_ARGS=--vnc-port 41000 --vnc-password abc123
 
 all: fw lib
 
@@ -25,35 +46,31 @@ test: core-test nanosplus-test nanox-test
 core-test:
 	cargo nextest run --package ledger-mob-core
 
-nanosplus-test: nanosplus
-	MODEL=nanosplus cargo nextest run --package ledger-mob $(NANOSP_ARGS)
-
-nanox-test: nanox
-	MODEL=nanox cargo nextest run --package ledger-mob
+# Run simulator tests for a given device.
+# NOTE: the touch devices only implement wallet sync approval so far, the
+# transaction and identity tests skip themselves on those models.
+$(addsuffix -test,$(DEVICES)): %-test: %
+	MODEL=$* cargo nextest run --package ledger-mob
 
 # Build docs
 docs:
 	cargo doc --no-deps --workspace
 
-# Build nanosplus firmware
-nanosplus: 
-	cd fw && cargo build --target nanosplus $(NANOSP_ARGS) $(RUSTARGS)
+# Build firmware for a given device
+$(DEVICES):
+	docker run --rm -v $(shell pwd):/src -w /src/fw $(BUILD_CONTAINER) cargo ledger build $@
 
-# Build nanox firmware
-nanox:
-	cd fw && cargo build --target nanox $(NANOX_ARGS) $(RUSTARGS)
+# Run nano firmware under speculos
+$(addsuffix -run,$(NANO_DEVICES)): %-run:
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model $(SPECULOS_MODEL_$*) --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) /src/fw/target/$*/release/ledger-mob-fw
 
-# Run nanosplus firmware under speculos without debug
-nanosplus-run:
-	cd fw && cargo run --target nanosplus $(NANOSP_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
+# Run touch firmware under speculos
+$(addsuffix -run,$(TOUCH_DEVICES)): %-run:
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 -p41000:41000 $(SPECULOS_CONTAINER) --model $(SPECULOS_MODEL_$*) --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_TOUCH_ARGS) $(SPECULOS_ARGS) /src/fw/target/$*/release/ledger-mob-fw
 
-# Run nanox firmware under speculos without debug
-nanox-run:
-	cd fw && cargo run --target nanox $(NANOX_ARGS) $(RUSTARGS) -- $(SPECULOS_ARGS)
-
-# Load firmware onto device
-nanosplus-load: nanosplus
-	cd fw && cargo ledger --use-prebuilt target/nanosplus/release/ledger-mob-fw build nanosplus --load
+# Build firmware and load it onto an attached device
+$(addsuffix -load,$(LOADABLE_DEVICES)): %-load:
+	cd fw && cargo ledger build $* --load
 
 # Convert ELF to HEX for loading
 fw/target/%/release/ledger-mob-fw.hex: %
@@ -64,8 +81,7 @@ package-%: % fw/target/%/release/ledger-mob-fw.hex
 	mkdir -p target/ledger-mob-fw-$<
 
 	cp fw/target/$</release/ledger-mob-fw.hex target/ledger-mob-fw-$<
-	cp fw/target/$</release/app_$<.json target/ledger-mob-fw-$<
-	cp fw/target/$</release/mob14x14i.gif target/ledger-mob-fw-$<
+	cp fw/target/$</release/app_icon.gif target/ledger-mob-fw-$<
 
 	tar cvf ledger-mob-fw-$<.tgz \
 		-C target \
@@ -73,7 +89,7 @@ package-%: % fw/target/%/release/ledger-mob-fw.hex
 
 # Run firmware under speculos with QEMU debug connection
 nanosplus-debug:
-	cd fw && speculos --model nanosp --display qt --apdu-port 1237 $(SPECULOS_ARGS) -d target/nanosplus/release/ledger-mob-fw
+	docker run --rm -v $(shell pwd):/src -p5000:5000 -p1237:1237 $(SPECULOS_CONTAINER) --model nanosp --display headless --apdu-port 1237 --api-port 5000 $(SPECULOS_ARGS) -d target/nanosplus/release/ledger-mob-fw
 
 # Launch GDB connecting to speculos QEMU
 nanosplus-gdb:
@@ -82,12 +98,6 @@ nanosplus-gdb:
 # Objdump to show disassembly of sample_main (see `sp` for stack allocation)
 objdump:
 	arm-none-eabi-objdump fw/target/nanosplus/release/ledger-mob-fw --disassemble=sample_main -S | head -n 20
-
-wts-nanosplus:
-	wts fw/target/nanosplus/release/ledger-mob-fw -n 20
-
-wts-nanox:
-	wts fw/target/nanox/release/ledger-mob-fw -n 20
 
 # Run linters
 lint: fmt clippy
@@ -123,4 +133,8 @@ miri:
 clean:
 	rm -rf target fw/target
 
-.PHONY: fw lib core nanosplus nanox fmt clippy clean docs
+# NOTE: `package-%` is deliberately absent -- make skips implicit/pattern rule
+# matching for phony targets, which would break it.
+.PHONY: fw lib core fmt clippy clean docs test core-test $(DEVICES) \
+	$(addsuffix -run,$(DEVICES)) $(addsuffix -load,$(LOADABLE_DEVICES)) \
+	$(addsuffix -test,$(DEVICES))
