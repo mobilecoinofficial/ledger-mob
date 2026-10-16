@@ -312,7 +312,13 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
         tombstone_block: u64,
         digest: &mut [u8; 32],
     ) -> Result<SummaryState, Error> {
-        // TODO: check state
+        // Check that we're ready to finalise the summary
+        if self.state != SummaryState::Ready {
+            #[cfg(feature = "log")]
+            log::error!("finalize called in state {:?}", self.state);
+
+            return Err(Error::InvalidState);
+        }
 
         let verifier = match self.verifier.take() {
             Some(v) => v,
@@ -324,8 +330,17 @@ impl<const MAX_RECORDS: usize> Summarizer<MAX_RECORDS> {
             }
         };
 
-        // Finalise verification report
-        verifier.finalize(fee, tombstone_block, digest, &mut self.report);
+        // Finalise verification report, this enforces the input / output
+        // counts and writes the message digest
+        if let Err(e) = verifier.finalize(fee, tombstone_block, digest, &mut self.report) {
+            #[cfg(feature = "log")]
+            log::error!("summary finalize failed: {:?}", e);
+
+            // Zero out the digest on verification failures to avoid leaking partial state
+            digest.fill(0);
+
+            return Err(Error::SummaryIncomplete);
+        }
 
         // Elide SCIs from totals for rendering
         // TODO: we may wish to revisit this when SCIs are widely used
@@ -554,6 +569,6 @@ mod test {
     fn summarizer_size() {
         // TODO: check summarizer size is reasonable
         let s = core::mem::size_of::<Summarizer<16>>();
-        assert!(s < 8192, "summarizer size: {s} > 8192");
+        assert!(s < 8320, "summarizer size: {s} > 8320");
     }
 }

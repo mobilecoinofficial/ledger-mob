@@ -248,26 +248,32 @@ fn handle_btn<RNG: RngCore + CryptoRng>(
         }
         #[cfg(feature = "ident")]
         UiState::IdentRequest(ref mut a) => {
-            a.update(btn).map_exit(|v| {
-                // Set ident approval
-                engine.ident_approve(*v)
+            let r = a.update(btn);
+            let digest = &a.digest;
+            r.map_exit(|v| {
+                // Set ident approval (bound to the displayed request)
+                engine.ident_approve(*v, digest);
             })
         }
         UiState::TxRequest(ref mut a) => {
-            a.update(btn).map_exit(|v| {
-                // Approve or deny transaction
+            let r = a.update(btn);
+            let digest = &a.digest;
+            r.map_exit(|v| {
+                // Approve or deny transaction (bound to the displayed request)
                 match *v {
-                    true => engine.approve(),
+                    true => engine.approve(digest),
                     false => engine.deny(),
                 }
             })
         }
         #[cfg(feature = "summary")]
         UiState::TxSummaryRequest(ref mut a) => {
-            a.update(btn, engine).map_exit(|v| {
-                // Approve or deny transaction
+            let r = a.update(btn, engine);
+            let digest = &a.digest;
+            r.map_exit(|v| {
+                // Approve or deny transaction (bound to the displayed request)
                 match *v {
-                    true => engine.approve(),
+                    true => engine.approve(digest),
                     false => engine.deny(),
                 }
             })
@@ -348,9 +354,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Ledger standard application info
         (AppInfoReq::CLA | 0, AppInfoReq::INS) => {
             let r = AppInfoResp::new(APP_NAME, APP_VERSION, AppFlags::empty());
-            match r.encode(&mut comm.apdu_buffer) {
+            match r.encode(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -363,9 +369,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         }
         // Ledger standard device info
         (DeviceInfoReq::CLA, DeviceInfoReq::INS) => {
-            match fetch_encode_device_info(&mut comm.apdu_buffer) {
+            match fetch_encode_device_info(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -386,9 +392,9 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
             flags.set(MobAppFlags::UNLOCKED, engine.is_unlocked());
 
             let r = MobAppInfoResp::new(MOB_PROTO_VERSION, APP_NAME, APP_VERSION, flags);
-            match r.encode(&mut comm.apdu_buffer) {
+            match r.encode(&mut comm.io_buffer) {
                 Ok(n) => {
-                    comm.tx = n;
+                    comm.tx_length = n;
                     comm.reply_ok();
                 }
                 Err(_e) => {
@@ -404,7 +410,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
     // Return error for other unhandled APDUs
     if cla != MOB_APDU_CLA {
-        comm.tx = 0;
+        comm.tx_length = 0;
         comm.reply(SyscallError::NotSupported);
         return false;
     }
@@ -433,7 +439,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
 
             // Return empty APDU to signify late response
             // TODO: check on how other apps do this
-            comm.tx = 0;
+            comm.tx_length = 0;
             comm.reply_ok();
 
             return true;
@@ -456,7 +462,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         // Update to identity approver on request
         #[cfg(feature = "ident")]
         State::Ident(IdentState::Pending) if !ui.state.is_ident_request() => {
-            ui.state = UiState::IdentRequest(IdentApprover::new());
+            ui.state = UiState::IdentRequest(IdentApprover::new(engine.digest().clone()));
             render = true;
         }
         // Show identity state on changes
@@ -489,11 +495,12 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
                 ui.state = UiState::TxSummaryRequest(TxSummaryApprover::new(
                     r.outputs.len(),
                     r.totals.len(),
+                    engine.digest().clone(),
                 ));
                 render = true;
             }
             _ => {
-                ui.state = UiState::TxRequest(TxBlindApprover::new());
+                ui.state = UiState::TxRequest(TxBlindApprover::new(engine.digest().clone()));
                 render = true;
             }
         },
@@ -519,13 +526,27 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
         _ => (),
     }
 
+    // Never leave an approver displayed once the engine has left the
+    // corresponding pending state (approvals are also digest-bound)
+    let tx_stale = ui.state.is_tx_request() && engine.state() != State::Pending;
+    #[cfg(feature = "ident")]
+    let ident_stale =
+        ui.state.is_ident_request() && engine.state() != State::Ident(IdentState::Pending);
+    #[cfg(not(feature = "ident"))]
+    let ident_stale = false;
+
+    if tx_stale || ident_stale {
+        ui.state = UiState::Menu;
+        render = true;
+    }
+
     // Re-render progress bars on updates
     if ui.state.is_progress() {
         render = true;
     }
 
     // Encode engine output to response APDU
-    let n = match output.encode(&mut comm.apdu_buffer) {
+    let n = match output.encode(&mut comm.io_buffer) {
         Ok(v) => v,
         Err(_e) => {
             comm.reply(SyscallError::Overflow);
@@ -534,7 +555,7 @@ fn handle_apdu<RNG: RngCore + CryptoRng>(
     };
 
     // Send response
-    comm.tx = n;
+    comm.tx_length = n;
     comm.reply_ok();
 
     // Return render flag

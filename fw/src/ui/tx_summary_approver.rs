@@ -16,7 +16,7 @@ use ledger_device_sdk::ui::{
 };
 
 use ledger_mob_core::{
-    engine::{Driver, Engine, TransactionEntity},
+    engine::{Driver, Engine, TransactionEntity, TxDigest},
     helpers::{b58_encode_public_address, fmt_token_val},
 };
 
@@ -36,6 +36,8 @@ pub struct TxSummaryApprover {
     state: TxSummaryApproverState,
     selected: bool,
     address: Option<Address<512>>,
+    /// Engine digest at approver creation, binds approval to the displayed request
+    pub digest: TxDigest,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Display, EnumCount)]
@@ -50,8 +52,9 @@ enum TxSummaryApproverState {
 
 impl TxSummaryApprover {
     /// Create a new Approver with the provided message
-    pub fn new(num_outputs: usize, num_totals: usize) -> Self {
+    pub fn new(num_outputs: usize, num_totals: usize, digest: TxDigest) -> Self {
         Self {
+            digest,
             num_outputs,
             num_totals,
             state: TxSummaryApproverState::Init,
@@ -194,7 +197,7 @@ impl TxSummaryApprover {
                 // Write value and token id
                 // TODO: ensure values can not be concatenated
 
-                let value_str = fmt_token_val(*value as i64, *token_id, &mut value_buff);
+                let value_str = fmt_token_val(*value as i128, *token_id, &mut value_buff);
 
                 match &entity {
                     // Balance changes to ourself or others
@@ -250,7 +253,7 @@ impl TxSummaryApprover {
             // Fees
             Fee => {
                 let value_str = fmt_token_val(
-                    report.network_fee.value as i64,
+                    report.network_fee.value as i128,
                     report.network_fee.token_id,
                     &mut buff[..],
                 );

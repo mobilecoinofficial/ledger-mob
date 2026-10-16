@@ -82,7 +82,6 @@ pub(crate) mod pub_key {
 }
 
 /// encdec helper module for private keys
-
 pub(crate) mod pri_key {
     use ledger_proto::ApduError;
 

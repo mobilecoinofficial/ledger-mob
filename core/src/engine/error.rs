@@ -69,6 +69,10 @@ pub enum Error {
     #[cfg_attr(feature = "thiserror", error("identity request rejected"))]
     IdentRejected = 0x0f,
 
+    /// Summary incomplete (declared inputs / outputs were not all streamed)
+    #[cfg_attr(feature = "thiserror", error("summary incomplete"))]
+    SummaryIncomplete = 0x10,
+
     /// Unknown / not-yet defined error (placeholder)
     #[cfg_attr(feature = "thiserror", error("unknown"))]
     Unknown = 0xf0,

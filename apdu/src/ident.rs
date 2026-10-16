@@ -100,7 +100,7 @@ impl<'a> Encode for IdentSignReq<'a> {
 
     #[inline]
     fn encode_len(&self) -> Result<usize, ApduError> {
-        Ok(8 + self.identity_uri.as_bytes().len() + self.challenge.len())
+        Ok(8 + self.identity_uri.len() + self.challenge.len())
     }
 }
 
