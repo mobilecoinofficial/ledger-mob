@@ -75,10 +75,29 @@ impl<T: Device + Send> TransactionHandle<T> {
     pub async fn new(info: TxConfig, transport: Arc<Mutex<T>>) -> Result<Self, Error> {
         let mut buff = [0u8; 256];
 
-        // Setup transaction
-        let tx_init = TxInit::new(info.account_index, info.num_rings as u8);
         let mut t = transport.lock().await;
 
+        // Ensure we're in the idle state
+        let s = t
+            .request::<TxInfo>(TxInfoReq {}, &mut buff, info.request_timeout)
+            .await?;
+        if s.state != TxState::Init {
+            // Send a TxComplete message to trigger an engine reset
+            // (the TxComplete state is considered idle for the purposes of starting a new
+            // transaction) TODO(ryan): add a reset message to protocol v2
+            let s = t
+                .request::<TxInfo>(TxComplete {}, &mut buff, info.request_timeout)
+                .await?;
+
+            // If we failed to swap to an idle state, return an error
+            // NOTE: we also check init here because the user can click out of the confirmation screen.
+            if s.state != TxState::TxComplete && s.state != TxState::Init {
+                return Err(Error::InvalidState(s.state, TxState::TxComplete));
+            }
+        }
+
+        // Setup transaction
+        let tx_init = TxInit::new(info.account_index, info.num_rings as u8);
         let r = t
             .request::<TxInfo>(tx_init, &mut buff, info.request_timeout)
             .await?;
